@@ -3,7 +3,17 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { DEMO } from '../src/seed.ts';
 import { expectPgError, SQLSTATE } from './helpers.ts';
 
-const TABLES = ['organizations', 'locations', 'patients'];
+const TABLES = [
+  'organizations',
+  'locations',
+  'patients',
+  // T-002
+  'memberships',
+  'membership_roles',
+  'invitations',
+  'kiosk_devices',
+  'audit_log',
+];
 
 describe('clinic_app no puede saltarse RLS', () => {
   let pool: pg.Pool;
@@ -101,5 +111,30 @@ describe('configuración de roles y tablas', () => {
       expect(row, row.relname).toMatchObject({ owner: 'clinic_owner', rls: true, force: true });
       expect(row.policies, row.relname).toBeGreaterThan(0);
     }
+  });
+
+  it('T-002: permisos exactos de clinic_app en el esquema auth', async () => {
+    const { rows } = await client.query<{ table_name: string; privileges: string }>(
+      `select table_name, string_agg(privilege_type, ',' order by privilege_type) as privileges
+         from information_schema.role_table_grants
+        where grantee = 'clinic_app' and table_schema = 'auth'
+        group by table_name order by table_name`,
+    );
+    expect(rows).toEqual([
+      { table_name: 'account', privileges: 'INSERT,SELECT' },
+      { table_name: 'session', privileges: 'DELETE,INSERT,SELECT,UPDATE' },
+      { table_name: 'two_factor', privileges: 'INSERT,SELECT,UPDATE' },
+      { table_name: 'user', privileges: 'INSERT,SELECT,UPDATE' },
+      { table_name: 'verification', privileges: 'DELETE,INSERT,SELECT' },
+    ]);
+  });
+
+  it('T-002: clinic_app solo puede insertar en audit_log', async () => {
+    const { rows } = await client.query<{ privileges: string }>(
+      `select string_agg(privilege_type, ',' order by privilege_type) as privileges
+         from information_schema.role_table_grants
+        where grantee = 'clinic_app' and table_schema = 'app' and table_name = 'audit_log'`,
+    );
+    expect(rows[0]?.privileges).toBe('INSERT');
   });
 });
