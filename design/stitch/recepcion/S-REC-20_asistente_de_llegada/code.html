@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_blank" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "tertiary-fixed": "#e9ddff",
+          "error-container": "#ffdad6",
+          "on-primary-container": "#a3faef",
+          "on-tertiary-fixed": "#22005c",
+          "on-error-container": "#93000a",
+          "surface-container-lowest": "#ffffff",
+          "tertiary": "#5d33ba",
+          "surface-container-high": "#d9ece9",
+          "primary-fixed-dim": "#80d5cb",
+          "primary": "#005c55",
+          "on-primary-fixed": "#00201d",
+          "error": "#ba1a1a",
+          "inverse-primary": "#80d5cb",
+          "surface": "#ebfdfa",
+          "secondary-fixed-dim": "#b1c5ff",
+          "surface-tint": "#006a63",
+          "secondary-container": "#346ee5",
+          "secondary": "#0054cb",
+          "on-tertiary": "#ffffff",
+          "tertiary-container": "#764fd4",
+          "surface-dim": "#cbdedb",
+          "surface-container-low": "#e5f7f5",
+          "inverse-surface": "#233332",
+          "on-secondary": "#ffffff",
+          "background": "#ebfdfa",
+          "inverse-on-surface": "#e2f5f2",
+          "primary-container": "#0f766e",
+          "surface-container": "#dff2ef",
+          "on-surface-variant": "#3e4947",
+          "on-primary": "#ffffff",
+          "outline": "#6e7977",
+          "on-tertiary-container": "#f0e6ff",
+          "on-secondary-fixed-variant": "#0040a0",
+          "surface-variant": "#d4e6e3",
+          "on-surface": "#0e1e1d",
+          "tertiary-fixed-dim": "#d0bcff",
+          "on-secondary-container": "#fefcff",
+          "on-background": "#0e1e1d",
+          "secondary-fixed": "#dae2ff",
+          "on-error": "#ffffff",
+          "primary-fixed": "#9cf2e8",
+          "on-primary-fixed-variant": "#00504a",
+          "on-tertiary-fixed-variant": "#5225af",
+          "surface-bright": "#ebfdfa",
+          "on-secondary-fixed": "#001847",
+          "outline-variant": "#bdc9c6",
+          "surface-container-highest": "#d4e6e3"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "space-lg": "1.5rem",
+          "margin": "1.5rem",
+          "space-xs": "0.25rem",
+          "gutter-tablet": "1rem",
+          "space-sm": "0.5rem",
+          "gutter": "1rem",
+          "space-md": "1rem",
+          "space-xl": "2rem",
+          "margin-tablet": "1.25rem"
+        },
+        "fontFamily": {
+          "headline-md": ["Inter"],
+          "headline-lg": ["Inter"],
+          "display-md": ["Inter"],
+          "code-md": ["JetBrains Mono"],
+          "headline-sm": ["Inter"],
+          "code-sm": ["JetBrains Mono"],
+          "body-lg-medium": ["Inter"],
+          "body-lg": ["Inter"],
+          "caption": ["Inter"],
+          "body-md": ["Inter"],
+          "body-md-medium": ["Inter"]
+        },
+        "fontSize": {
+          "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+          "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+          "display-md": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+          "code-md": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+          "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+          "code-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500"}],
+          "body-lg-medium": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+          "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+          "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+          "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+          "body-md-medium": ["14px", {"lineHeight": "20px", "fontWeight": "500"}]
+        }
+      }
+    }
+  };</script></head><body class="bg-surface font-body-md text-on-surface"><header class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 w-full px-margin-tablet flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[22px]">local_hospital</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-tight">Clinic System</span><span class="font-caption text-caption text-on-surface-variant">Asistente Clínico Ambulatorio</span></div></div><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container rounded-full"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span><span class="font-caption text-caption text-on-surface font-medium">Modo Asistido Activo</span></div><a class="min-h-[48px] px-space-md flex items-center gap-space-xs rounded-lg text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors" data-path="cola-de-pacientes" href="#"><span class="material-symbols-outlined text-[20px]">close</span><span class="font-body-md-medium text-body-md-medium">✕ Salir al Panel</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 bg-surface"><div class="flex flex-col w-full">
+<!-- Interactive Clinic Arrival Wizard Root -->
+<div class="w-full max-w-[1280px] mx-auto px-gutter-tablet py-space-md flex flex-col gap-space-md">
+<!-- Top Breadcrumb / Quick Jump Bar for Staff Demonstration -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm bg-surface-container-low px-space-md py-space-xs rounded-xl shadow-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">preview</span>
+<span class="font-caption text-caption text-on-surface-variant font-medium">Previsualización rápida de variantes para evaluación:</span>
+</div>
+<div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+<button class="quick-nav-btn px- space-sm px-3 py-1.5 rounded-lg text-caption font-caption bg-primary-container text-on-primary font-medium transition-all" id="quick-btn-1" onclick="goToStep(1)">Paso 1: Paciente</button>
+<button class="quick-nav-btn px- space-sm px-3 py-1.5 rounded-lg text-caption font-caption bg-surface-container text-on-surface-variant hover:text-on-surface font-medium transition-all" id="quick-btn-2" onclick="goToStep(2)">Paso 2: Sede</button>
+<button class="quick-nav-btn px- space-sm px-3 py-1.5 rounded-lg text-caption font-caption bg-surface-container text-on-surface-variant hover:text-on-surface font-medium transition-all" id="quick-btn-3" onclick="goToStep(3)">Paso 3: Ruta (Error)</button>
+<button class="quick-nav-btn px- space-sm px-3 py-1.5 rounded-lg text-caption font-caption bg-surface-container text-on-surface-variant hover:text-on-surface font-medium transition-all" id="quick-btn-4" onclick="goToStep(4)">Paso 4: Cobertura</button>
+<button class="quick-nav-btn px- space-sm px-3 py-1.5 rounded-lg text-caption font-caption bg-surface-container text-on-surface-variant hover:text-on-surface font-medium transition-all" id="quick-btn-5" onclick="goToStep(5)">Paso 5: Confirmar</button>
+<button class="quick-nav-btn px- space-sm px-3 py-1.5 rounded-lg text-caption font-caption bg-surface-container text-on-surface-variant hover:text-on-surface font-medium transition-all" id="quick-btn-6" onclick="goToStep(6)">Variante Éxito</button>
+</div>
+</div>
+<!-- Wizard Main Container -->
+<div class="w-full bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
+<!-- WIZARD SUB-HEADER -->
+<div class="px-space-lg pt-space-lg pb-space-md bg-surface-container-low flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-lg bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined text-[22px]">how_to_reg</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block">Flujo de recepción ambulatoria</span>
+<h1 class="font-headline-md text-headline-md text-on-surface">Asistente de admisión · Registrar llegada</h1>
+</div>
+</div>
+<a class="min-h-[48px] px-space-md flex items-center gap-space-xs rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors font-body-md-medium text-body-md-medium" data-path="cola-de-pacientes" href="#">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+<span>Cancelar y volver al Panel</span>
+</a>
+</div>
+<!-- STEPPER BAR (Ergonomic 48px touch targets for Tablet) -->
+<div class="w-full flex items-center justify-between gap-space-xs pt-space-xs">
+<!-- Step 1 Button -->
+<button class="flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-primary-container text-on-primary shadow-sm" id="step-pill-1" onclick="goToStep(1)">
+<span class="w-6 h-6 rounded-full bg-surface-container-lowest text-primary font-code-sm text-code-sm flex items-center justify-center font-semibold" id="step-badge-1">1</span>
+<span class="font-body-md-medium text-body-md-medium truncate">Paciente</span>
+</button>
+<div class="w-3 h-0.5 bg-outline-variant shrink-0"></div>
+<!-- Step 2 Button -->
+<button class="flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-surface-container text-on-surface-variant" id="step-pill-2" onclick="goToStep(2)">
+<span class="w-6 h-6 rounded-full bg-surface-variant text-on-surface-variant font-code-sm text-code-sm flex items-center justify-center font-semibold" id="step-badge-2">2</span>
+<span class="font-body-md-medium text-body-md-medium truncate">Sede</span>
+</button>
+<div class="w-3 h-0.5 bg-outline-variant shrink-0"></div>
+<!-- Step 3 Button -->
+<button class="flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-surface-container text-on-surface-variant" id="step-pill-3" onclick="goToStep(3)">
+<span class="w-6 h-6 rounded-full bg-surface-variant text-on-surface-variant font-code-sm text-code-sm flex items-center justify-center font-semibold" id="step-badge-3">3</span>
+<span class="font-body-md-medium text-body-md-medium truncate">Ruta</span>
+</button>
+<div class="w-3 h-0.5 bg-outline-variant shrink-0"></div>
+<!-- Step 4 Button -->
+<button class="flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-surface-container text-on-surface-variant" id="step-pill-4" onclick="goToStep(4)">
+<span class="w-6 h-6 rounded-full bg-surface-variant text-on-surface-variant font-code-sm text-code-sm flex items-center justify-center font-semibold" id="step-badge-4">4</span>
+<span class="font-body-md-medium text-body-md-medium truncate">Cobertura</span>
+</button>
+<div class="w-3 h-0.5 bg-outline-variant shrink-0"></div>
+<!-- Step 5 Button -->
+<button class="flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-surface-container text-on-surface-variant" id="step-pill-5" onclick="goToStep(5)">
+<span class="w-6 h-6 rounded-full bg-surface-variant text-on-surface-variant font-code-sm text-code-sm flex items-center justify-center font-semibold" id="step-badge-5">5</span>
+<span class="font-body-md-medium text-body-md-medium truncate">Confirmar</span>
+</button>
+</div>
+</div>
+<!-- WIZARD DYNAMIC CONTENT PANELS -->
+<div class="p-space-lg min-h-[460px] flex flex-col justify-start">
+<!-- ============================================== -->
+<!-- PASO 1: PACIENTE (DEFAULT STATE) -->
+<!-- ============================================== -->
+<div class="step-view flex flex-col gap-space-md" id="step-view-1">
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-primary font-semibold uppercase tracking-wider">Identificación y Triage Kiosco</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Paso 1 de 5: Paciente</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Verifique la identidad del paciente y los datos recibidos antes de asignarle ruta de atención.</p>
+</div>
+<!-- KIOSK DISPATCH NOTICE -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex flex-col md:flex-row items-start md:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[22px]">tablet_mac</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface font-semibold">Datos enviados desde el kiosco a las 10:42 a. m.</span>
+<span class="font-caption text-caption text-on-surface-variant">Transmisión de autoservicio recibida en cola activa.</span>
+</div>
+</div>
+<!-- Declared symptom pill -->
+<div class="flex items-center gap-space-xs px-3 py-1.5 bg-surface-variant rounded-full max-w-xl">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0">medical_services</span>
+<span class="font-caption text-caption text-on-surface truncate">
+<strong class="font-medium text-on-surface">Motivo declarado:</strong> Me siento enfermo · Fiebre persistente desde anoche, dolor de garganta intenso y escalofríos...
+              </span>
+</div>
+</div>
+<!-- PATIENT CLINICAL CARD -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-md">
+<div class="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined text-[32px]">person</span>
+</div>
+<div>
+<h3 class="font-display-md text-display-md text-on-surface">María López García</h3>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-primary font-caption text-caption font-semibold">Expediente Oficial</span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">Registrada en EHR 2021</span>
+</div>
+</div>
+</div>
+<!-- Monospace Expediente Badge -->
+<div class="flex flex-col items-end">
+<span class="font-caption text-caption text-on-surface-variant">Código de expediente</span>
+<span class="font-code-md text-code-md px-3 py-1 rounded bg-surface-container font-semibold text-primary tracking-wide">P-000123</span>
+</div>
+</div>
+<!-- Structured Patient Data Grid for landscape tablets -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-space-md p-space-md rounded-xl bg-surface-container-low">
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-on-surface-variant">Fecha de nacimiento</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">3 de febrero de 1985</span>
+<span class="font-caption text-caption text-primary font-medium">(41 años)</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-on-surface-variant">Teléfono móvil</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">(214) 555-0142</span>
+<span class="font-caption text-caption text-on-surface-variant">SMS habilitado</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-on-surface-variant">Dirección / Sede habitual</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Lancaster</span>
+<span class="font-caption text-caption text-on-surface-variant">Dallas County, TX</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-on-surface-variant">Alergias conocidas</span>
+<span class="font-body-md-medium text-body-md-medium text-error font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">warning</span> Penicilina
+                </span>
+<span class="font-caption text-caption text-on-surface-variant">Confirmado por enfermería</span>
+</div>
+</div>
+<!-- MANDATORY CLINICAL SAFETY CHECKBOX -->
+<label class="flex items-start gap-space-md p-space-md rounded-xl bg-primary-fixed/20 hover:bg-primary-fixed/30 cursor-pointer transition-colors min-h-[56px] select-none">
+<div class="pt-0.5">
+<input checked="" class="w-6 h-6 rounded accent-primary-container cursor-pointer text-primary" id="verify-identity-checkbox" onchange="toggleVerificationState(this.checked)" type="checkbox"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold flex items-center gap-space-xs">
+                  Verifiqué la identidad del paciente
+                  <span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Confirme el nombre y la fecha de nacimiento con el paciente antes de proseguir con la admisión.</span>
+</div>
+</label>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- PASO 2: SEDE (INTERMEDIATE) -->
+<!-- ============================================== -->
+<div class="step-view hidden flex flex-col gap-space-md" id="step-view-2">
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-primary font-semibold uppercase tracking-wider">Asignación física</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Paso 2 de 5: Confirmar Sede</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Verifique la sede ambulatoria activa donde se atenderá a la paciente.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<label class="p-space-md rounded-xl bg-primary-container text-on-primary flex items-start gap-space-md cursor-pointer shadow-sm">
+<input checked="" class="mt-1 w-5 h-5 accent-surface-container-lowest" name="clinic-branch" type="radio"/>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm font-semibold">Sede Lancaster (Actual)</span>
+<span class="font-body-md text-body-md opacity-90 mt-1">2800 N Hampton Rd, Lancaster, TX 75150</span>
+<div class="flex items-center gap-space-sm mt-3">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/20 font-caption text-caption">4 Consultorios activos</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/20 font-caption text-caption">Tiempo espera: ~12 min</span>
+</div>
+</div>
+</label>
+<label class="p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface flex items-start gap-space-md cursor-pointer transition-colors">
+<input class="mt-1 w-5 h-5 accent-primary" name="clinic-branch" type="radio"/>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm font-semibold">Sede Oak Cliff</span>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">1400 S Beckley Ave, Dallas, TX 75208</span>
+<div class="flex items-center gap-space-sm mt-3">
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-caption text-caption">Transferencia remota</span>
+</div>
+</div>
+</label>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- PASO 3: RUTA (WITH REQUESTED ERROR VARIANT) -->
+<!-- ============================================== -->
+<div class="step-view hidden flex flex-col gap-space-md" id="step-view-3">
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-primary font-semibold uppercase tracking-wider">Flujo de Atención</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Paso 3 de 5: Ruta de atención</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Seleccione la ruta clínica correspondiente para triaje y asignación de personal.</p>
+</div>
+<!-- VISIBLE SOFT RED ERROR BANNER -->
+<div class="p-space-md rounded-xl bg-error-container text-on-error-container flex items-center justify-between gap-space-sm" id="route-error-banner">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[24px] text-error">error</span>
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium font-semibold text-error">Elija una ruta de atención.</span>
+<span class="font-caption text-caption text-on-surface-variant">Es obligatorio seleccionar una ruta para generar el ticket y llamar al paciente.</span>
+</div>
+</div>
+<span class="px-2.5 py-1 rounded-full bg-surface-container-lowest font-caption text-caption font-semibold text-error">Requerido</span>
+</div>
+<!-- TACTILE RADIO LIST (NONE PRE-SELECTED) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- Route 1: Estándar -->
+<label class="route-option flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all min-h-[72px]" onclick="selectRoute(this, 'Estándar')">
+<div class="pt-1">
+<input class="w-6 h-6 accent-primary cursor-pointer" name="care-route" type="radio" value="Estándar"/>
+</div>
+<div class="flex flex-col flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Estándar</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-caption text-caption text-primary font-semibold">Recomendado</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">Admisión de enfermería y luego proveedor</span>
+</div>
+</label>
+<!-- Route 2: Solo inyección -->
+<label class="route-option flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all min-h-[72px]" onclick="selectRoute(this, 'Solo inyección')">
+<div class="pt-1">
+<input class="w-6 h-6 accent-primary cursor-pointer" name="care-route" type="radio" value="Solo inyección"/>
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Solo inyección</span>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">Administración de medicamento o vacuna en enfermería</span>
+</div>
+</label>
+<!-- Route 3: Solo laboratorio -->
+<label class="route-option flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all min-h-[72px]" onclick="selectRoute(this, 'Solo laboratorio')">
+<div class="pt-1">
+<input class="w-6 h-6 accent-primary cursor-pointer" name="care-route" type="radio" value="Solo laboratorio"/>
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Solo laboratorio</span>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">Toma de muestras y pruebas diagnósticas</span>
+</div>
+</label>
+<!-- Route 4: Solo procedimiento -->
+<label class="route-option flex items-start gap-space-md p-space-md rounded-xl bg-surface-container-low hover:bg-surface-container cursor-pointer transition-all min-h-[72px]" onclick="selectRoute(this, 'Solo procedimiento')">
+<div class="pt-1">
+<input class="w-6 h-6 accent-primary cursor-pointer" name="care-route" type="radio" value="Solo procedimiento"/>
+</div>
+<div class="flex flex-col flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Solo procedimiento</span>
+<span class="font-body-md text-body-md text-on-surface-variant mt-1">Curaciones menores o suturas ambulatorias</span>
+</div>
+</label>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- PASO 4: COBERTURA -->
+<!-- ============================================== -->
+<div class="step-view hidden flex flex-col gap-space-md" id="step-view-4">
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-primary font-semibold uppercase tracking-wider">Gestión Financiera</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Paso 4 de 5: Cobertura médica</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Confirme el método de pago o beneficio que aplicará para este encuentro ambulatorio.</p>
+</div>
+<!-- HIGHLIGHTED BLUE BANNER (MEMBRESÍA ACTIVA) -->
+<div class="p-space-md rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-between gap-space-md shadow-sm">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-on-secondary shrink-0">
+<span class="material-symbols-outlined text-[28px]">badge</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm font-semibold">Membresía activa: Plan Familiar (desde 1 mar 2026)</span>
+<span class="px-2 py-0.5 rounded-full bg-secondary text-on-secondary font-caption text-caption">Vigente</span>
+</div>
+<span class="font-body-md text-body-md text-on-secondary-fixed-variant">Cubre consulta médica general, copago preferencial de laboratorio y telemedicina ilimitada.</span>
+</div>
+</div>
+<span class="font-code-sm text-code-sm bg-surface-container-lowest/80 px-3 py-1.5 rounded-lg text-secondary font-semibold">ID #MBR-88492</span>
+</div>
+<!-- LARGE TABLET RADIO SELECTOR -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Pago directo -->
+<label class="p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container flex flex-col gap-space-sm cursor-pointer transition-all">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-on-surface-variant text-[28px]">payments</span>
+<input class="w-6 h-6 accent-primary" name="coverage-type" type="radio" value="Pago directo"/>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Pago directo</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Tarifa fija por visita sin seguro ni membresía clínica.</span>
+</label>
+<!-- Seguro -->
+<label class="p-space-lg rounded-xl bg-surface-container-low hover:bg-surface-container flex flex-col gap-space-sm cursor-pointer transition-all">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-on-surface-variant text-[28px]">health_and_safety</span>
+<input class="w-6 h-6 accent-primary" name="coverage-type" type="radio" value="Seguro"/>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Seguro</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Facturación a aseguradora privada o Medicare / Medicaid.</span>
+</label>
+<!-- Membresía (Pre-selected by default due to active membership) -->
+<label class="p-space-lg rounded-xl bg-primary-container text-on-primary flex flex-col gap-space-sm cursor-pointer transition-all shadow-sm">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-on-primary text-[28px]">verified_user</span>
+<input checked="" class="w-6 h-6 accent-surface-container-lowest" name="coverage-type" type="radio" value="Membresía"/>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-primary font-semibold">Membresía</span>
+<span class="font-body-md text-body-md text-on-primary opacity-90">Plan de salud prepagado activo en la red de clínicas.</span>
+</label>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- PASO 5: CONFIRMAR -->
+<!-- ============================================== -->
+<div class="step-view hidden flex flex-col gap-space-md" id="step-view-5">
+<div class="flex flex-col gap-0.5">
+<span class="font-caption text-caption text-primary font-semibold uppercase tracking-wider">Validación Final</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Paso 5 de 5: Confirmar llegada</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Revise los datos sintetizados antes de generar el encuentro oficial y la entrada a cola de atención.</p>
+</div>
+<!-- SUMMARY CARD WITH KEY-VALUE PAIRS -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-sm border-b border-surface-container-high">
+<span class="font-headline-sm text-headline-sm text-on-surface">Revisar y confirmar</span>
+<span class="px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed font-caption text-caption font-semibold">Listo para emisión</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<div class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest">
+<span class="material-symbols-outlined text-primary text-[24px]">account_circle</span>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Paciente</span>
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface">María López García</span>
+<span class="font-code-sm text-code-sm text-primary font-medium">Exp: P-000123</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest">
+<span class="material-symbols-outlined text-primary text-[24px]">location_on</span>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Sede de atención</span>
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface">Sede Lancaster</span>
+<span class="font-caption text-caption text-on-surface-variant">Recepción Principal · Sala A</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest">
+<span class="material-symbols-outlined text-primary text-[24px]">route</span>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Ruta seleccionada</span>
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface">Estándar</span>
+<span class="font-caption text-caption text-on-surface-variant">Enfermería (Triage) → Proveedor</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest">
+<span class="material-symbols-outlined text-primary text-[24px]">verified</span>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Cobertura asignada</span>
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface">Membresía Plan Familiar</span>
+<span class="font-caption text-caption text-secondary font-medium">Vigente desde 1 mar 2026</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-md rounded-lg bg-surface-container-lowest md:col-span-2">
+<span class="material-symbols-outlined text-primary text-[24px]">schedule</span>
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Origen y Hora de solicitud</span>
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface">Terminal Kiosco (10:42 a. m.)</span>
+<span class="font-caption text-caption text-on-surface-variant">Verificación de identidad completada por personal clínico</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ============================================== -->
+<!-- VARIANTE ÉXITO -->
+<!-- ============================================== -->
+<div class="step-view hidden flex flex-col items-center justify-center py-space-xl text-center gap-space-lg" id="step-view-6">
+<!-- Big Success Icon -->
+<div class="w-20 h-20 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary shadow-sm">
+<span class="material-symbols-outlined text-[48px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col items-center gap-space-xs max-w-md">
+<span class="px-3 py-1 rounded-full bg-surface-container font-caption text-caption text-primary font-semibold">Transacción Completada</span>
+<h2 class="font-display-md text-display-md text-on-surface">Llegada registrada</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">El encuentro clínico ha sido generado y el paciente ha sido colocado en la cola de triaje de enfermería.</p>
+</div>
+<!-- Highlighted Encounter Card -->
+<div class="p-space-lg rounded-xl bg-surface-container-low flex flex-col items-center gap-space-sm min-w-[340px] shadow-sm">
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">Código de Turno / Visita</span>
+<span class="font-code-md text-[24px] leading-8 font-semibold text-primary tracking-wider">LAN-V-000210</span>
+<div class="flex items-center gap-space-xs mt-1">
+<span class="px-3 py-1 rounded-full bg-primary-container text-on-primary font-caption text-caption font-semibold">Estándar</span>
+<span class="px-3 py-1 rounded-full bg-surface-container text-on-surface font-caption text-caption font-medium">Pago directo</span>
+</div>
+</div>
+<!-- Action Buttons for Success State -->
+<div class="flex items-center gap-space-md pt-space-sm">
+<a class="min-h-[48px] px-space-lg rounded-lg bg-surface-container-lowest text-on-surface font-body-lg-medium text-body-lg-medium hover:bg-surface-variant flex items-center gap-space-xs transition-colors shadow-sm" data-path="cola-de-pacientes" href="#">
+<span class="material-symbols-outlined text-[20px]">view_list</span>
+<span>Volver al Panel</span>
+</a>
+<button class="min-h-[48px] px-space-xl rounded-lg bg-primary-container text-on-primary font-body-lg-medium text-body-lg-medium hover:bg-primary transition-colors flex items-center gap-space-xs shadow-md" onclick="alert('Abriendo encuentro clínico LAN-V-000210 en nueva pestaña...')">
+<span class="material-symbols-outlined text-[20px]">clinical_notes</span>
+<span>Abrir visita</span>
+</button>
+</div>
+</div>
+</div>
+<!-- WIZARD FOOTER (STICKY / FIXED CONTAINER) -->
+<div class="p-space-md bg-surface-container-low flex items-center justify-between" id="wizard-footer">
+<button class="min-h-[48px] px-space-lg rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container font-body-lg-medium text-body-lg-medium flex items-center gap-space-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed" id="btn-prev" onclick="handlePrevious()">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+<span>Atrás</span>
+</button>
+<div class="flex items-center gap-space-md">
+<span class="font-caption text-caption text-on-surface-variant font-medium" id="footer-step-counter">Paso 1 de 5</span>
+<button class="min-h-[48px] px-space-xl rounded-lg bg-primary-container text-on-primary font-body-lg-medium text-body-lg-medium hover:bg-primary flex items-center gap-space-xs transition-all shadow-md active:scale-98" id="btn-next" onclick="handleNext()">
+<span id="btn-next-label">Continuar</span>
+<span class="material-symbols-outlined text-[20px]" id="btn-next-icon">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Vanilla JavaScript for Wizard Logic & Ergonomic Touch Switching -->
+<script>
+    let currentStep = 1;
+    let identityVerified = true;
+    let selectedRoute = null;
+
+    function goToStep(step) {
+      currentStep = step;
+      updateUI();
+    }
+
+    function toggleVerificationState(isChecked) {
+      identityVerified = isChecked;
+      const nextBtn = document.getElementById('btn-next');
+      if (currentStep === 1) {
+        if (!identityVerified) {
+          nextBtn.disabled = true;
+          nextBtn.classList.add('opacity-40', 'cursor-not-allowed');
+        } else {
+          nextBtn.disabled = false;
+          nextBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
+      }
+    }
+
+    function selectRoute(element, routeName) {
+      selectedRoute = routeName;
+      // Clear previous route selections styling
+      document.querySelectorAll('.route-option').forEach(el => {
+        el.classList.remove('bg-primary-container', 'text-on-primary');
+        el.classList.add('bg-surface-container-low', 'text-on-surface');
+      });
+      // Set active styling on chosen
+      element.classList.remove('bg-surface-container-low', 'text-on-surface');
+      element.classList.add('bg-primary-container', 'text-on-primary');
+      
+      // Hide error banner once selected
+      const err = document.getElementById('route-error-banner');
+      if (err) {
+        err.classList.add('hidden');
+      }
+    }
+
+    function handleNext() {
+      if (currentStep === 1 && !identityVerified) {
+        alert('Debe verificar la identidad del paciente para continuar.');
+        return;
+      }
+      if (currentStep < 5) {
+        currentStep++;
+        updateUI();
+      } else if (currentStep === 5) {
+        // Complete Arrival -> Success screen
+        currentStep = 6;
+        updateUI();
+      }
+    }
+
+    function handlePrevious() {
+      if (currentStep > 1) {
+        currentStep--;
+        updateUI();
+      }
+    }
+
+    function updateUI() {
+      // 1. Show appropriate step view
+      for (let i = 1; i <= 6; i++) {
+        const view = document.getElementById(`step-view-${i}`);
+        if (view) {
+          if (i === currentStep) {
+            view.classList.remove('hidden');
+          } else {
+            view.classList.add('hidden');
+          }
+        }
+      }
+
+      // 2. Manage footer state
+      const footer = document.getElementById('wizard-footer');
+      const prevBtn = document.getElementById('btn-prev');
+      const nextBtn = document.getElementById('btn-next');
+      const nextLabel = document.getElementById('btn-next-label');
+      const nextIcon = document.getElementById('btn-next-icon');
+      const stepCounter = document.getElementById('footer-step-counter');
+
+      if (currentStep === 6) {
+        // Hide standard wizard footer on success screen
+        footer.classList.add('hidden');
+      } else {
+        footer.classList.remove('hidden');
+        stepCounter.textContent = `Paso ${currentStep} de 5`;
+        prevBtn.disabled = currentStep === 1;
+
+        if (currentStep === 5) {
+          nextLabel.textContent = 'Registrar llegada';
+          nextIcon.textContent = 'check';
+        } else {
+          nextLabel.textContent = 'Continuar';
+          nextIcon.textContent = 'chevron_right';
+        }
+
+        if (currentStep === 1) {
+          toggleVerificationState(identityVerified);
+        } else {
+          nextBtn.disabled = false;
+          nextBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+        }
+      }
+
+      // 3. Update Stepper Pills
+      for (let s = 1; s <= 5; s++) {
+        const pill = document.getElementById(`step-pill-${s}`);
+        const badge = document.getElementById(`step-badge-${s}`);
+        if (!pill || !badge) continue;
+
+        if (s < currentStep || currentStep === 6) {
+          // Completed
+          pill.className = "flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-surface-container text-on-surface cursor-pointer";
+          badge.innerHTML = `<span class="material-symbols-outlined text-[16px]">check</span>`;
+          badge.className = "w-6 h-6 rounded-full bg-primary-container text-on-primary font-code-sm text-code-sm flex items-center justify-center font-semibold";
+        } else if (s === currentStep) {
+          // Active
+          pill.className = "flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-primary-container text-on-primary shadow-sm cursor-pointer";
+          badge.textContent = s;
+          badge.className = "w-6 h-6 rounded-full bg-surface-container-lowest text-primary font-code-sm text-code-sm flex items-center justify-center font-semibold";
+        } else {
+          // Future / Pending
+          pill.className = "flex-1 min-h-[48px] px-space-sm py-2 rounded-xl flex items-center justify-center gap-space-xs transition-all bg-surface-container text-on-surface-variant cursor-pointer";
+          badge.textContent = s;
+          badge.className = "w-6 h-6 rounded-full bg-surface-variant text-on-surface-variant font-code-sm text-code-sm flex items-center justify-center font-semibold";
+        }
+      }
+
+      // 4. Update Quick Switcher buttons
+      for (let q = 1; q <= 6; q++) {
+        const qBtn = document.getElementById(`quick-btn-${q}`);
+        if (qBtn) {
+          if (q === currentStep) {
+            qBtn.className = "quick-nav-btn px-3 py-1.5 rounded-lg text-caption font-caption bg-primary-container text-on-primary font-medium transition-all";
+          } else {
+            qBtn.className = "quick-nav-btn px-3 py-1.5 rounded-lg text-caption font-caption bg-surface-container text-on-surface-variant hover:text-on-surface font-medium transition-all";
+          }
+        }
+      }
+    }
+
+    // Initialize state
+    updateUI();
+  </script>
+</div></main></body></html>
