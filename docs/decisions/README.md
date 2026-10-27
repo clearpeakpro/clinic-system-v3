@@ -26,3 +26,4 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0020. El worker es un proceso separado](0020-worker-separado.md) | Aceptada |
 | [0021. Autenticación condicionada a una prueba técnica](0021-autenticacion-prueba.md) | Aceptada |
 | [0022. Plan: dos organizaciones, catálogo antes de Caja, restauración antes del piloto](0022-plan-puertas.md) | Aceptada |
+| [0023. Autenticación con Better Auth](0023-autenticacion.md) | Propuesta |
