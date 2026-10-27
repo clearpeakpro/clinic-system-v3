@@ -1,0 +1,9 @@
+packages:
+  - packages/*
+
+# Solo esbuild (drizzle-kit) necesita su script de instalación.
+allowBuilds:
+  esbuild: true
+  cpu-features: false
+  ssh2: false
+  protobufjs: false

@@ -33,14 +33,14 @@ TypeScript en todo. pnpm + Turborepo.
 - `pnpm dev` — web + api + Postgres en docker compose
 - `pnpm test` — unitarias + integración (Testcontainers)
 - `pnpm test:e2e` — Playwright
-- `pnpm db:migrate` / `pnpm db:seed`
+- `pnpm db:bootstrap` (superusuario, una vez) / `pnpm db:migrate` / `pnpm db:seed`
 - `pnpm lint` / `pnpm typecheck`
 
 ## Reglas no negociables
 
 1. **Multi-tenant (ADR 0002):**
    - Toda tabla de negocio lleva `organization_id`, `UNIQUE (organization_id, id)`, claves foráneas compuestas, `FORCE ROW LEVEL SECURITY` y políticas `USING` y `WITH CHECK`.
-   - La API y el worker usan solo `clinic_app`. `clinic_migrator` se usa solo en migraciones.
+   - La API y el worker usan solo `clinic_app`. `clinic_migrator` se usa solo en migraciones y en la semilla ficticia de desarrollo.
    - Todo acceso a datos pasa por `withTenant`, con el contexto derivado de la sesión validada.
    - Cada tabla nueva lleva su prueba de aislamiento con el rol real y un pool.
    - RLS no cubre S3, WebSockets, exportaciones ni logs: aplicar sus controles propios.
