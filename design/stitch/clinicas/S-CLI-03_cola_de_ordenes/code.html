@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "background": "#ebfdfa", "surface-bright": "#ebfdfa", "primary-container": "#0f766e", "on-error": "#ffffff", "on-tertiary-fixed-variant": "#5225af", "secondary-container": "#346ee5", "outline-variant": "#bdc9c6", "on-primary-fixed-variant": "#00504a", "surface-container-highest": "#d4e6e3", "on-secondary-container": "#fefcff", "primary-fixed": "#9cf2e8", "inverse-primary": "#80d5cb", "on-primary-container": "#a3faef", "inverse-surface": "#233332", "on-tertiary": "#ffffff", "primary": "#005c55", "surface-container": "#dff2ef", "secondary": "#0054cb", "surface-variant": "#d4e6e3", "error": "#ba1a1a", "on-primary-fixed": "#00201d", "tertiary-fixed-dim": "#d0bcff", "on-secondary-fixed": "#001847", "on-surface-variant": "#3e4947", "surface": "#ebfdfa", "on-tertiary-container": "#f0e6ff", "surface-tint": "#006a63", "on-secondary-fixed-variant": "#0040a0", "on-background": "#0e1e1d", "surface-container-low": "#e5f7f5", "on-error-container": "#93000a", "surface-container-lowest": "#ffffff", "tertiary-fixed": "#e9ddff", "on-surface": "#0e1e1d", "on-secondary": "#ffffff", "surface-container-high": "#d9ece9", "tertiary-container": "#764fd4", "surface-dim": "#cbdedb", "secondary-fixed": "#dae2ff", "outline": "#6e7977", "error-container": "#ffdad6", "inverse-on-surface": "#e2f5f2", "on-tertiary-fixed": "#22005c", "on-primary": "#ffffff", "tertiary": "#5d33ba", "secondary-fixed-dim": "#b1c5ff", "primary-fixed-dim": "#80d5cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-tablet": "1.25rem", "space-lg": "1.5rem", "gutter-tablet": "1rem", "space-xs": "0.25rem", "margin": "1.5rem", "space-sm": "0.5rem", "space-xl": "2rem", "space-md": "1rem", "gutter": "1rem" }, "fontFamily": { "body-lg-medium": [ "Inter" ], "display-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "body-md": [ "Inter" ], "code-md": [ "JetBrains Mono" ], "headline-lg": [ "Inter" ], "headline-md": [ "Inter" ], "caption": [ "Inter" ], "body-md-medium": [ "Inter" ], "body-lg": [ "Inter" ] }, "fontSize": { "body-lg-medium": [ "16px", { "lineHeight": "24px", "fontWeight": "500" } ], "display-md": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "headline-sm": [ "18px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "code-md": [ "14px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "caption": [ "12px", { "lineHeight": "16px", "fontWeight": "500" } ], "body-md-medium": [ "14px", { "lineHeight": "20px", "fontWeight": "500" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface-container-lowest font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-60 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-lowest"><img alt="Clinic System Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XQeIkTEEyQigpK5NQ9uJflA_Lyapc2dQ4_S6fAt4HhnX3lG6UZqG4mO4kgGJZz7TugBxX9Z1OcdXG-OXSFnwKvq0sk0mCwnjxOd97AuaNoxRBNLTAd1y5pB-ua-6S1qlGVr3LFam9hGh6D1vglbR4OmGfUi2DwwLvhodwBxBS58fg1WFa2HXC_ZU1DD9G0EUXGYQZeTybVUX2AUB60QhNTi5zGNTUFto8rdNtyjbWSng4U0bZIT_-7Gw"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">Clinic System</span><span class="font-caption text-caption text-outline">Gestión Clínica</span></div></div><div class="px-space-md pt-space-sm pb-space-xs"><span class="font-caption text-caption text-outline uppercase tracking-wider">Clínica Operativa</span></div><nav class="flex flex-col px-space-sm gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-body-md-medium"><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="panel" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">dashboard</span><span class="font-body-md text-body-md">Panel</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="pacientes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">people</span><span class="font-body-md text-body-md">Pacientes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="citas" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">calendar_today</span><span class="font-body-md text-body-md">Citas</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-enfermeria" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">vital_signs</span><span class="font-body-md text-body-md">Cola de enfermería</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-proveedor" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">stethoscope</span><span class="font-body-md text-body-md">Cola de proveedor</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-ordenes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">prescriptions</span><span class="font-body-md text-body-md">Cola de órdenes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="caja" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">point_of_sale</span><span class="font-body-md text-body-md">Caja</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">bar_chart</span><span class="font-body-md text-body-md">Reportes</span></a></nav></div><div class="flex flex-col pb-space-md"><div class="px-space-md pt-space-sm pb-space-xs"><span class="font-caption text-caption text-outline uppercase tracking-wider">Administración</span></div><nav class="flex flex-col px-space-sm gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-body-md-medium"><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="usuarios" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">manage_accounts</span><span class="font-body-md text-body-md">Usuarios</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sedes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">apartment</span><span class="font-body-md text-body-md">Sedes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="catalogos" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">inventory_2</span><span class="font-body-md text-body-md">Catálogos</span></a></nav></div></aside><div class="pl-60"><header class="fixed top-0 left-60 right-0 h-16 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="h-12 inline-flex items-center gap-space-sm px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors cursor-pointer"><span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary">LAN</span><span class="font-body-md-medium text-body-md-medium">Lancaster</span><span class="material-symbols-outlined text-outline text-lg">expand_more</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container"><span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span></span><span class="font-caption text-caption text-primary">En vivo</span></div><button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-outline text-xl">search</span><span class="font-body-md text-body-md">Buscar pacientes</span></button><button class="h-12 w-12 flex items-center justify-center rounded-lg hover:bg-surface-container-low text-on-surface relative transition-colors" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-error text-on-error font-caption text-[10px]">3</span></button><div class="flex items-center gap-space-sm pl-space-sm"><div class="relative flex items-center justify-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2ZJa-HR0T8-2l8hHVcSeYEKpyyNp2JDqBIN-9BOnV8S4OdF_SyLUEcvVRyT4NJvRcDxtYrFXI5CFx2CFS268U35gCLfHnjEypOYkQqR-l2PMU5WHBeiuD2vYQs1DtdiXVwaBdGbvnYimpO5Eg78fGHbZNuWuvbV5h4SF4w9JH7SKjuYatxhN8mJL2ySnSziPorjlHTYenSBwyd-yo7sz8YAf_Z0A_tQFfwSFYkjEvpMZOglAmt4Bm"/><span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></div><div class="flex flex-col text-left"><span class="font-body-md-medium text-body-md-medium text-on-surface leading-tight">Lic. Elena Ramos</span><span class="font-caption text-caption text-outline leading-tight">Enfermería</span></div></div></div></header><main class="relative pt-16 bg-surface-container-lowest min-h-screen"><div class="flex flex-col w-full">
+<!-- Interactive Script to Synchronize Nav Rail Selection to 'Cola de órdenes' -->
+<script>
+    (function activateOrderQueueNav() {
+      const navLinks = document.querySelectorAll('aside nav a');
+      navLinks.forEach(link => {
+        const path = link.getAttribute('data-path');
+        if (path === 'cola-de-ordenes') {
+          link.className = 'h-12 flex items-center px-space-md rounded-lg bg-primary-container text-on-primary-container font-body-md-medium transition-colors shadow-sm';
+          const icon = link.querySelector('.material-symbols-outlined');
+          if (icon) icon.className = 'material-symbols-outlined mr-space-sm text-xl text-on-primary-container';
+        } else {
+          link.classList.remove('bg-primary-container', 'text-on-primary-container', 'font-body-md-medium');
+          if (!link.classList.contains('text-on-surface-variant')) {
+            link.classList.add('text-on-surface-variant');
+          }
+        }
+      });
+    })();
+  </script>
+<!-- Top Operational Banner & Controls Bar -->
+<div class="px-space-lg pt-space-lg pb-space-md bg-surface-container-low shadow-sm">
+<div class="flex flex-col gap-space-md">
+<!-- Title + Real-time Metadata Row -->
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-baseline gap-space-md">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-3xl">fact_check</span>
+<h1 class="font-display-md text-display-md text-on-surface tracking-tight">Cola de órdenes</h1>
+</div>
+<div class="flex items-center gap-space-xs px-space-sm py-0.5 rounded-full bg-surface-container text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="font-body-md-medium text-body-md-medium text-primary">6 tareas</span>
+</div>
+</div>
+<!-- Quick actions: Search & Synchronize -->
+<div class="flex items-center gap-space-sm flex-1 max-w-xl justify-end">
+<div class="relative w-full max-w-sm">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">search</span>
+<input class="w-full h-12 pl-10 pr-4 rounded-lg bg-surface-container-lowest text-on-surface placeholder-outline font-body-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container transition-all" placeholder="Buscar por código, orden o tipo..." type="text"/>
+</div>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-lowest text-on-surface shadow-sm hover:bg-surface-container-high transition-colors active:scale-95 shrink-0" id="refreshBtn" title="Sincronizar órdenes en tiempo real" type="button">
+<span class="material-symbols-outlined text-primary text-xl">sync</span>
+<span class="font-body-md-medium text-body-md-medium">Actualizar</span>
+<span class="font-code-sm text-code-sm text-outline ml-1">hace 12s</span>
+</button>
+</div>
+</div>
+<!-- Segmented Status Bar & Personal Filter Toggle -->
+<div class="flex flex-wrap items-center justify-between gap-space-md pt-space-xs">
+<!-- Segmented Control with Count Badges -->
+<div class="inline-flex items-center p-1 rounded-xl bg-surface-container-high/60 shadow-inner overflow-x-auto max-w-full">
+<button class="h-10 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-lowest text-primary font-body-md-medium shadow-sm transition-all" type="button">
+<span>Pendientes</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary font-caption text-caption">4</span>
+</button>
+<button class="h-10 px-space-md flex items-center gap-space-xs rounded-lg text-on-surface-variant hover:text-on-surface font-body-md transition-all" type="button">
+<span>En curso</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface font-caption text-caption">2</span>
+</button>
+<button class="h-10 px-space-md flex items-center gap-space-xs rounded-lg text-on-surface-variant hover:text-on-surface font-body-md transition-all" type="button">
+<span>Completadas hoy</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption">18</span>
+</button>
+<button class="h-10 px-space-md flex items-center gap-space-xs rounded-lg text-on-surface-variant hover:text-on-surface font-body-md transition-all" type="button">
+<span>Canceladas</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption">1</span>
+</button>
+</div>
+<!-- Filter Chip: Asignadas a mí -->
+<label class="h-10 px-space-md inline-flex items-center gap-space-sm rounded-full bg-surface-container-lowest shadow-sm hover:bg-surface-container cursor-pointer transition-colors select-none">
+<input checked="" class="sr-only" id="assignedMeToggle" type="checkbox"/>
+<span class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-sm">person</span>
+</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Asignadas a mí</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</label>
+</div>
+</div>
+</div>
+<!-- Operational Work Area: 2-Column Responsive Touch Grid (Strictly NO patient names, codes only) -->
+<div class="p-space-lg bg-surface">
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-space-lg">
+<!-- TARJETA 1: Laboratorio - Streptococcus -->
+<div class="flex flex-col justify-between rounded-xl bg-surface-container-lowest shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm flex-1 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">science</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-fixed text-secondary font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">science</span>
+                    Laboratorio
+                  </span>
+<span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-caption text-caption flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                    En espera de muestra
+                  </span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Prueba rápida de estreptococo</h3>
+</div>
+</div>
+<span class="font-caption text-caption text-outline-variant bg-surface-container-high px-2 py-1 rounded">BOX-02</span>
+</div>
+<!-- Metadata Body (Strictly Monospaced IDs, No Personal Name) -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs font-code-md text-code-md text-primary font-semibold tracking-tight">
+<span class="material-symbols-outlined text-base text-outline">badge</span>
+<span>P-000123</span>
+<span class="text-outline">·</span>
+<span>LAN-V-000210</span>
+<span class="text-outline">·</span>
+<span class="text-on-surface-variant font-normal">Cant. 1</span>
+</div>
+<span class="font-caption text-caption text-outline">Prioridad Normal</span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-body-md pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline">history_edu</span>
+<span>Ordenada 9:55 a. m. por <strong class="text-on-surface font-body-md-medium">Dr. Ramírez</strong></span>
+</div>
+<div class="flex items-center gap-space-xs font-body-md-medium text-primary">
+<span class="material-symbols-outlined text-base">check_circle</span>
+<span>Asignado: Lic. Elena Ramos</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-xs bg-surface-container-lowest/80 p-space-sm rounded text-on-surface-variant font-body-md flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline shrink-0 mt-0.5">info</span>
+<span>Muestra faríngea rápida. Hisopado doble de control para cultivo si resulta negativo.</span>
+</div>
+</div>
+</div>
+<!-- Touch Actions Footer -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-lg">open_in_new</span>
+<span class="font-body-md-medium text-body-md-medium">Abrir visita</span>
+</button>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-high/50 text-outline cursor-default select-none" disabled="" type="button">
+<span class="material-symbols-outlined text-lg">check</span>
+<span class="font-body-md-medium text-body-md-medium">Asignada</span>
+</button>
+</div>
+<button class="h-12 px-space-lg flex items-center gap-space-sm rounded-lg bg-primary-container text-on-primary hover:brightness-105 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+<span class="font-body-md-medium text-body-md-medium">Iniciar</span>
+</button>
+</div>
+</div>
+<!-- TARJETA 2: Inyección - Ceftriaxona -->
+<div class="flex flex-col justify-between rounded-xl bg-surface-container-lowest shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm flex-1 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed text-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">vaccines</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-tertiary font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">vaccines</span>
+                    Inyección
+                  </span>
+<span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-caption text-caption flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                    Listo para aplicar
+                  </span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Ceftriaxona 1g IM reconstituida</h3>
+</div>
+</div>
+<span class="font-caption text-caption text-error font-body-md-medium bg-error-container px-2 py-1 rounded">ESTAT</span>
+</div>
+<!-- Metadata Body -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs font-code-md text-code-md text-primary font-semibold tracking-tight">
+<span class="material-symbols-outlined text-base text-outline">badge</span>
+<span>P-000452</span>
+<span class="text-outline">·</span>
+<span>LAN-V-000211</span>
+<span class="text-outline">·</span>
+<span class="text-on-surface-variant font-normal">Cant. 1 vial</span>
+</div>
+<span class="font-caption text-caption text-outline">Dosis Única</span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-body-md pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline">history_edu</span>
+<span>Ordenada 9:42 a. m. por <strong class="text-on-surface font-body-md-medium">Dra. Salazar</strong></span>
+</div>
+<div class="flex items-center gap-space-xs font-body-md-medium text-primary">
+<span class="material-symbols-outlined text-base">check_circle</span>
+<span>Asignado: Lic. Elena Ramos</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-xs bg-surface-container-lowest/80 p-space-sm rounded text-on-surface-variant font-body-md flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline shrink-0 mt-0.5">info</span>
+<span>Reconstituir con Lidocaína al 1% (3.5 mL). Inyección en glúteo profundo. Monitorear 15 min.</span>
+</div>
+</div>
+</div>
+<!-- Touch Actions Footer -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-lg">open_in_new</span>
+<span class="font-body-md-medium text-body-md-medium">Abrir visita</span>
+</button>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-high/50 text-outline cursor-default select-none" disabled="" type="button">
+<span class="material-symbols-outlined text-lg">check</span>
+<span class="font-body-md-medium text-body-md-medium">Asignada</span>
+</button>
+</div>
+<button class="h-12 px-space-lg flex items-center gap-space-sm rounded-lg bg-primary-container text-on-primary hover:brightness-105 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+<span class="font-body-md-medium text-body-md-medium">Iniciar</span>
+</button>
+</div>
+</div>
+<!-- TARJETA 3: Procedimiento - Electrocardiograma -->
+<div class="flex flex-col justify-between rounded-xl bg-surface-container-lowest shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm flex-1 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">ecg_heart</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">medical_services</span>
+                    Procedimiento
+                  </span>
+<span class="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 font-caption text-caption flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-600"></span>
+                    Pendiente
+                  </span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Electrocardiograma de 12 derivaciones</h3>
+</div>
+</div>
+<span class="font-caption text-caption text-outline-variant bg-surface-container-high px-2 py-1 rounded">TRIAJE-B</span>
+</div>
+<!-- Metadata Body -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs font-code-md text-code-md text-primary font-semibold tracking-tight">
+<span class="material-symbols-outlined text-base text-outline">badge</span>
+<span>P-000789</span>
+<span class="text-outline">·</span>
+<span>LAN-V-000214</span>
+<span class="text-outline">·</span>
+<span class="text-on-surface-variant font-normal">Cant. 1 estudio</span>
+</div>
+<span class="font-caption text-caption text-error font-body-md-medium">Urgencia relativa</span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-body-md pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline">history_edu</span>
+<span>Ordenada 10:05 a. m. por <strong class="text-on-surface font-body-md-medium">Dr. Ramírez</strong></span>
+</div>
+<div class="flex items-center gap-space-xs text-outline font-body-md">
+<span class="material-symbols-outlined text-base">person_off</span>
+<span>Sin asignar</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-xs bg-surface-container-lowest/80 p-space-sm rounded text-on-surface-variant font-body-md flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline shrink-0 mt-0.5">info</span>
+<span>Trazado en reposo. Paciente con reporte de opresión precordial leve. Llevar copia impresa a Dr.</span>
+</div>
+</div>
+</div>
+<!-- Touch Actions Footer -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-lg">open_in_new</span>
+<span class="font-body-md-medium text-body-md-medium">Abrir visita</span>
+</button>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-low text-primary hover:bg-surface-container active:scale-95 transition-all font-body-md-medium" type="button">
+<span class="material-symbols-outlined text-lg">person_add</span>
+<span>Asignarme</span>
+</button>
+</div>
+<button class="h-12 px-space-lg flex items-center gap-space-sm rounded-lg bg-primary-container text-on-primary hover:brightness-105 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+<span class="font-body-md-medium text-body-md-medium">Iniciar</span>
+</button>
+</div>
+</div>
+<!-- TARJETA 4: Inyección - Vitamina B12 -->
+<div class="flex flex-col justify-between rounded-xl bg-surface-container-lowest shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm flex-1 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-tertiary-fixed text-tertiary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">syringe</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-tertiary font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">syringe</span>
+                    Inyección
+                  </span>
+<span class="px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-900 font-caption text-caption flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+                    Preparación en curso
+                  </span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Vitamina B12 inyección 1000 mcg</h3>
+</div>
+</div>
+<span class="font-caption text-caption text-outline-variant bg-surface-container-high px-2 py-1 rounded">BOX-04</span>
+</div>
+<!-- Metadata Body -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs font-code-md text-code-md text-primary font-semibold tracking-tight">
+<span class="material-symbols-outlined text-base text-outline">badge</span>
+<span>P-000301</span>
+<span class="text-outline">·</span>
+<span>LAN-V-000215</span>
+<span class="text-outline">·</span>
+<span class="text-on-surface-variant font-normal">Cant. 1 mL</span>
+</div>
+<span class="font-caption text-caption text-outline">Cianocobalamina</span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-body-md pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline">history_edu</span>
+<span>Ordenada 10:11 a. m. por <strong class="text-on-surface font-body-md-medium">Dr. Ramírez</strong></span>
+</div>
+<div class="flex items-center gap-space-xs font-body-md-medium text-primary">
+<span class="material-symbols-outlined text-base">check_circle</span>
+<span>Asignado: Lic. Elena Ramos</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-xs bg-surface-container-lowest/80 p-space-sm rounded text-on-surface-variant font-body-md flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline shrink-0 mt-0.5">info</span>
+<span>Deltoides izquierdo. Asepsia estándar. Registrar lote y fecha de expiración en visita.</span>
+</div>
+</div>
+</div>
+<!-- Touch Actions Footer -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-lg">open_in_new</span>
+<span class="font-body-md-medium text-body-md-medium">Abrir visita</span>
+</button>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-high/50 text-outline cursor-default select-none" disabled="" type="button">
+<span class="material-symbols-outlined text-lg">check</span>
+<span class="font-body-md-medium text-body-md-medium">Asignada</span>
+</button>
+</div>
+<button class="h-12 px-space-lg flex items-center gap-space-sm rounded-lg bg-primary-container text-on-primary hover:brightness-105 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+<span class="font-body-md-medium text-body-md-medium">Iniciar</span>
+</button>
+</div>
+</div>
+<!-- TARJETA 5: Laboratorio - Panel lipídico -->
+<div class="flex flex-col justify-between rounded-xl bg-surface-container-lowest shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm flex-1 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">chips</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-fixed text-secondary font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">science</span>
+                    Laboratorio
+                  </span>
+<span class="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 font-caption text-caption flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-600"></span>
+                    Pendiente
+                  </span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Panel lipídico y química sanguínea</h3>
+</div>
+</div>
+<span class="font-caption text-caption text-outline-variant bg-surface-container-high px-2 py-1 rounded">LAB-01</span>
+</div>
+<!-- Metadata Body -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs font-code-md text-code-md text-primary font-semibold tracking-tight">
+<span class="material-symbols-outlined text-base text-outline">badge</span>
+<span>P-000889</span>
+<span class="text-outline">·</span>
+<span>LAN-V-000216</span>
+<span class="text-outline">·</span>
+<span class="text-on-surface-variant font-normal">Cant. 2 tubos</span>
+</div>
+<span class="font-caption text-caption text-outline">Ayuno confirmado</span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-body-md pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline">history_edu</span>
+<span>Ordenada 10:14 a. m. por <strong class="text-on-surface font-body-md-medium">Dra. Salazar</strong></span>
+</div>
+<div class="flex items-center gap-space-xs text-outline font-body-md">
+<span class="material-symbols-outlined text-base">person_off</span>
+<span>Sin asignar</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-xs bg-surface-container-lowest/80 p-space-sm rounded text-on-surface-variant font-body-md flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline shrink-0 mt-0.5">info</span>
+<span>Venopunción antecubital. Tubo oro (química) y tubo lila (hematología). Centrifugado inmediato.</span>
+</div>
+</div>
+</div>
+<!-- Touch Actions Footer -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-lg">open_in_new</span>
+<span class="font-body-md-medium text-body-md-medium">Abrir visita</span>
+</button>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-low text-primary hover:bg-surface-container active:scale-95 transition-all font-body-md-medium" type="button">
+<span class="material-symbols-outlined text-lg">person_add</span>
+<span>Asignarme</span>
+</button>
+</div>
+<button class="h-12 px-space-lg flex items-center gap-space-sm rounded-lg bg-primary-container text-on-primary hover:brightness-105 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+<span class="font-body-md-medium text-body-md-medium">Iniciar</span>
+</button>
+</div>
+</div>
+<!-- TARJETA 6: Procedimiento - Lavado ótico -->
+<div class="flex flex-col justify-between rounded-xl bg-surface-container-lowest shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Header -->
+<div class="flex items-start justify-between gap-space-md">
+<div class="flex items-start gap-space-sm flex-1 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-2xl">hearing</span>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-space-xs mb-1">
+<span class="px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary font-caption text-caption flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">medical_services</span>
+                    Procedimiento
+                  </span>
+<span class="px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 font-caption text-caption flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-sky-600"></span>
+                    Pendiente
+                  </span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface truncate">Lavado ótico bilateral</h3>
+</div>
+</div>
+<span class="font-caption text-caption text-outline-variant bg-surface-container-high px-2 py-1 rounded">BOX-01</span>
+</div>
+<!-- Metadata Body -->
+<div class="bg-surface-container-low p-space-md rounded-lg flex flex-col gap-space-xs">
+<div class="flex flex-wrap items-center justify-between gap-space-xs">
+<div class="flex items-center gap-space-xs font-code-md text-code-md text-primary font-semibold tracking-tight">
+<span class="material-symbols-outlined text-base text-outline">badge</span>
+<span>P-000912</span>
+<span class="text-outline">·</span>
+<span>LAN-V-000217</span>
+<span class="text-outline">·</span>
+<span class="text-on-surface-variant font-normal">Cant. 1 proc.</span>
+</div>
+<span class="font-caption text-caption text-outline">Otoscopia previa OK</span>
+</div>
+<div class="flex flex-wrap items-center justify-between text-on-surface-variant font-body-md pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline">history_edu</span>
+<span>Ordenada 10:20 a. m. por <strong class="text-on-surface font-body-md-medium">Dr. Ramírez</strong></span>
+</div>
+<div class="flex items-center gap-space-xs text-outline font-body-md">
+<span class="material-symbols-outlined text-base">person_off</span>
+<span>Sin asignar</span>
+</div>
+</div>
+<div class="mt-space-xs pt-space-xs bg-surface-container-lowest/80 p-space-sm rounded text-on-surface-variant font-body-md flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-base text-outline shrink-0 mt-0.5">info</span>
+<span>Irrigación con solución salina tibia. Cerumen impactado en oído derecho; revisión con otoscopio tras procedimiento.</span>
+</div>
+</div>
+</div>
+<!-- Touch Actions Footer -->
+<div class="px-space-lg py-space-md bg-surface-container-lowest flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-lg">open_in_new</span>
+<span class="font-body-md-medium text-body-md-medium">Abrir visita</span>
+</button>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container-low text-primary hover:bg-surface-container active:scale-95 transition-all font-body-md-medium" type="button">
+<span class="material-symbols-outlined text-lg">person_add</span>
+<span>Asignarme</span>
+</button>
+</div>
+<button class="h-12 px-space-lg flex items-center gap-space-sm rounded-lg bg-primary-container text-on-primary hover:brightness-105 active:scale-95 transition-all shadow-sm" type="button">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+<span class="font-body-md-medium text-body-md-medium">Iniciar</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Operational Toast / Feedback System (Touch friendly dismissible alert) -->
+<div class="fixed bottom-6 right-6 max-w-md bg-inverse-surface text-inverse-on-surface p-space-md rounded-xl shadow-xl flex items-center gap-space-md transition-all duration-300 transform translate-y-0 opacity-100 z-50" id="liveOrderToast">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-base">notifications_active</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<span class="font-body-md-medium text-body-md-medium">Cola actualizada</span>
+<span class="font-caption text-caption text-inverse-on-surface/80">S-CLI-03: Sistema conectado a Lancaster (LAN). 4 órdenes pendientes listas.</span>
+</div>
+<button class="text-inverse-on-surface/60 hover:text-inverse-on-surface p-1 rounded-md" onclick="document.getElementById('liveOrderToast').classList.add('opacity-0', 'translate-y-4', 'pointer-events-none')" type="button">
+<span class="material-symbols-outlined text-xl">close</span>
+</button>
+</div>
+<!-- Client-side Interactive Behavior -->
+<script>
+    // Refresh button micro-interaction
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function() {
+        const icon = this.querySelector('.material-symbols-outlined');
+        if (icon) {
+          icon.classList.add('animate-spin');
+          setTimeout(() => {
+            icon.classList.remove('animate-spin');
+          }, 800);
+        }
+      });
+    }
+
+    // Toggle filter: "Asignadas a mí"
+    const toggle = document.getElementById('assignedMeToggle');
+    if (toggle) {
+      toggle.addEventListener('change', function() {
+        const parentChip = this.closest('label');
+        if (this.checked) {
+          parentChip.classList.add('bg-primary-container/10');
+          parentChip.classList.remove('bg-surface-container-lowest');
+        } else {
+          parentChip.classList.remove('bg-primary-container/10');
+          parentChip.classList.add('bg-surface-container-lowest');
+        }
+      });
+    }
+  </script>
+</div></main></div></body></html>

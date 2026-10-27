@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_blank" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "primary": "#005c55", "on-primary-fixed-variant": "#00504a", "tertiary-fixed-dim": "#d0bcff", "tertiary-fixed": "#e9ddff", "surface-bright": "#ebfdfa", "on-tertiary-fixed-variant": "#5225af", "surface-container-lowest": "#ffffff", "tertiary-container": "#764fd4", "surface-variant": "#d4e6e3", "secondary": "#0054cb", "inverse-on-surface": "#e2f5f2", "secondary-fixed-dim": "#b1c5ff", "on-primary": "#ffffff", "surface-container-high": "#d9ece9", "outline-variant": "#bdc9c6", "on-surface": "#0e1e1d", "error": "#ba1a1a", "surface": "#ebfdfa", "on-secondary-container": "#fefcff", "on-primary-fixed": "#00201d", "surface-dim": "#cbdedb", "surface-tint": "#006a63", "inverse-surface": "#233332", "on-secondary-fixed": "#001847", "error-container": "#ffdad6", "primary-container": "#0f766e", "on-surface-variant": "#3e4947", "on-tertiary-container": "#f0e6ff", "on-secondary": "#ffffff", "on-secondary-fixed-variant": "#0040a0", "secondary-fixed": "#dae2ff", "on-background": "#0e1e1d", "on-tertiary-fixed": "#22005c", "on-error-container": "#93000a", "primary-fixed": "#9cf2e8", "primary-fixed-dim": "#80d5cb", "background": "#ebfdfa", "surface-container-low": "#e5f7f5", "on-error": "#ffffff", "on-primary-container": "#a3faef", "surface-container-highest": "#d4e6e3", "on-tertiary": "#ffffff", "tertiary": "#5d33ba", "outline": "#6e7977", "inverse-primary": "#80d5cb", "secondary-container": "#346ee5", "surface-container": "#dff2ef" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-md": "1rem", "gutter-tablet": "1rem", "margin-tablet": "1.25rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "margin": "1.5rem", "gutter": "1rem", "space-lg": "1.5rem", "space-xl": "2rem" }, "fontFamily": { "code-sm": ["JetBrains Mono"], "body-md-medium": ["Inter"], "caption": ["Inter"], "display-md": ["Inter"], "headline-md": ["Inter"], "code-md": ["JetBrains Mono"], "headline-sm": ["Inter"], "headline-lg": ["Inter"], "body-lg-medium": ["Inter"], "body-md": ["Inter"], "body-lg": ["Inter"] }, "fontSize": { "code-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500" }], "body-md-medium": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "display-md": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "code-md": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500" }], "headline-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "body-lg-medium": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }] } } } };</script></head><body class="bg-surface font-body-md text-on-surface min-h-screen flex flex-col justify-between selection:bg-primary-fixed selection:text-on-primary-fixed"><header class="w-full max-w-7xl mx-auto px-margin pt-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[20px]">local_hospital</span></div><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Clinic System</span></div><div class="flex items-center gap-space-sm bg-surface-container-lowest px-space-sm py-space-xs rounded-lg shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">language</span><select class="bg-transparent font-caption text-caption text-on-surface focus:outline-none cursor-pointer pr-space-xs"><option selected="" value="es">Español</option><option value="en">English</option></select></div></header><main class="w-full flex-1 flex items-center justify-center px-margin py-space-xl"><div class="flex flex-col w-full max-w-7xl mx-auto px-margin">
+<!-- Modal Confirmación Rápida de Cambio de Sede -->
+<div class="fixed inset-0 z-50 hidden items-center justify-center bg-inverse-surface/40 backdrop-blur-sm p-margin" id="modal-sede">
+<div class="bg-surface-container-lowest rounded-xl max-w-md w-full p-space-lg shadow-xl flex flex-col gap-space-md">
+<div class="flex items-center gap-space-sm text-primary">
+<span class="material-symbols-outlined text-[28px]">swap_horiz</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Confirmar cambio de sede</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+        Usted está a punto de cambiar su estación de trabajo a <span class="font-body-md-medium text-on-surface" id="modal-target-name"></span>. Los registros de pacientes y triage se actualizarán para este centro.
+      </p>
+<div class="flex items-center justify-end gap-space-sm pt-space-sm">
+<button class="h-12 px-5 rounded-lg bg-surface-container text-on-surface font-body-md-medium hover:bg-surface-container-high transition-colors" onclick="cerrarModal()">
+          Cancelar
+        </button>
+<button class="h-12 px-5 rounded-lg bg-primary text-on-primary font-body-md-medium flex items-center gap-space-xs hover:bg-primary-container transition-colors shadow-sm" onclick="confirmarCambio()">
+<span>Ingresar a sede</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Barra de Encabezado Superior Contextual -->
+<section class="flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md pb-space-lg">
+<div class="flex flex-col gap-space-xs">
+<!-- Indicador de Usuario y Contexto Clínico -->
+<div class="inline-flex items-center gap-space-xs self-start px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface-variant">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-caption text-caption">Sesión activa:</span>
+<span class="font-caption text-caption text-on-surface font-semibold">Lic. Elena Ramos</span>
+<span class="font-code-sm text-code-sm text-outline">(dr.valenzuela@clinicsystem.med)</span>
+</div>
+<div class="flex flex-col pt-space-xs">
+<h1 class="font-display-md text-display-md text-on-surface">Seleccionar sede</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Elija dónde trabaja hoy.</p>
+</div>
+</div>
+<!-- Acceso Rápido: Salir de la Estación -->
+<div class="flex items-center gap-space-sm self-stretch md:self-auto justify-end">
+<button class="h-12 px-space-md rounded-lg bg-surface-container-lowest text-on-surface-variant hover:text-error hover:bg-error-container/40 flex items-center gap-space-xs font-body-md-medium transition-all shadow-sm group" onclick="alert('Cerrando sesión de forma segura...')">
+<span class="material-symbols-outlined text-[20px] group-hover:text-error transition-colors">logout</span>
+<span>Cerrar sesión</span>
+</button>
+</div>
+</section>
+<!-- Banner Informativo del Estado Ambulatorio (Visual Richness / Data Viz) -->
+<section class="mb-space-lg p-space-md rounded-xl bg-surface-container-low flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-lg bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
+<span class="material-symbols-outlined text-[26px]">domain</span>
+</div>
+<div>
+<p class="font-headline-sm text-headline-sm text-on-surface">Red Hospitalaria y Ambulatoria Texas Norte</p>
+<p class="font-caption text-caption text-on-surface-variant">3 sedes metropolitanas conectadas · Sistema de sincronización EMR operativo</p>
+</div>
+</div>
+<!-- Mini métricas en tiempo real con SVGs Sparkline/Pill -->
+<div class="flex items-center gap-space-lg w-full md:w-auto justify-around md:justify-end">
+<div class="flex items-center gap-space-xs">
+<svg class="w-10 h-6 text-primary" fill="none" viewbox="0 0 40 24">
+<path d="M2 18L10 12L18 16L26 8L34 11L38 4" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+<div class="text-left">
+<p class="font-caption text-caption text-on-surface-variant leading-none">Ocupación Red</p>
+<p class="font-headline-sm text-headline-sm text-on-surface leading-tight font-semibold">74%</p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[22px]">medical_services</span>
+<div class="text-left">
+<p class="font-caption text-caption text-on-surface-variant leading-none">Médicos de Guardia</p>
+<p class="font-headline-sm text-headline-sm text-on-surface leading-tight font-semibold">24</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Cuadrícula Principal de 3 Sedes (Horizontal en Tablet 1280x800 / Desktop) -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-space-lg items-stretch">
+<!-- SEDE 1: LANCASTER (SEDE ACTUAL) -->
+<article class="bg-surface-container-lowest rounded-xl p-space-lg relative flex flex-col justify-between shadow-md ring-2 ring-primary transition-all duration-200">
+<!-- Glow sutil de selección -->
+<div class="absolute top-0 right-0 -mt-2 -mr-2 flex items-center">
+<span class="h-8 px-space-sm rounded-full bg-primary text-on-primary font-caption text-caption flex items-center gap-1 shadow-sm font-semibold">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+          Actual
+        </span>
+</div>
+<div>
+<!-- Cabecera de la Tarjeta con Código Monospace -->
+<div class="flex items-start gap-space-md mb-space-md">
+<div class="w-14 h-14 rounded-lg bg-primary-fixed flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="font-code-md text-code-md font-bold text-on-primary-fixed">LAN</span>
+</div>
+<div class="min-w-0 flex-1">
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-semibold truncate">Centro Clínico Lancaster</h2>
+<div class="flex items-center gap-1 text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-caption text-caption">Zona horaria: Central</span>
+</div>
+</div>
+</div>
+<!-- Dirección Física -->
+<div class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low mb-space-md">
+<span class="material-symbols-outlined text-outline text-[18px] flex-shrink-0 mt-0.5">location_on</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            1420 W Pleasant Run Rd, Lancaster, TX 75146
+          </p>
+</div>
+<!-- Visualización Rápida de Capacidad / Imagen de Referencia -->
+<div class="mb-space-md rounded-lg overflow-hidden relative h-28 bg-surface-container">
+<div class="bg-cover bg-center w-full h-full" data-alt="Modern clinical medical center interior in Lancaster Texas with reception desk, clean teal accents, bright daylight and calm atmosphere" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuA6ugp99tpVgi7Zi_we0z83K8T4Pni6yqkYFotpMESpJNtKRuR33Wb0iXEn58OM4feTt2Yml2h4JoYEOXsfdkw5zdEPRyKV0Esa9vxhVbXJk1OkBqEfX0NhO1IQqm5JMhcZrYMs6RnR0LAssRlV97VZgAvNJE1jlyf791F38vGacos1YglMfx2SWw-JjSf2dIkFqbJf--FgdMCpV8mmXa1PWME2T5NFJU4qVlxpMro')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent flex items-end p-space-sm">
+<span class="font-caption text-caption text-surface-container-lowest font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">local_hospital</span> Ambulatorio Principal
+            </span>
+</div>
+</div>
+<!-- Métricas Clínicas -->
+<div class="space-y-space-xs mb-space-lg">
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption">
+<span>Ocupación de Consultorios</span>
+<span class="font-semibold text-on-surface">8 de 8 activos</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 100%"></div>
+</div>
+<p class="font-caption text-caption text-on-surface-variant pt-1 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+            8 consultorios · Triage activo · 28 pacientes en sede
+          </p>
+</div>
+</div>
+<!-- Botón de Acción Principal -->
+<button class="w-full h-12 px-space-md rounded-lg bg-primary text-on-primary font-body-lg-medium flex items-center justify-center gap-space-xs hover:bg-primary-container transition-all active:scale-[0.99] shadow-sm" onclick="window.location.href='#pantalla-principal'">
+<span>Continuar en Lancaster</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</article>
+<!-- SEDE 2: NORTH RICHLAND HILLS -->
+<article class="bg-surface-container-lowest rounded-xl p-space-lg flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-200">
+<div>
+<!-- Cabecera Tarjeta 2 -->
+<div class="flex items-start gap-space-md mb-space-md">
+<div class="w-14 h-14 rounded-lg bg-surface-container-highest flex items-center justify-center flex-shrink-0">
+<span class="font-code-md text-code-md font-bold text-on-surface">NRH</span>
+</div>
+<div class="min-w-0 flex-1">
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-semibold truncate">North Richland Hills</h2>
+<div class="flex items-center gap-1 text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-caption text-caption">Zona horaria: Central</span>
+</div>
+</div>
+</div>
+<!-- Dirección Física -->
+<div class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low mb-space-md">
+<span class="material-symbols-outlined text-outline text-[18px] flex-shrink-0 mt-0.5">location_on</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            8208 Bedford Euless Rd, North Richland Hills, TX 76180
+          </p>
+</div>
+<!-- Imagen de Sede -->
+<div class="mb-space-md rounded-lg overflow-hidden relative h-28 bg-surface-container">
+<div class="bg-cover bg-center w-full h-full" data-alt="Sleek suburban outpatient clinic facility in North Richland Hills Texas with welcoming consultation suites and medical workstations" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCsb2igeHlCWOgc2Tq2VO_GaElCfzWw2dY8Fnj_E3bjaT1atSauGLCsK-Fs5kGWXkDkupVTUXJog-QdF1PVnrYaMkNWJ7RJ_WtOrestLvxdVF8r-4FfNsp9eaijb3SBJQzZrZgw3GW6R5KbKvLhm-3uBvUbmRsvpRhVWnZ53hKFDSXusttAgvTRgbsNJxO3FiyFLFi1khf2TfASB-wih7Xwke5A3ZFQsvAumHfR1WM')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent flex items-end p-space-sm">
+<span class="font-caption text-caption text-surface-container-lowest font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">medication</span> Atención Familiar &amp; Preventiva
+            </span>
+</div>
+</div>
+<!-- Métricas Clínicas -->
+<div class="space-y-space-xs mb-space-lg">
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption">
+<span>Ocupación de Consultorios</span>
+<span class="font-semibold text-on-surface">4 de 6 en uso</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+<div class="h-full bg-primary/70 rounded-full" style="width: 66%"></div>
+</div>
+<p class="font-caption text-caption text-on-surface-variant pt-1 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+            6 consultorios · Turno vespertino disponible
+          </p>
+</div>
+</div>
+<!-- Botón de Acción Secundario Táctil -->
+<button class="w-full h-12 px-space-md rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-body-lg-medium flex items-center justify-center gap-space-xs transition-colors shadow-sm" onclick="abrirModal('North Richland Hills')">
+<span class="material-symbols-outlined text-[20px] text-primary">sync_alt</span>
+<span>Cambiar a esta sede</span>
+</button>
+</article>
+<!-- SEDE 3: DALLAS MEDICAL DISTRICT -->
+<article class="bg-surface-container-lowest rounded-xl p-space-lg flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-200">
+<div>
+<!-- Cabecera Tarjeta 3 -->
+<div class="flex items-start gap-space-md mb-space-md">
+<div class="w-14 h-14 rounded-lg bg-surface-container-highest flex items-center justify-center flex-shrink-0">
+<span class="font-code-md text-code-md font-bold text-on-surface">DAL</span>
+</div>
+<div class="min-w-0 flex-1">
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-semibold truncate">Dallas Medical District</h2>
+<div class="flex items-center gap-1 text-on-surface-variant mt-1">
+<span class="material-symbols-outlined text-[16px]">schedule</span>
+<span class="font-caption text-caption">Zona horaria: Central</span>
+</div>
+</div>
+</div>
+<!-- Dirección Física -->
+<div class="flex items-start gap-space-xs p-space-sm rounded-lg bg-surface-container-low mb-space-md">
+<span class="material-symbols-outlined text-outline text-[18px] flex-shrink-0 mt-0.5">location_on</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            2330 Stemmons Fwy, Dallas, TX 75207
+          </p>
+</div>
+<!-- Imagen de Sede -->
+<div class="mb-space-md rounded-lg overflow-hidden relative h-28 bg-surface-container">
+<div class="bg-cover bg-center w-full h-full" data-alt="High tech medical tower in Dallas medical district with spacious clinical corridors and advanced diagnostic laboratories" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDW1sdsaxIbvnA5O-SoSBq0uj2p8JLQXznWM3jPu5yawhX7RZPl3D5YseAbCFmHHFVzVmZuwhLeAfvgnjzljqnU8wfSn1QFXtn-gjTpI5PCWQjf6IL40PgoOCr0LnCvgOj6qSjBIhue1rO820NhTwfFzFuIDf6RbBvx8OJUZqL-kryYzo9Ay4f-qQn3fmJ9SC_XS4bNf5SuBQzZvAM_HPFjM7KblV7pEc5xrh8MgjU')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/80 via-transparent to-transparent flex items-end p-space-sm">
+<span class="font-caption text-caption text-surface-container-lowest font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">biotech</span> Especialidades &amp; Diagnóstico
+            </span>
+</div>
+</div>
+<!-- Métricas Clínicas -->
+<div class="space-y-space-xs mb-space-lg">
+<div class="flex items-center justify-between text-on-surface-variant font-caption text-caption">
+<span>Ocupación de Consultorios</span>
+<span class="font-semibold text-error">11 de 12 en uso</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+<div class="h-full bg-tertiary-container rounded-full" style="width: 92%"></div>
+</div>
+<p class="font-caption text-caption text-on-surface-variant pt-1 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+            12 consultorios · Alta afluencia
+          </p>
+</div>
+</div>
+<!-- Botón de Acción Secundario Táctil -->
+<button class="w-full h-12 px-space-md rounded-lg bg-surface-container-lowest hover:bg-surface-container text-on-surface font-body-lg-medium flex items-center justify-center gap-space-xs transition-colors shadow-sm" onclick="abrirModal('Dallas Medical District')">
+<span class="material-symbols-outlined text-[20px] text-primary">sync_alt</span>
+<span>Cambiar a esta sede</span>
+</button>
+</article>
+</section>
+<!-- Nota de Seguridad Clínica y Cumplimiento Normativo -->
+<footer class="mt-space-xl pt-space-md flex flex-col sm:flex-row items-center justify-between gap-space-sm text-center sm:text-left">
+<div class="flex items-center gap-space-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+<span class="font-caption text-caption">Acceso restringido a personal médico y administrativo autorizado · HIPAA / HITECH Compliant</span>
+</div>
+<div class="flex items-center gap-space-md">
+<button class="font-caption text-caption text-primary hover:underline flex items-center gap-1" onclick="alert('Contactando soporte técnico interno: Extensión #4400')">
+<span class="material-symbols-outlined text-[16px]">contact_support</span>
+        ¿No ve su sede asignada?
+      </button>
+</div>
+</footer>
+</div>
+<script>
+  let targetSede = '';
+  function abrirModal(nombre) {
+    targetSede = nombre;
+    const modalEl = document.getElementById('modal-sede');
+    const labelEl = document.getElementById('modal-target-name');
+    if (modalEl && labelEl) {
+      labelEl.textContent = nombre;
+      modalEl.classList.remove('hidden');
+      modalEl.classList.add('flex');
+    }
+  }
+
+  function cerrarModal() {
+    const modalEl = document.getElementById('modal-sede');
+    if (modalEl) {
+      modalEl.classList.add('hidden');
+      modalEl.classList.remove('flex');
+    }
+  }
+
+  function confirmarCambio() {
+    cerrarModal();
+    alert('Cambiando estación de trabajo a: ' + targetSede + '...');
+  }
+</script></main><footer class="w-full max-w-7xl mx-auto px-margin pb-margin text-center font-caption text-caption text-on-surface-variant"><p>© 2024 Clinic System. Acceso profesional clínico protegido bajo regulaciones HIPAA / HITECH.</p></footer></body></html>

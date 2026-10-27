@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "background": "#ebfdfa", "surface-bright": "#ebfdfa", "primary-container": "#0f766e", "on-error": "#ffffff", "on-tertiary-fixed-variant": "#5225af", "secondary-container": "#346ee5", "outline-variant": "#bdc9c6", "on-primary-fixed-variant": "#00504a", "surface-container-highest": "#d4e6e3", "on-secondary-container": "#fefcff", "primary-fixed": "#9cf2e8", "inverse-primary": "#80d5cb", "on-primary-container": "#a3faef", "inverse-surface": "#233332", "on-tertiary": "#ffffff", "primary": "#005c55", "surface-container": "#dff2ef", "secondary": "#0054cb", "surface-variant": "#d4e6e3", "error": "#ba1a1a", "on-primary-fixed": "#00201d", "tertiary-fixed-dim": "#d0bcff", "on-secondary-fixed": "#001847", "on-surface-variant": "#3e4947", "surface": "#ebfdfa", "on-tertiary-container": "#f0e6ff", "surface-tint": "#006a63", "on-secondary-fixed-variant": "#0040a0", "on-background": "#0e1e1d", "surface-container-low": "#e5f7f5", "on-error-container": "#93000a", "surface-container-lowest": "#ffffff", "tertiary-fixed": "#e9ddff", "on-surface": "#0e1e1d", "on-secondary": "#ffffff", "surface-container-high": "#d9ece9", "tertiary-container": "#764fd4", "surface-dim": "#cbdedb", "secondary-fixed": "#dae2ff", "outline": "#6e7977", "error-container": "#ffdad6", "inverse-on-surface": "#e2f5f2", "on-tertiary-fixed": "#22005c", "on-primary": "#ffffff", "tertiary": "#5d33ba", "secondary-fixed-dim": "#b1c5ff", "primary-fixed-dim": "#80d5cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-tablet": "1.25rem", "space-lg": "1.5rem", "gutter-tablet": "1rem", "space-xs": "0.25rem", "margin": "1.5rem", "space-sm": "0.5rem", "space-xl": "2rem", "space-md": "1rem", "gutter": "1rem" }, "fontFamily": { "body-lg-medium": [ "Inter" ], "display-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "body-md": [ "Inter" ], "code-md": [ "JetBrains Mono" ], "headline-lg": [ "Inter" ], "headline-md": [ "Inter" ], "caption": [ "Inter" ], "body-md-medium": [ "Inter" ], "body-lg": [ "Inter" ] }, "fontSize": { "body-lg-medium": [ "16px", { "lineHeight": "24px", "fontWeight": "500" } ], "display-md": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "headline-sm": [ "18px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "code-md": [ "14px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "caption": [ "12px", { "lineHeight": "16px", "fontWeight": "500" } ], "body-md-medium": [ "14px", { "lineHeight": "20px", "fontWeight": "500" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface-container-lowest font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-60 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-lowest"><img alt="Clinic System Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XQeIkTEEyQigpK5NQ9uJflA_Lyapc2dQ4_S6fAt4HhnX3lG6UZqG4mO4kgGJZz7TugBxX9Z1OcdXG-OXSFnwKvq0sk0mCwnjxOd97AuaNoxRBNLTAd1y5pB-ua-6S1qlGVr3LFam9hGh6D1vglbR4OmGfUi2DwwLvhodwBxBS58fg1WFa2HXC_ZU1DD9G0EUXGYQZeTybVUX2AUB60QhNTi5zGNTUFto8rdNtyjbWSng4U0bZIT_-7Gw"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">Clinic System</span><span class="font-caption text-caption text-outline">Gestión Clínica</span></div></div><div class="px-space-md pt-space-sm pb-space-xs"><span class="font-caption text-caption text-outline uppercase tracking-wider">Clínica Operativa</span></div><nav class="flex flex-col px-space-sm gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-body-md-medium"><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="panel" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">dashboard</span><span class="font-body-md text-body-md">Panel</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="pacientes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">people</span><span class="font-body-md text-body-md">Pacientes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="citas" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">calendar_today</span><span class="font-body-md text-body-md">Citas</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-enfermeria" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">vital_signs</span><span class="font-body-md text-body-md">Cola de enfermería</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-proveedor" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">stethoscope</span><span class="font-body-md text-body-md">Cola de proveedor</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-ordenes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">prescriptions</span><span class="font-body-md text-body-md">Cola de órdenes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="caja" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">point_of_sale</span><span class="font-body-md text-body-md">Caja</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">bar_chart</span><span class="font-body-md text-body-md">Reportes</span></a></nav></div><div class="flex flex-col pb-space-md"><div class="px-space-md pt-space-sm pb-space-xs"><span class="font-caption text-caption text-outline uppercase tracking-wider">Administración</span></div><nav class="flex flex-col px-space-sm gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-body-md-medium"><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="usuarios" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">manage_accounts</span><span class="font-body-md text-body-md">Usuarios</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sedes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">apartment</span><span class="font-body-md text-body-md">Sedes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="catalogos" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">inventory_2</span><span class="font-body-md text-body-md">Catálogos</span></a></nav></div></aside><div class="pl-60"><header class="fixed top-0 left-60 right-0 h-16 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="h-12 inline-flex items-center gap-space-sm px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors cursor-pointer"><span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary">LAN</span><span class="font-body-md-medium text-body-md-medium">Lancaster</span><span class="material-symbols-outlined text-outline text-lg">expand_more</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container"><span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span></span><span class="font-caption text-caption text-primary">En vivo</span></div><button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-outline text-xl">search</span><span class="font-body-md text-body-md">Buscar pacientes</span></button><button class="h-12 w-12 flex items-center justify-center rounded-lg hover:bg-surface-container-low text-on-surface relative transition-colors" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-error text-on-error font-caption text-[10px]">3</span></button><div class="flex items-center gap-space-sm pl-space-sm"><div class="relative flex items-center justify-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2ZJa-HR0T8-2l8hHVcSeYEKpyyNp2JDqBIN-9BOnV8S4OdF_SyLUEcvVRyT4NJvRcDxtYrFXI5CFx2CFS268U35gCLfHnjEypOYkQqR-l2PMU5WHBeiuD2vYQs1DtdiXVwaBdGbvnYimpO5Eg78fGHbZNuWuvbV5h4SF4w9JH7SKjuYatxhN8mJL2ySnSziPorjlHTYenSBwyd-yo7sz8YAf_Z0A_tQFfwSFYkjEvpMZOglAmt4Bm"/><span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></div><div class="flex flex-col text-left"><span class="font-body-md-medium text-body-md-medium text-on-surface leading-tight">Lic. Elena Ramos</span><span class="font-caption text-caption text-outline leading-tight">Enfermería</span></div></div></div></header><main class="relative pt-16 bg-surface-container-lowest min-h-screen"><div class="flex flex-col w-full">
+<!-- Sub-header / Clinical Context Strip -->
+<div class="w-full bg-surface-container-low px-space-lg py-space-md shadow-sm">
+<div class="max-w-[1280px] mx-auto flex flex-col gap-space-sm">
+<!-- Top Navigation & Return Action -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-body-md text-body-md">
+<button class="inline-flex items-center gap-space-xs text-primary hover:text-on-primary-fixed-variant transition-colors group" type="button">
+<span class="material-symbols-outlined text-lg transition-transform group-hover:-translate-x-0.5">arrow_back</span>
+<span class="font-body-md-medium text-body-md-medium">Módulo de Enfermería</span>
+</button>
+<span class="text-outline-variant font-code-sm">/</span>
+<span class="font-code-md text-code-md text-on-surface-variant">LAN-V-000210</span>
+<span class="text-outline-variant font-code-sm">/</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Valoración clínica</span>
+</div>
+<button class="h-10 px-space-md inline-flex items-center gap-space-xs rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-body-md-medium text-body-md-medium transition-colors" type="button">
+<span class="material-symbols-outlined text-lg">close</span>
+<span>Cancelar y volver</span>
+</button>
+</div>
+<!-- Patient Context Badge Pill Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-primary font-headline-sm text-headline-sm">
+            ML
+          </div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-sm">
+<span class="font-headline-md text-headline-md text-on-surface">María López García</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption">Femenino · 34 años</span>
+</div>
+<div class="flex items-center gap-space-md text-on-surface-variant font-body-md text-body-md">
+<span class="flex items-center gap-1">
+<span class="font-caption text-caption text-outline uppercase tracking-wider">MRN:</span>
+<span class="font-code-md text-code-md font-semibold text-on-surface">MRN-849201</span>
+</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="flex items-center gap-1">
+<span class="font-caption text-caption text-outline uppercase tracking-wider">Visita:</span>
+<span class="font-code-md text-code-md font-semibold text-primary">LAN-V-000210</span>
+</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="flex items-center gap-1">
+<span class="font-caption text-caption text-outline uppercase tracking-wider">Tipo:</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Consulta Ambulatoria</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Metric pill summary -->
+<div class="flex items-center gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-lg">
+<span class="material-symbols-outlined text-primary text-xl">vital_signs</span>
+<div class="flex flex-col text-right">
+<span class="font-caption text-caption text-outline leading-tight">Triaje completado</span>
+<span class="font-body-md-medium text-body-md-medium text-primary leading-tight">PA: 118/76 · FC: 78 lpm · Temp: 37.4°C</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Work Area -->
+<div class="max-w-[1280px] w-full mx-auto px-space-lg py-space-lg pb-32 flex flex-col gap-space-lg">
+<!-- Title & System Telemetry Info -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div class="flex flex-col">
+<h1 class="font-display-md text-display-md text-on-surface tracking-tight">Valoración de enfermería</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Registro integral de antecedentes, anamnesis y notas clínicas para la visita actual.</p>
+</div>
+<div class="inline-flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container text-on-surface-variant self-start md:self-auto">
+<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">cloud_done</span>
+<span class="font-caption text-caption font-semibold">8 secciones de valoración clínica · Persistencia automática activa</span>
+</div>
+</div>
+<!-- Accordion Stack (8 Sections) -->
+<div class="flex flex-col gap-space-md" id="clinical-accordion-group">
+<!-- 1. ALERGIAS -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-allergies">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('allergies')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-error-container text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">warning</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">1. Alergias y reacciones adversas</span>
+<span class="px-space-sm py-0.5 rounded-full bg-error-container text-on-error-container font-caption text-caption">1 registrada</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-allergies">82/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-allergies">expand_less</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs flex flex-col gap-space-md" id="body-allergies">
+<!-- Mandatory alert pill -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-md">
+<div class="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">shield</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-primary">Sincronización con expediente permanente</span>
+<p class="font-body-md text-body-md text-on-surface-variant">Esta sección se guarda automáticamente en el perfil principal del paciente y se mostrará destacada como alerta crítica en todas sus visitas futuras.</p>
+</div>
+</div>
+<!-- Quick clinical chips -->
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="font-caption text-caption text-outline mr-space-xs uppercase tracking-wider">Atajos rápidos:</span>
+<button class="h-8 px-space-sm inline-flex items-center gap-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-caption text-caption transition-colors" onclick="appendTag('textarea-allergies', 'Sin alergias conocidas (NKDA). ')" type="button">
+<span class="material-symbols-outlined text-sm">add</span>Sin alergias conocidas (NKDA)
+            </button>
+<button class="h-8 px-space-sm inline-flex items-center gap-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-caption text-caption transition-colors" onclick="appendTag('textarea-allergies', 'Látex (dermatitis de contacto). ')" type="button">
+<span class="material-symbols-outlined text-sm">add</span>Látex
+            </button>
+<button class="h-8 px-space-sm inline-flex items-center gap-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-caption text-caption transition-colors" onclick="appendTag('textarea-allergies', 'AINEs (intolerancia gastrointestinal/broncoespasmo). ')" type="button">
+<span class="material-symbols-outlined text-sm">add</span>AINEs
+            </button>
+<button class="h-8 px-space-sm inline-flex items-center gap-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface font-caption text-caption transition-colors" onclick="appendTag('textarea-allergies', 'Sulfas / Trimetoprim-Sulfametoxazol. ')" type="button">
+<span class="material-symbols-outlined text-sm">add</span>Sulfas
+            </button>
+</div>
+<!-- Textarea Input Area -->
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[96px]" id="textarea-allergies" oninput="updateCounter(this, 'counter-allergies', 'counter-badge-allergies')" placeholder="Especifique medicamento, alérgeno ambiental o alimentario y la gravedad de la reacción..." rows="3">Penicilina (Reacción anafilactoide previa en la infancia con edema laríngeo grave)</textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-allergies">82/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 2. ANTECEDENTES PERSONALES -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-personal">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('personal')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">clinical_notes</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">2. Antecedentes personales (patológicos y no patológicos)</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-outline font-caption text-caption" id="status-personal">Sin registrar</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-personal">0/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-personal">expand_more</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs hidden flex-col gap-space-md" id="body-personal">
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[96px]" id="textarea-personal" oninput="updateCounter(this, 'counter-personal', 'counter-badge-personal', 'status-personal')" placeholder="Enfermedades crónicas conocidas (HTA, Diabetes, Asma), hospitalizaciones previas, transfusiones..." rows="3"></textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-personal">0/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. ANTECEDENTES FAMILIARES -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-family">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('family')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">diversity_1</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">3. Antecedentes familiares hereditarios</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-outline font-caption text-caption" id="status-family">Sin registrar</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-family">0/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-family">expand_more</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs hidden flex-col gap-space-md" id="body-family">
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[96px]" id="textarea-family" oninput="updateCounter(this, 'counter-family', 'counter-badge-family', 'status-family')" placeholder="Antecedentes de primer grado: Diabetes mellitus, cardiopatías, neoplasias, hipertensión arterial..." rows="3"></textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-family">0/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 4. CIRUGÍAS -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-surgeries">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('surgeries')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">medical_services</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">4. Antecedentes quirúrgicos (cirugías)</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-outline font-caption text-caption" id="status-surgeries">Sin registrar</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-surgeries">0/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-surgeries">expand_more</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs hidden flex-col gap-space-md" id="body-surgeries">
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[96px]" id="textarea-surgeries" oninput="updateCounter(this, 'counter-surgeries', 'counter-badge-surgeries', 'status-surgeries')" placeholder="Procedimientos quirúrgicos previos, fechas aproximadas, complicaciones con anestesia..." rows="3"></textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-surgeries">0/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 5. ESTILO DE VIDA -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-lifestyle">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('lifestyle')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">fitness_center</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">5. Estilo de vida y hábitos</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-outline font-caption text-caption" id="status-lifestyle">Sin registrar</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-lifestyle">0/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-lifestyle">expand_more</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs hidden flex-col gap-space-md" id="body-lifestyle">
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[96px]" id="textarea-lifestyle" oninput="updateCounter(this, 'counter-lifestyle', 'counter-badge-lifestyle', 'status-lifestyle')" placeholder="Consumo de tabaco (paquetes/año), alcohol, drogas recreativas, nivel de actividad física, patrón nutricional..." rows="3"></textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-lifestyle">0/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 6. HISTORIA REPRODUCTIVA -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-reproductive">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('reproductive')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container text-on-surface-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">female</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">6. Historia reproductiva y salud gineco-obstétrica</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container text-outline font-caption text-caption" id="status-reproductive">Sin registrar</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-reproductive">0/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-reproductive">expand_more</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs hidden flex-col gap-space-md" id="body-reproductive">
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[96px]" id="textarea-reproductive" oninput="updateCounter(this, 'counter-reproductive', 'counter-badge-reproductive', 'status-reproductive')" placeholder="Fecha última menstruación (FUM), gestas, partos, cesáreas, abortos, método anticonceptivo actual..." rows="3"></textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-reproductive">0/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 7. SÍNTOMAS / MOTIVO DE CONSULTA (OPEN BY DEFAULT) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-symptoms">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('symptoms')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">personal_injury</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">7. Síntomas actuales y motivo de consulta</span>
+<span class="px-space-sm py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-caption text-caption">Registrado en kiosco</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-symptoms">204/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-symptoms">expand_less</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs flex flex-col gap-space-md" id="body-symptoms">
+<div class="inline-flex items-center gap-space-xs px-space-sm py-1 rounded bg-secondary-fixed text-on-secondary-fixed font-caption text-caption w-fit">
+<span class="material-symbols-outlined text-base">touch_app</span>
+<span>Importado automáticamente desde Kiosco de autorregistro de Lancaster (09:12 AM)</span>
+</div>
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[110px]" id="textarea-symptoms" oninput="updateCounter(this, 'counter-symptoms', 'counter-badge-symptoms')" rows="4">Dolor de garganta intenso desde hace 3 días, disfagia leve a moderada para sólidos, sensación febril nocturna con escalofríos y malestar general. Refiere haber tomado paracetamol con alivio transitorio.</textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-symptoms">204/4000</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 8. NOTAS DE ENFERMERÍA (OPEN BY DEFAULT) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden transition-all duration-200" id="accordion-notes">
+<button class="w-full h-14 px-space-lg flex items-center justify-between hover:bg-surface-container-low transition-colors select-none text-left" onclick="toggleSection('notes')" type="button">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-xl">edit_note</span>
+</div>
+<div class="flex items-center gap-space-sm truncate">
+<span class="font-headline-sm text-headline-sm text-on-surface">8. Notas de evolución y triaje de enfermería</span>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container-high text-on-surface font-caption text-caption">Turno Matutino</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md shrink-0">
+<span class="font-code-sm text-code-sm text-outline" id="counter-notes">159/4000</span>
+<span class="material-symbols-outlined text-outline transition-transform duration-200" id="chevron-notes">expand_less</span>
+</div>
+</button>
+<div class="px-space-lg pb-space-lg pt-space-xs flex flex-col gap-space-md" id="body-notes">
+<div class="relative">
+<textarea class="w-full p-space-md rounded-xl bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary shadow-sm resize-y min-h-[110px]" id="textarea-notes" oninput="updateCounter(this, 'counter-notes', 'counter-badge-notes')" rows="4">Paciente orientada en tiempo y espacio, marcha estable. Refiere dolor faríngeo 3/10. Signos vitales estables. Pasa a sala de espera interior para valoración por Dr. Ramírez.</textarea>
+<div class="absolute bottom-3 right-3 pointer-events-none">
+<span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant" id="counter-badge-notes">159/4000</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Docked Action Footer (Persistent for rolling tablet cart) -->
+<footer class="fixed bottom-0 left-60 right-0 h-20 bg-surface-container-lowest shadow-[0_-4px_12px_rgba(0,0,0,0.06)] z-30 px-space-lg flex items-center justify-between">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-outline text-lg">schedule</span>
+<span>Última edición local:</span>
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Hace un momento</span>
+<span class="text-outline-variant">·</span>
+<span class="font-caption text-caption text-outline">Lic. Elena Ramos (Enfermería)</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<button class="h-12 px-space-lg rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-body-md-medium text-body-md-medium transition-colors" type="button">
+        Cancelar
+      </button>
+<button class="h-12 px-space-xl rounded-lg bg-primary hover:bg-on-primary-fixed-variant text-on-primary font-body-md-medium text-body-md-medium inline-flex items-center gap-space-sm shadow-md transition-colors" onclick="submitAssessment()" type="button">
+<span class="material-symbols-outlined text-xl">save</span>
+<span>Guardar valoración</span>
+</button>
+</div>
+</footer>
+<!-- Notification Toast (Hidden by default, triggered on save) -->
+<div class="fixed bottom-24 right-8 bg-inverse-surface text-inverse-on-surface px-space-lg py-space-md rounded-xl shadow-xl flex items-center gap-space-sm transform translate-y-32 opacity-0 transition-all duration-300 pointer-events-none z-50" id="save-toast">
+<span class="material-symbols-outlined text-inverse-primary text-xl">task_alt</span>
+<span class="font-body-md-medium text-body-md-medium">Valoración de enfermería guardada exitosamente</span>
+</div>
+</div>
+<script>
+  function toggleSection(sectionKey) {
+    const body = document.getElementById(`body-${sectionKey}`);
+    const chevron = document.getElementById(`chevron-${sectionKey}`);
+    
+    if (body.classList.contains('hidden')) {
+      body.classList.remove('hidden');
+      body.classList.add('flex');
+      chevron.textContent = 'expand_less';
+    } else {
+      body.classList.add('hidden');
+      body.classList.remove('flex');
+      chevron.textContent = 'expand_more';
+    }
+  }
+
+  function updateCounter(textarea, headerCounterId, innerBadgeId, statusId) {
+    const count = textarea.value.length;
+    const max = 4000;
+    const text = `${count}/${max}`;
+    
+    const headerElem = document.getElementById(headerCounterId);
+    if (headerElem) headerElem.textContent = text;
+    
+    const badgeElem = document.getElementById(innerBadgeId);
+    if (badgeElem) badgeElem.textContent = text;
+
+    if (statusId) {
+      const statusBadge = document.getElementById(statusId);
+      if (statusBadge) {
+        if (count > 0) {
+          statusBadge.textContent = 'Modificado';
+          statusBadge.className = 'px-space-sm py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-caption text-caption';
+        } else {
+          statusBadge.textContent = 'Sin registrar';
+          statusBadge.className = 'px-space-sm py-0.5 rounded-full bg-surface-container text-outline font-caption text-caption';
+        }
+      }
+    }
+  }
+
+  function appendTag(textareaId, tagText) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea) return;
+    
+    if (textarea.value.trim().length > 0) {
+      textarea.value += ' ' + tagText;
+    } else {
+      textarea.value = tagText;
+    }
+    textarea.dispatchEvent(new Event('input'));
+    textarea.focus();
+  }
+
+  function submitAssessment() {
+    const toast = document.getElementById('save-toast');
+    if (!toast) return;
+    
+    toast.classList.remove('translate-y-32', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('translate-y-32', 'opacity-0');
+    }, 3200);
+  }
+</script></main></div></body></html>

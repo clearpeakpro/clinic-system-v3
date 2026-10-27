@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-high":"#d9ece9","on-secondary-fixed-variant":"#0040a0","inverse-on-surface":"#e2f5f2","surface-container-highest":"#d4e6e3","on-primary-container":"#a3faef","on-tertiary":"#ffffff","on-error":"#ffffff","primary-fixed":"#9cf2e8","tertiary":"#5d33ba","surface-container-lowest":"#ffffff","on-error-container":"#93000a","primary":"#005c55","error":"#ba1a1a","on-surface":"#0e1e1d","outline":"#6e7977","on-primary":"#ffffff","on-tertiary-container":"#f0e6ff","inverse-surface":"#233332","surface":"#ebfdfa","primary-fixed-dim":"#80d5cb","tertiary-fixed-dim":"#d0bcff","tertiary-container":"#764fd4","surface-bright":"#ebfdfa","outline-variant":"#bdc9c6","surface-container-low":"#e5f7f5","surface-variant":"#d4e6e3","surface-tint":"#006a63","secondary-fixed":"#dae2ff","on-primary-fixed":"#00201d","surface-container":"#dff2ef","primary-container":"#0f766e","surface-dim":"#cbdedb","secondary":"#0054cb","on-background":"#0e1e1d","on-secondary-container":"#fefcff","on-primary-fixed-variant":"#00504a","secondary-fixed-dim":"#b1c5ff","inverse-primary":"#80d5cb","on-secondary":"#ffffff","on-tertiary-fixed-variant":"#5225af","error-container":"#ffdad6","on-tertiary-fixed":"#22005c","secondary-container":"#346ee5","tertiary-fixed":"#e9ddff","on-surface-variant":"#3e4947","background":"#ebfdfa","on-secondary-fixed":"#001847"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-xl":"2rem","space-xs":"0.25rem","margin":"1.5rem","gutter-tablet":"1rem","space-lg":"1.5rem","margin-tablet":"1.25rem","space-md":"1rem","space-sm":"0.5rem","gutter":"1rem"},"fontFamily":{"headline-sm":["Inter"],"body-md-medium":["Inter"],"headline-md":["Inter"],"display-md":["Inter"],"code-sm":["JetBrains Mono"],"body-md":["Inter"],"body-lg":["Inter"],"headline-lg":["Inter"],"caption":["Inter"],"body-lg-medium":["Inter"],"code-md":["JetBrains Mono"]},"fontSize":{"headline-sm":["18px",{"lineHeight":"24px","fontWeight":"600"}],"body-md-medium":["14px",{"lineHeight":"20px","fontWeight":"500"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"display-md":["28px",{"lineHeight":"36px","letterSpacing":"-0.02em","fontWeight":"600"}],"code-sm":["12px",{"lineHeight":"16px","letterSpacing":"0em","fontWeight":"500"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"caption":["12px",{"lineHeight":"16px","fontWeight":"500"}],"body-lg-medium":["16px",{"lineHeight":"24px","fontWeight":"500"}],"code-md":["14px",{"lineHeight":"20px","letterSpacing":"-0.01em","fontWeight":"500"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low"><div class="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center text-on-primary"><span class="material-symbols-outlined text-[20px]">local_hospital</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary leading-tight">Clinic System</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Gestión Clínica</span></div></div><div class="flex-1 overflow-y-auto px-space-sm py-space-sm"><div class="px-space-sm pt-space-xs pb-space-xs font-caption text-caption uppercase tracking-wider text-outline">Clínica Operativa</div><nav class="flex flex-col gap-1 mb-space-md" data-active-classes="bg-primary-container text-on-primary font-body-md-medium"><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="panel" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span class="font-body-md-medium text-body-md-medium">Panel</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="pacientes" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span class="font-body-md-medium text-body-md-medium">Pacientes</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="citas" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span><span class="font-body-md-medium text-body-md-medium">Citas</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="cola-de-enfermeria" href="#"><span class="material-symbols-outlined text-[20px]">clinical_notes</span><span class="font-body-md-medium text-body-md-medium">Cola de enfermería</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="cola-de-proveedor" href="#"><span class="material-symbols-outlined text-[20px]">stethoscope</span><span class="font-body-md-medium text-body-md-medium">Cola de proveedor</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="cola-de-ordenes" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="font-body-md-medium text-body-md-medium">Cola de órdenes</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="caja" href="#"><span class="material-symbols-outlined text-[20px]">payments</span><span class="font-body-md-medium text-body-md-medium">Caja</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="reportes" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span class="font-body-md-medium text-body-md-medium">Reportes</span></a></nav><div class="px-space-sm pt-space-xs pb-space-xs font-caption text-caption uppercase tracking-wider text-outline">Administración</div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-body-md-medium"><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="usuarios" href="#"><span class="material-symbols-outlined text-[20px]">manage_accounts</span><span class="font-body-md-medium text-body-md-medium">Usuarios</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="sedes" href="#"><span class="material-symbols-outlined text-[20px]">domain</span><span class="font-body-md-medium text-body-md-medium">Sedes</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="catalogos" href="#"><span class="material-symbols-outlined text-[20px]">dataset</span><span class="font-body-md-medium text-body-md-medium">Catálogos</span></a></nav></div><div class="p-space-sm bg-surface-container-low"><div class="flex items-center gap-space-sm p-space-xs rounded-lg bg-surface-container"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span><span class="font-caption text-caption text-on-surface font-semibold">Servidor Clínico Activo</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-space-lg flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md flex-1 max-w-xl"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface min-h-[32px]"><span class="material-symbols-outlined text-[16px] text-primary">location_on</span><span class="font-caption text-caption font-semibold">LAN Lancaster</span><span class="material-symbols-outlined text-[16px] text-on-surface-variant">arrow_drop_down</span></div><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-low text-primary min-h-[32px]"><span class="w-2 h-2 rounded-full bg-primary"></span><span class="font-caption text-caption font-semibold">En vivo</span></div><div class="relative flex-1"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span><input class="w-full h-10 pl-10 pr-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Buscar pacientes por nombre, expediente o ID..." type="text"/></div></div><div class="flex items-center gap-space-md"><button aria-label="Notificaciones" class="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-error text-on-error font-caption text-[10px] flex items-center justify-center leading-none font-bold">3</span></button><div class="h-8 w-px bg-surface-container-highest"></div><div class="flex items-center gap-space-sm"><div class="flex flex-col text-right"><span class="font-body-md-medium text-body-md-medium text-on-surface leading-tight">Lic. Elena Ramos</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Recepción y Caja</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-background w-full px-space-lg min-h-screen"><div class="flex flex-col w-full pb-space-xl">
+<!-- Ensure sidebar link 'Usuarios' shows active state in shell -->
+<script>
+    (function highlightActiveNavLink() {
+      const navLinks = document.querySelectorAll('aside nav a[data-path="usuarios"]');
+      navLinks.forEach(link => {
+        link.classList.remove('text-on-surface-variant', 'hover:bg-surface-container-high');
+        link.classList.add('bg-primary-container', 'text-on-primary', 'font-body-md-medium');
+      });
+      const otherLinks = document.querySelectorAll('aside nav a:not([data-path="usuarios"])');
+      otherLinks.forEach(link => {
+        link.classList.remove('bg-primary-container', 'text-on-primary');
+        if (!link.classList.contains('text-on-surface-variant')) {
+          link.classList.add('text-on-surface-variant');
+        }
+      });
+    })();
+  </script>
+<!-- 1. HEADER SECTION -->
+<header class="flex flex-col lg:flex-row lg:items-end justify-between gap-space-lg mb-space-lg pt-space-md">
+<div class="flex flex-col gap-1 max-w-2xl">
+<div class="flex items-center gap-space-sm mb-1">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary font-caption text-caption uppercase tracking-wider font-semibold">
+<span class="material-symbols-outlined text-[14px]">shield_person</span>
+          Seguridad &amp; Acceso
+        </span>
+<span class="font-code-sm text-code-sm text-outline">REF: S-ADM-02</span>
+</div>
+<h1 class="font-display-md text-display-md text-on-surface tracking-tight">Usuarios</h1>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+        Gestión de credenciales, roles clínicos por sede y políticas de acceso seguro del personal conforme a normativas HIPAA.
+      </p>
+</div>
+<!-- Quick action buttons -->
+<div class="flex items-center gap-space-sm self-start lg:self-auto flex-wrap">
+<button class="min-h-[48px] px-space-md rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container shadow-sm flex items-center gap-space-xs font-body-md-medium text-body-md-medium transition-colors">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">history_toggle_off</span>
+<span>Registro de actividad</span>
+</button>
+<button class="min-h-[48px] px-space-md rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container shadow-sm flex items-center gap-space-xs font-body-md-medium text-body-md-medium transition-colors">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">file_download</span>
+<span>Exportar</span>
+</button>
+<button class="min-h-[48px] px-space-lg rounded-lg bg-primary-container text-on-primary hover:bg-primary shadow-sm flex items-center gap-space-xs font-body-lg-medium text-body-lg-medium transition-all active:scale-[0.99]">
+<span class="material-symbols-outlined text-[22px]">person_add</span>
+<span>+ Invitar usuario</span>
+</button>
+</div>
+</header>
+<!-- METRIC TILES BAR -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-space-md mb-space-lg">
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Total Registrados</span>
+<span class="font-display-md text-display-md text-on-surface font-semibold">18</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">badge</span>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Activos en línea</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-md text-display-md text-primary font-semibold">14</span>
+<span class="font-caption text-caption text-primary">77.8%</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[22px]">how_to_reg</span>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Invitaciones Pendientes</span>
+<div class="flex items-baseline gap-2">
+<span class="font-display-md text-display-md text-secondary font-semibold">2</span>
+<span class="font-caption text-caption text-secondary">Expira en 48h</span>
+</div>
+</div>
+<div class="w-10 h-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed-variant">
+<span class="material-symbols-outlined text-[22px]">forward_to_inbox</span>
+</div>
+</div>
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-on-surface-variant">Deshabilitados / Bajas</span>
+<span class="font-display-md text-display-md text-outline font-semibold">2</span>
+</div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[22px]">person_off</span>
+</div>
+</div>
+</div>
+<!-- 2. FILTER & SEARCH CONTROL BAR -->
+<section class="bg-surface-container-lowest p-space-md rounded-xl shadow-sm mb-space-md flex flex-col xl:flex-row gap-space-md items-stretch xl:items-center justify-between">
+<!-- Search Input -->
+<div class="relative flex-1 min-w-[280px]">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full h-12 pl-11 pr-space-md rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:bg-surface-container-lowest transition-all" id="user-search-input" placeholder="Buscar por nombre, correo, cédula o rol..." type="text"/>
+</div>
+<!-- Filter Selectors -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<!-- Role Filter -->
+<div class="relative">
+<select class="appearance-none h-12 pl-3.5 pr-9 rounded-lg bg-surface-container-low text-on-surface font-body-md-medium text-body-md-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary hover:bg-surface-container">
+<option value="">Todos los roles</option>
+<option value="owner">Propietario</option>
+<option value="provider">Médico / Proveedor</option>
+<option value="nurse">Enfermería</option>
+<option value="desk">Recepción / Caja</option>
+<option value="admin">Administrador</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+<!-- Campus / Branch Filter -->
+<div class="relative">
+<select class="appearance-none h-12 pl-3.5 pr-9 rounded-lg bg-surface-container-low text-on-surface font-body-md-medium text-body-md-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary hover:bg-surface-container">
+<option value="">Todas las sedes</option>
+<option value="LAN">LAN · Lancaster</option>
+<option value="NRH">NRH · North Richland Hills</option>
+<option value="FTW">FTW · Fort Worth</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+<!-- Status Filter -->
+<div class="relative">
+<select class="appearance-none h-12 pl-3.5 pr-9 rounded-lg bg-surface-container-low text-on-surface font-body-md-medium text-body-md-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary hover:bg-surface-container">
+<option value="">Todos los estados</option>
+<option value="active">Activo</option>
+<option value="invited">Invitado</option>
+<option value="disabled">Deshabilitado</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+<!-- 2FA Filter -->
+<div class="relative">
+<select class="appearance-none h-12 pl-3.5 pr-9 rounded-lg bg-surface-container-low text-on-surface font-body-md-medium text-body-md-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary hover:bg-surface-container">
+<option value="">Cualquier estado 2FA</option>
+<option value="active_2fa">2FA Activa</option>
+<option value="pending_2fa">2FA Pendiente</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+<!-- Reset / Filter Clear -->
+<button class="h-12 w-12 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container flex items-center justify-center transition-colors" title="Restablecer filtros">
+<span class="material-symbols-outlined text-[20px]">filter_alt_off</span>
+</button>
+</div>
+</section>
+<!-- 3. USERS MANAGEMENT TABLE -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<!-- Active filters counter stripe -->
+<div class="px-space-md py-space-sm bg-surface-container-low flex items-center justify-between">
+<div class="flex items-center gap-space-sm text-on-surface-variant font-caption text-caption">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span>Listando <strong>7</strong> usuarios prioritarios de <strong>18</strong> registrados en el sistema</span>
+</div>
+<div class="hidden md:flex items-center gap-space-md text-outline font-code-sm text-code-sm">
+<span>Sincronización LDAP/ActiveDirectory: Activa</span>
+<span>Cifrado HIPAA TLS 1.3</span>
+</div>
+</div>
+<!-- Table scroll container -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse min-w-[960px]">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant font-caption text-caption uppercase tracking-wider">
+<th class="py-3 px-space-md font-semibold w-72">Usuario &amp; Credenciales</th>
+<th class="py-3 px-space-md font-semibold">Correo Electrónico</th>
+<th class="py-3 px-space-md font-semibold">Roles por Sede</th>
+<th class="py-3 px-space-md font-semibold">Verificación 2FA</th>
+<th class="py-3 px-space-md font-semibold">Estado de Cuenta</th>
+<th class="py-3 px-space-md font-semibold">Último Acceso</th>
+<th class="py-3 px-space-md font-semibold text-right pr-space-lg">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- 4. SPECIAL ROW: USUARIO PROPIETARIO (Dr. Roberto Silva Morales) -->
+<tr class="bg-tertiary-fixed/20 hover:bg-tertiary-fixed/30 transition-colors group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<!-- Avatar with Propietario crown badge -->
+<div class="relative">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary font-body-lg-medium text-body-lg-medium flex items-center justify-center font-semibold shadow-xs">
+                    RS
+                  </div>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-surface-container-lowest text-tertiary flex items-center justify-center shadow-xs">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">stars</span>
+</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Dr. Roberto Silva Morales</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-caption text-[11px] font-bold uppercase tracking-wide">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+                      Propietario
+                    </span>
+</div>
+<!-- EXPLICIT REQUIRED REQUIREMENT: Sin acceso clínico visible notice -->
+<div class="inline-flex items-center gap-1 mt-0.5 text-on-surface-variant font-caption text-[11px]">
+<span class="material-symbols-outlined text-[13px] text-tertiary">lock_person</span>
+<span class="text-tertiary font-semibold">Sin acceso clínico</span>
+<span class="text-outline">· Perfil directivo y financiero</span>
+</div>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-1 font-code-sm text-code-sm text-on-surface">
+<span>director@clinicsystem.health</span>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px] text-primary">domain_add</span>
+                Organización completa
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                Activa
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-primary font-caption text-caption font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                Activo
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Hoy, 07:45 a. m.</span>
+<span class="font-caption text-caption text-outline font-code-sm">IP: 192.168.10.14</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Roberto Silva" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- 5. ROW: Lic. Elena Ramos -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface-variant font-body-lg-medium text-body-lg-medium flex items-center justify-center font-medium">
+                  ER
+                </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Lic. Elena Ramos</span>
+<span class="font-caption text-caption text-on-surface-variant">Recepción y Admisión</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-code-sm text-code-sm text-on-surface">eramos@clinicsystem.health</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">desk</span>
+                Recepción · LAN
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                Activa
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-primary font-caption text-caption font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                Activo
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Hoy, 10:42 a. m.</span>
+<span class="font-caption text-caption text-outline font-code-sm">Sede Lancaster</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Elena Ramos" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- 5. ROW: Dr. Alejandro Ramírez -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-primary/10 text-primary font-body-lg-medium text-body-lg-medium flex items-center justify-center font-medium">
+                  AR
+                </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Dr. Alejandro Ramírez</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-caption text-[11px] text-primary font-semibold">MD</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Medicina Familiar / Tratante</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-code-sm text-code-sm text-on-surface">aramirez@clinicsystem.health</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px]">stethoscope</span>
+                Proveedor · LAN, NRH
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                Activa
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-primary font-caption text-caption font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                Activo
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Hoy, 09:15 a. m.</span>
+<span class="font-caption text-caption text-outline font-code-sm">Consultorio 02</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Alejandro Ramírez" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- 5. ROW: Lic. Sofía Valdés -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high text-on-surface-variant font-body-lg-medium text-body-lg-medium flex items-center justify-center font-medium">
+                  SV
+                </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Lic. Sofía Valdés</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-caption text-[11px] text-on-surface-variant font-semibold">RN</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Enfermería General &amp; Triage</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-code-sm text-code-sm text-on-surface">svaldes@clinicsystem.health</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">clinical_notes</span>
+                Enfermería · LAN
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                Activa
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-primary font-caption text-caption font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                Activo
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Hoy, 08:30 a. m.</span>
+<span class="font-caption text-caption text-outline font-code-sm">Estación de Triage</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Sofía Valdés" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- 5. ROW: Dra. Carmen Salazar -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-primary/10 text-primary font-body-lg-medium text-body-lg-medium flex items-center justify-center font-medium">
+                  CS
+                </div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Dra. Carmen Salazar</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-caption text-[11px] text-primary font-semibold">MD</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Pediatría</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-code-sm text-code-sm text-on-surface">csalazar@clinicsystem.health</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px]">stethoscope</span>
+                Proveedor · LAN
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                Activa
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-primary font-caption text-caption font-semibold">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                Activo
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface">Ayer, 07:10 p. m.</span>
+<span class="font-caption text-caption text-outline font-code-sm">Cierre de guardia</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Carmen Salazar" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- 5. ROW: Carlos Méndez (Invitado, 2FA pendiente) -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed font-body-lg-medium text-body-lg-medium flex items-center justify-center font-medium">
+                  CM
+                </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Carlos Méndez</span>
+<span class="font-caption text-caption text-on-surface-variant">Auxiliar Contable</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-code-sm text-code-sm text-on-surface">cmendez@clinicsystem.health</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">payments</span>
+                Caja · LAN
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-outline font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[16px] text-outline">schedule</span>
+                Pendiente
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant font-caption text-caption font-semibold">
+<span class="material-symbols-outlined text-[14px]">mail</span>
+                  Invitado
+                </span>
+<button class="min-h-[32px] px-2 rounded bg-surface-container-high text-secondary hover:bg-surface-container hover:underline font-caption text-[11px] font-semibold transition-all">
+                  Reenviar
+                </button>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-outline italic">Nunca</span>
+<span class="font-caption text-caption text-outline">Invitado hace 2 días</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Carlos Méndez" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- 5. ROW: Lic. Marcela Peña (Deshabilitado) -->
+<tr class="opacity-70 hover:opacity-100 hover:bg-surface-container-low transition-all group">
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest text-outline font-body-lg-medium text-body-lg-medium flex items-center justify-center font-medium line-through">
+                  MP
+                </div>
+<div class="flex flex-col min-w-0">
+<span class="font-body-lg-medium text-body-lg-medium text-on-surface font-semibold truncate">Lic. Marcela Peña</span>
+<span class="font-caption text-caption text-outline">Ex-enfermera (Baja técnica)</span>
+</div>
+</div>
+</td>
+<td class="py-space-md px-space-md">
+<span class="font-code-sm text-code-sm text-outline">mpena@clinicsystem.health</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high text-outline font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[15px]">clinical_notes</span>
+                Enfermería · NRH
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-highest text-outline font-caption text-caption">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+                Inactiva
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-caption text-caption font-medium">
+<span class="material-symbols-outlined text-[14px]">block</span>
+                Deshabilitado
+              </span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-outline">14 sep 2026</span>
+<span class="font-caption text-caption text-outline">Revocado por Admin</span>
+</div>
+</td>
+<td class="py-space-md px-space-md text-right pr-space-lg">
+<button aria-label="Opciones de Marcela Peña" class="min-w-[48px] min-h-[48px] inline-flex items-center justify-center rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- 6. PAGINATION & ROWS-PER-PAGE -->
+<div class="p-space-md bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md font-body-md text-body-md text-on-surface-variant">
+<span>Mostrando <strong class="text-on-surface font-semibold">1-7</strong> de <strong class="text-on-surface font-semibold">18</strong> usuarios</span>
+<div class="flex items-center gap-2 pl-space-sm border-l-0">
+<span class="font-caption text-caption text-outline">Filas por página:</span>
+<select class="h-9 px-2 rounded-lg bg-surface-container-low text-on-surface font-body-md-medium text-body-md-medium focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+<option>10</option>
+<option>25</option>
+<option>50</option>
+</select>
+</div>
+</div>
+<!-- Pagination Buttons with touch targets (min 48x48) -->
+<div class="flex items-center gap-space-xs">
+<button aria-label="Página anterior" class="min-w-[48px] min-h-[48px] rounded-lg bg-surface-container-low text-outline flex items-center justify-center cursor-not-allowed opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="min-w-[48px] min-h-[48px] rounded-lg bg-primary-container text-on-primary flex items-center justify-center font-body-md-medium text-body-md-medium">
+          1
+        </button>
+<button class="min-w-[48px] min-h-[48px] rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container flex items-center justify-center font-body-md-medium text-body-md-medium transition-colors">
+          2
+        </button>
+<button aria-label="Página siguiente" class="min-w-[48px] min-h-[48px] rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container flex items-center justify-center font-body-md-medium text-body-md-medium transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- 6. HIPAA SECURITY MANDATORY FOOTER BANNER -->
+<footer class="mt-space-md p-space-md rounded-xl bg-surface-container flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]">gavel</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md-medium text-body-md-medium text-on-surface font-semibold">
+          Política Estricta de Autenticación y Privacidad Clínica
+        </span>
+<span class="font-caption text-caption text-on-surface-variant">
+          Todos los usuarios con acceso clínico (médicos tratantes, personal de enfermería y triage) requieren verificación en dos pasos (2FA) obligatoria conforme a las normativas federales HIPAA y estándares de auditoría HITECH.
+        </span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="min-h-[40px] px-3.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-caption text-caption font-semibold transition-colors flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">policy</span>
+<span>Manual de políticas</span>
+</button>
+</div>
+</footer>
+</div></main></div></body></html>

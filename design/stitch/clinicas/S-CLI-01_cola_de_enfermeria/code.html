@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "background": "#ebfdfa", "surface-bright": "#ebfdfa", "primary-container": "#0f766e", "on-error": "#ffffff", "on-tertiary-fixed-variant": "#5225af", "secondary-container": "#346ee5", "outline-variant": "#bdc9c6", "on-primary-fixed-variant": "#00504a", "surface-container-highest": "#d4e6e3", "on-secondary-container": "#fefcff", "primary-fixed": "#9cf2e8", "inverse-primary": "#80d5cb", "on-primary-container": "#a3faef", "inverse-surface": "#233332", "on-tertiary": "#ffffff", "primary": "#005c55", "surface-container": "#dff2ef", "secondary": "#0054cb", "surface-variant": "#d4e6e3", "error": "#ba1a1a", "on-primary-fixed": "#00201d", "tertiary-fixed-dim": "#d0bcff", "on-secondary-fixed": "#001847", "on-surface-variant": "#3e4947", "surface": "#ebfdfa", "on-tertiary-container": "#f0e6ff", "surface-tint": "#006a63", "on-secondary-fixed-variant": "#0040a0", "on-background": "#0e1e1d", "surface-container-low": "#e5f7f5", "on-error-container": "#93000a", "surface-container-lowest": "#ffffff", "tertiary-fixed": "#e9ddff", "on-surface": "#0e1e1d", "on-secondary": "#ffffff", "surface-container-high": "#d9ece9", "tertiary-container": "#764fd4", "surface-dim": "#cbdedb", "secondary-fixed": "#dae2ff", "outline": "#6e7977", "error-container": "#ffdad6", "inverse-on-surface": "#e2f5f2", "on-tertiary-fixed": "#22005c", "on-primary": "#ffffff", "tertiary": "#5d33ba", "secondary-fixed-dim": "#b1c5ff", "primary-fixed-dim": "#80d5cb" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin-tablet": "1.25rem", "space-lg": "1.5rem", "gutter-tablet": "1rem", "space-xs": "0.25rem", "margin": "1.5rem", "space-sm": "0.5rem", "space-xl": "2rem", "space-md": "1rem", "gutter": "1rem" }, "fontFamily": { "body-lg-medium": [ "Inter" ], "display-md": [ "Inter" ], "headline-sm": [ "Inter" ], "code-sm": [ "JetBrains Mono" ], "body-md": [ "Inter" ], "code-md": [ "JetBrains Mono" ], "headline-lg": [ "Inter" ], "headline-md": [ "Inter" ], "caption": [ "Inter" ], "body-md-medium": [ "Inter" ], "body-lg": [ "Inter" ] }, "fontSize": { "body-lg-medium": [ "16px", { "lineHeight": "24px", "fontWeight": "500" } ], "display-md": [ "28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "600" } ], "headline-sm": [ "18px", { "lineHeight": "24px", "fontWeight": "600" } ], "code-sm": [ "12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "500" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "code-md": [ "14px", { "lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500" } ], "headline-lg": [ "24px", { "lineHeight": "32px", "letterSpacing": "-0.015em", "fontWeight": "600" } ], "headline-md": [ "20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" } ], "caption": [ "12px", { "lineHeight": "16px", "fontWeight": "500" } ], "body-md-medium": [ "14px", { "lineHeight": "20px", "fontWeight": "500" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface-container-lowest font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-60 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex flex-col justify-between overflow-y-auto"><div class="flex flex-col"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-lowest"><img alt="Clinic System Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XQeIkTEEyQigpK5NQ9uJflA_Lyapc2dQ4_S6fAt4HhnX3lG6UZqG4mO4kgGJZz7TugBxX9Z1OcdXG-OXSFnwKvq0sk0mCwnjxOd97AuaNoxRBNLTAd1y5pB-ua-6S1qlGVr3LFam9hGh6D1vglbR4OmGfUi2DwwLvhodwBxBS58fg1WFa2HXC_ZU1DD9G0EUXGYQZeTybVUX2AUB60QhNTi5zGNTUFto8rdNtyjbWSng4U0bZIT_-7Gw"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary tracking-tight">Clinic System</span><span class="font-caption text-caption text-outline">Gestión Clínica</span></div></div><div class="px-space-md pt-space-sm pb-space-xs"><span class="font-caption text-caption text-outline uppercase tracking-wider">Clínica Operativa</span></div><nav class="flex flex-col px-space-sm gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-body-md-medium"><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="panel" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">dashboard</span><span class="font-body-md text-body-md">Panel</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="pacientes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">people</span><span class="font-body-md text-body-md">Pacientes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="citas" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">calendar_today</span><span class="font-body-md text-body-md">Citas</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-enfermeria" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">vital_signs</span><span class="font-body-md text-body-md">Cola de enfermería</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-proveedor" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">stethoscope</span><span class="font-body-md text-body-md">Cola de proveedor</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="cola-de-ordenes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">prescriptions</span><span class="font-body-md text-body-md">Cola de órdenes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="caja" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">point_of_sale</span><span class="font-body-md text-body-md">Caja</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="reportes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">bar_chart</span><span class="font-body-md text-body-md">Reportes</span></a></nav></div><div class="flex flex-col pb-space-md"><div class="px-space-md pt-space-sm pb-space-xs"><span class="font-caption text-caption text-outline uppercase tracking-wider">Administración</span></div><nav class="flex flex-col px-space-sm gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-body-md-medium"><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="usuarios" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">manage_accounts</span><span class="font-body-md text-body-md">Usuarios</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="sedes" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">apartment</span><span class="font-body-md text-body-md">Sedes</span></a><a class="h-12 flex items-center px-space-md rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="catalogos" href="#"><span class="material-symbols-outlined mr-space-sm text-xl">inventory_2</span><span class="font-body-md text-body-md">Catálogos</span></a></nav></div></aside><div class="pl-60"><header class="fixed top-0 left-60 right-0 h-16 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-md"><div class="h-12 inline-flex items-center gap-space-sm px-space-md rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container transition-colors cursor-pointer"><span class="font-code-sm text-code-sm px-space-xs py-0.5 rounded bg-surface-container-highest text-primary">LAN</span><span class="font-body-md-medium text-body-md-medium">Lancaster</span><span class="material-symbols-outlined text-outline text-lg">expand_more</span></div></div><div class="flex items-center gap-space-md"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container"><span class="relative flex h-2.5 w-2.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span></span><span class="font-caption text-caption text-primary">En vivo</span></div><button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-outline text-xl">search</span><span class="font-body-md text-body-md">Buscar pacientes</span></button><button class="h-12 w-12 flex items-center justify-center rounded-lg hover:bg-surface-container-low text-on-surface relative transition-colors" type="button"><span class="material-symbols-outlined text-2xl">notifications</span><span class="absolute top-2 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-error text-on-error font-caption text-[10px]">3</span></button><div class="flex items-center gap-space-sm pl-space-sm"><div class="relative flex items-center justify-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2ZJa-HR0T8-2l8hHVcSeYEKpyyNp2JDqBIN-9BOnV8S4OdF_SyLUEcvVRyT4NJvRcDxtYrFXI5CFx2CFS268U35gCLfHnjEypOYkQqR-l2PMU5WHBeiuD2vYQs1DtdiXVwaBdGbvnYimpO5Eg78fGHbZNuWuvbV5h4SF4w9JH7SKjuYatxhN8mJL2ySnSziPorjlHTYenSBwyd-yo7sz8YAf_Z0A_tQFfwSFYkjEvpMZOglAmt4Bm"/><span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-surface-container-lowest"></span></div><div class="flex flex-col text-left"><span class="font-body-md-medium text-body-md-medium text-on-surface leading-tight">Lic. Elena Ramos</span><span class="font-caption text-caption text-outline leading-tight">Enfermería</span></div></div></div></header><main class="relative pt-16 bg-surface-container-lowest min-h-screen"><div class="flex flex-col w-full px-space-lg py-space-md space-y-space-lg">
+<!-- Header Panel: Clinical Status & Refresh -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md bg-surface-container-lowest p-space-lg rounded-xl shadow-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Cola de enfermería</h1>
+<span class="px-space-sm py-0.5 rounded-full bg-surface-container-high text-primary font-caption text-caption uppercase tracking-wider">Triage &amp; Signos</span>
+</div>
+<p class="font-body-md text-body-md text-outline mt-0.5" id="queue-subtitle">5 pacientes en espera activa para evaluación clínica</p>
+</div>
+<!-- Live indicator & Actions -->
+<div class="flex items-center gap-space-md self-start md:self-auto">
+<div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-full bg-surface-container-low text-primary">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<span class="font-caption text-caption font-semibold">En vivo</span>
+<span class="text-outline text-caption mx-0.5">•</span>
+<span class="font-caption text-caption text-on-surface-variant" id="last-update">Actualizado hace 1 min</span>
+</div>
+<button class="h-12 px-space-md flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:bg-surface-container-highest transition-colors focus:ring-2 focus:ring-primary focus:outline-none" id="btn-refresh" title="Sincronizar pacientes en cola">
+<span class="material-symbols-outlined text-xl text-primary transition-transform duration-500" id="refresh-icon">refresh</span>
+<span class="font-body-md-medium text-body-md-medium">Actualizar</span>
+</button>
+</div>
+</div>
+<!-- Operational Filter Bar -->
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<!-- Segmented tabs -->
+<div class="inline-flex p-1 bg-surface-container-low rounded-xl gap-1" role="tablist">
+<button class="filter-tab px-space-md py-2 rounded-lg font-body-md-medium text-body-md-medium bg-surface-container-lowest text-primary shadow-sm transition-all" data-filter="all">
+        Todos <span class="ml-1.5 px-2 py-0.5 rounded-full bg-surface-container text-primary text-caption font-code-sm">5</span>
+</button>
+<button class="filter-tab px-space-md py-2 rounded-lg font-body-md-medium text-body-md-medium text-on-surface-variant hover:text-on-surface transition-all" data-filter="waiting">
+        Esperando <span class="ml-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 text-caption font-code-sm">3</span>
+</button>
+<button class="filter-tab px-space-md py-2 rounded-lg font-body-md-medium text-body-md-medium text-on-surface-variant hover:text-on-surface transition-all" data-filter="in-care">
+        Con enfermería <span class="ml-1.5 px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 text-caption font-code-sm">2</span>
+</button>
+<button class="filter-tab px-space-md py-2 rounded-lg font-body-md-medium text-body-md-medium text-on-surface-variant hover:text-on-surface transition-all" data-filter="empty">
+        Estado vacío <span class="ml-1.5 px-2 py-0.5 rounded-full bg-surface-container text-outline text-caption font-code-sm">0</span>
+</button>
+</div>
+<!-- Quick stats strip -->
+<div class="hidden lg:flex items-center gap-space-lg text-outline font-caption text-caption">
+<div class="flex items-center gap-1.5">
+<span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+<span>Demora crítica (&gt;20 min)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="inline-block w-2.5 h-2.5 rounded-full bg-primary"></span>
+<span>Tiempo promedio espera: <strong class="text-on-surface">19.4 min</strong></span>
+</div>
+</div>
+</div>
+<!-- PATIENT GRID (2 Columns Landscape Tablet Optimized) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md" id="queue-grid">
+<!-- Card 1: Waiting - Longest wait (38 min) -->
+<div class="patient-card group flex flex-col justify-between p-space-lg bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden" data-status="waiting">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500"></div>
+<!-- Row 1: Patient Identity & Status -->
+<div class="flex items-start justify-between gap-space-sm pl-1">
+<div class="flex flex-col min-w-0">
+<h2 class="font-body-lg-medium text-body-lg-medium text-on-surface truncate">María López García</h2>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="font-code-md text-code-md text-outline">P-000123</span>
+<span class="text-outline text-caption">•</span>
+<span class="font-caption text-caption text-outline">61 años</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-caption text-caption font-semibold shrink-0">
+<span class="material-symbols-outlined text-sm">schedule</span>
+          Esperando enfermería
+        </span>
+</div>
+<!-- Row 2: Clinical Metadata Matrix -->
+<div class="my-space-md p-space-md rounded-lg bg-surface-container-low grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-2 text-on-surface">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">schedule</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Llegada</span>
+<span class="font-body-md text-body-md font-medium truncate">3:15 p. m.</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-amber-700 shrink-0">timer</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-amber-900 leading-tight">Espera</span>
+<span class="font-body-md-medium text-body-md-medium text-amber-900 flex items-center gap-1">
+              38 min
+              <span class="material-symbols-outlined text-sm text-amber-700" title="Excede umbral recomendado">warning</span>
+</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">clinical_notes</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Tipo de cita</span>
+<span class="font-body-md text-body-md font-medium truncate" title="Control de hipertensión">Control HTA</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">alt_route</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Ruta</span>
+<span class="font-caption text-caption font-semibold text-primary truncate">Estándar</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0 col-span-2 sm:col-span-2">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">person</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Médico asignado</span>
+<span class="font-body-md text-body-md font-medium truncate">Dra. Benítez (Consultorio 3)</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Action Controls -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="h-12 px-space-md inline-flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-container transition-colors font-body-md-medium text-body-md-medium focus:ring-2 focus:ring-primary focus:outline-none">
+          Abrir
+        </button>
+<button class="btn-action-start h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-primary-container text-on-primary hover:bg-primary active:bg-on-primary-fixed-variant transition-colors font-body-md-medium text-body-md-medium shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:outline-none">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<span>Iniciar</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Waiting - Wait time 23 min -->
+<div class="patient-card group flex flex-col justify-between p-space-lg bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden" data-status="waiting">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-amber-500"></div>
+<!-- Row 1: Patient Identity & Status -->
+<div class="flex items-start justify-between gap-space-sm pl-1">
+<div class="flex flex-col min-w-0">
+<h2 class="font-body-lg-medium text-body-lg-medium text-on-surface truncate">José Ramírez Delgado</h2>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="font-code-md text-code-md text-outline">P-000452</span>
+<span class="text-outline text-caption">•</span>
+<span class="font-caption text-caption text-outline">45 años</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-caption text-caption font-semibold shrink-0">
+<span class="material-symbols-outlined text-sm">schedule</span>
+          Esperando enfermería
+        </span>
+</div>
+<!-- Row 2: Clinical Metadata Matrix -->
+<div class="my-space-md p-space-md rounded-lg bg-surface-container-low grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-2 text-on-surface">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">schedule</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Llegada</span>
+<span class="font-body-md text-body-md font-medium truncate">3:30 p. m.</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-amber-700 shrink-0">timer</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-amber-900 leading-tight">Espera</span>
+<span class="font-body-md-medium text-body-md-medium text-amber-900 flex items-center gap-1">
+              23 min
+              <span class="material-symbols-outlined text-sm text-amber-700" title="Excede umbral recomendado">warning</span>
+</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">clinical_notes</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Tipo de cita</span>
+<span class="font-body-md text-body-md font-medium truncate" title="Curación de herida quirúrgica">Curación herida</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">alt_route</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Ruta</span>
+<span class="font-caption text-caption font-semibold text-secondary truncate">Procedimiento</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0 col-span-2 sm:col-span-2">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">person</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Médico asignado</span>
+<span class="font-body-md text-body-md font-medium truncate">Dr. Morales</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Action Controls -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="h-12 px-space-md inline-flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-container transition-colors font-body-md-medium text-body-md-medium focus:ring-2 focus:ring-primary focus:outline-none">
+          Abrir
+        </button>
+<button class="btn-action-start h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-primary-container text-on-primary hover:bg-primary active:bg-on-primary-fixed-variant transition-colors font-body-md-medium text-body-md-medium shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:outline-none">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<span>Iniciar</span>
+</button>
+</div>
+</div>
+<!-- Card 3: In Care - Active triage (18 min elapsed) -->
+<div class="patient-card group flex flex-col justify-between p-space-lg bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden" data-status="in-care">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary-container"></div>
+<!-- Row 1: Patient Identity & Status -->
+<div class="flex items-start justify-between gap-space-sm pl-1">
+<div class="flex flex-col min-w-0">
+<h2 class="font-body-lg-medium text-body-lg-medium text-on-surface truncate">Rosa Hernández Flores</h2>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="font-code-md text-code-md text-outline">P-000881</span>
+<span class="text-outline text-caption">•</span>
+<span class="font-caption text-caption text-outline">32 años</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-900 border border-blue-200 font-caption text-caption font-semibold shrink-0">
+<span class="material-symbols-outlined text-sm text-secondary">vital_signs</span>
+          Con enfermería
+        </span>
+</div>
+<!-- Row 2: Clinical Metadata Matrix -->
+<div class="my-space-md p-space-md rounded-lg bg-surface-container-low grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-2 text-on-surface">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">schedule</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Llegada</span>
+<span class="font-body-md text-body-md font-medium truncate">3:35 p. m.</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-primary shrink-0">timer</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">En atención</span>
+<span class="font-body-md-medium text-body-md-medium text-primary">18 min</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">clinical_notes</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Tipo de cita</span>
+<span class="font-body-md text-body-md font-medium truncate" title="Seguimiento prenatal 2° trimestre">Prenatal</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">alt_route</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Ruta</span>
+<span class="font-caption text-caption font-semibold text-primary truncate">Estándar</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0 col-span-2 sm:col-span-2">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">person</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Médico asignado</span>
+<span class="font-body-md text-body-md font-medium truncate">Dra. Benítez</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Action Controls -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="h-12 px-space-md inline-flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-container transition-colors font-body-md-medium text-body-md-medium focus:ring-2 focus:ring-primary focus:outline-none">
+          Abrir
+        </button>
+<button class="h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-secondary text-on-secondary hover:bg-blue-700 active:bg-blue-800 transition-colors font-body-md-medium text-body-md-medium shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-secondary focus:outline-none">
+<span class="material-symbols-outlined text-lg">check_circle</span>
+<span>Completar</span>
+</button>
+</div>
+</div>
+<!-- Card 4: In Care - Active vitals (12 min elapsed) -->
+<div class="patient-card group flex flex-col justify-between p-space-lg bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden" data-status="in-care">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-secondary-container"></div>
+<!-- Row 1: Patient Identity & Status -->
+<div class="flex items-start justify-between gap-space-sm pl-1">
+<div class="flex flex-col min-w-0">
+<h2 class="font-body-lg-medium text-body-lg-medium text-on-surface truncate">Carlos Mendoza Ortiz</h2>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="font-code-md text-code-md text-outline">P-000194</span>
+<span class="text-outline text-caption">•</span>
+<span class="font-caption text-caption text-outline">50 años</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-50 text-blue-900 border border-blue-200 font-caption text-caption font-semibold shrink-0">
+<span class="material-symbols-outlined text-sm text-secondary">vital_signs</span>
+          Con enfermería
+        </span>
+</div>
+<!-- Row 2: Clinical Metadata Matrix -->
+<div class="my-space-md p-space-md rounded-lg bg-surface-container-low grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-2 text-on-surface">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">schedule</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Llegada</span>
+<span class="font-body-md text-body-md font-medium truncate">3:41 p. m.</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-primary shrink-0">timer</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">En atención</span>
+<span class="font-body-md-medium text-body-md-medium text-primary">12 min</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">clinical_notes</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Tipo de cita</span>
+<span class="font-body-md text-body-md font-medium truncate" title="Inmunización influenza y tétanos">Inmunización</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">alt_route</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Ruta</span>
+<span class="font-caption text-caption font-semibold text-tertiary truncate">Solo inyección</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0 col-span-2 sm:col-span-2">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">person</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Médico asignado</span>
+<span class="font-body-md text-body-md text-outline italic">Sin asignar</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Action Controls -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="h-12 px-space-md inline-flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-container transition-colors font-body-md-medium text-body-md-medium focus:ring-2 focus:ring-primary focus:outline-none">
+          Abrir
+        </button>
+<button class="h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:bg-surface-container-highest transition-colors font-body-md-medium text-body-md-medium shadow-sm focus:ring-2 focus:ring-primary focus:outline-none">
+<span class="material-symbols-outlined text-lg">edit_note</span>
+<span>Continuar</span>
+</button>
+</div>
+</div>
+<!-- Card 5: Waiting - Low wait time (8 min) -->
+<div class="patient-card group flex flex-col justify-between p-space-lg bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden" data-status="waiting">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
+<!-- Row 1: Patient Identity & Status -->
+<div class="flex items-start justify-between gap-space-sm pl-1">
+<div class="flex flex-col min-w-0">
+<h2 class="font-body-lg-medium text-body-lg-medium text-on-surface truncate">Ana Sofía Castillo</h2>
+<div class="flex items-center gap-space-xs mt-0.5">
+<span class="font-code-md text-code-md text-outline">P-000305</span>
+<span class="text-outline text-caption">•</span>
+<span class="font-caption text-caption text-outline">28 años</span>
+</div>
+</div>
+<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-caption text-caption font-semibold shrink-0">
+<span class="material-symbols-outlined text-sm">schedule</span>
+          Esperando enfermería
+        </span>
+</div>
+<!-- Row 2: Clinical Metadata Matrix -->
+<div class="my-space-md p-space-md rounded-lg bg-surface-container-low grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-2 text-on-surface">
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">schedule</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Llegada</span>
+<span class="font-body-md text-body-md font-medium truncate">3:45 p. m.</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-primary shrink-0">timer</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Espera</span>
+<span class="font-body-md-medium text-body-md-medium text-primary">8 min</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">clinical_notes</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Tipo de cita</span>
+<span class="font-body-md text-body-md font-medium truncate" title="Consulta médica general">Consulta general</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">alt_route</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Ruta</span>
+<span class="font-caption text-caption font-semibold text-primary truncate">Estándar</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 min-w-0 col-span-2 sm:col-span-2">
+<span class="material-symbols-outlined text-lg text-outline shrink-0">person</span>
+<div class="flex flex-col min-w-0">
+<span class="font-caption text-[11px] text-outline leading-tight">Médico asignado</span>
+<span class="font-body-md text-body-md font-medium truncate">Dra. Benítez</span>
+</div>
+</div>
+</div>
+<!-- Row 3: Action Controls -->
+<div class="flex items-center justify-end gap-space-sm pt-space-xs">
+<button class="h-12 px-space-md inline-flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-container transition-colors font-body-md-medium text-body-md-medium focus:ring-2 focus:ring-primary focus:outline-none">
+          Abrir
+        </button>
+<button class="btn-action-start h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-primary-container text-on-primary hover:bg-primary active:bg-on-primary-fixed-variant transition-colors font-body-md-medium text-body-md-medium shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:outline-none">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<span>Iniciar</span>
+</button>
+</div>
+</div>
+</div>
+<!-- EMPTY STATE CONTAINER (Hidden by default, shown when empty filter selected or queue drained) -->
+<div class="hidden flex-col items-center justify-center text-center p-space-xl bg-surface-container-lowest rounded-xl shadow-sm min-h-[420px]" id="empty-state-view">
+<div class="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center mb-space-md text-primary">
+<span class="material-symbols-outlined text-4xl">coffee</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface tracking-tight max-w-md">
+      No hay pacientes esperando enfermería
+    </h3>
+<p class="font-body-md text-body-md text-outline mt-space-xs max-w-md">
+      Todos los pacientes han sido atendidos, completaron sus signos vitales o se encuentran actualmente en consulta con su proveedor médico asignado.
+    </p>
+<div class="flex flex-wrap items-center justify-center gap-space-sm mt-space-lg">
+<button class="h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high transition-colors font-body-md-medium text-body-md-medium focus:ring-2 focus:ring-primary focus:outline-none" id="btn-return-all">
+<span class="material-symbols-outlined text-lg">calendar_today</span>
+<span>Ver citas de hoy</span>
+</button>
+<button class="h-12 px-space-lg inline-flex items-center gap-space-xs rounded-lg bg-primary-container text-on-primary hover:bg-primary transition-colors font-body-md-medium text-body-md-medium shadow-sm focus:ring-2 focus:ring-primary focus:outline-none" id="btn-empty-refresh">
+<span class="material-symbols-outlined text-lg">sync</span>
+<span>Actualizar cola</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function () {
+    const tabs = document.querySelectorAll('.filter-tab');
+    const cards = document.querySelectorAll('.patient-card');
+    const grid = document.getElementById('queue-grid');
+    const emptyView = document.getElementById('empty-state-view');
+    const refreshBtn = document.getElementById('btn-refresh');
+    const refreshIcon = document.getElementById('refresh-icon');
+    const lastUpdateLabel = document.getElementById('last-update');
+    const subtitle = document.getElementById('queue-subtitle');
+    const returnAllBtn = document.getElementById('btn-return-all');
+    const emptyRefreshBtn = document.getElementById('btn-empty-refresh');
+
+    function applyFilter(filter) {
+      tabs.forEach(tab => {
+        const isCurrent = tab.getAttribute('data-filter') === filter;
+        if (isCurrent) {
+          tab.classList.remove('text-on-surface-variant');
+          tab.classList.add('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+        } else {
+          tab.classList.remove('bg-surface-container-lowest', 'text-primary', 'shadow-sm');
+          tab.classList.add('text-on-surface-variant');
+        }
+      });
+
+      if (filter === 'empty') {
+        grid.classList.add('hidden');
+        emptyView.classList.remove('hidden');
+        emptyView.classList.add('flex');
+        subtitle.textContent = "0 pacientes en cola en este momento";
+        return;
+      }
+
+      emptyView.classList.add('hidden');
+      emptyView.classList.remove('flex');
+      grid.classList.remove('hidden');
+
+      let visibleCount = 0;
+      cards.forEach(card => {
+        const cardStatus = card.getAttribute('data-status');
+        if (filter === 'all' || cardStatus === filter) {
+          card.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+
+      if (filter === 'all') {
+        subtitle.textContent = "5 pacientes en espera activa para evaluación clínica";
+      } else if (filter === 'waiting') {
+        subtitle.textContent = "3 pacientes esperando pase a somatometría y triage";
+      } else if (filter === 'in-care') {
+        subtitle.textContent = "2 pacientes en toma de signos vitales e historial";
+      }
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const filter = tab.getAttribute('data-filter');
+        applyFilter(filter);
+      });
+    });
+
+    if (returnAllBtn) {
+      returnAllBtn.addEventListener('click', () => applyFilter('all'));
+    }
+
+    if (emptyRefreshBtn) {
+      emptyRefreshBtn.addEventListener('click', () => applyFilter('all'));
+    }
+
+    function triggerRefresh() {
+      if (refreshIcon) {
+        refreshIcon.classList.add('rotate-180');
+        setTimeout(() => refreshIcon.classList.remove('rotate-180'), 500);
+      }
+      if (lastUpdateLabel) {
+        lastUpdateLabel.textContent = "Actualizado hace instantes";
+      }
+    }
+
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', triggerRefresh);
+    }
+  })();
+</script></main></div></body></html>
