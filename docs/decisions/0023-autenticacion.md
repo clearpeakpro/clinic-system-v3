@@ -1,6 +1,6 @@
 # 0023. Autenticación con Better Auth
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada con condiciones
 - **Fecha:** 2026-10-27
 - **Reemplaza en parte:** ADR 0002 (contexto `app.user_id` de solo lectura; eventos de auditoría sin organización)
 - **Evidencia:** [`docs/spikes/T-002-better-auth.md`](../spikes/T-002-better-auth.md)
@@ -9,7 +9,7 @@
 
 ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, el 5 o el 6, se pasaba al plan B. La prueba (T-002) pasó los 8: cinco sin condiciones y tres con condiciones (1, 4 y 8). Ninguno de los eliminatorios tiene condiciones.
 
-## Decisión propuesta
+## Decisión
 
 1. **Better Auth para identidad y sesiones.**
    - Versión exacta fijada.
@@ -31,9 +31,15 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
 5. **Auditoría (complementa al ADR 0018):**
    - Los eventos previos a elegir organización van con `organization_id` nulo y **solo los lee el operador de la plataforma**.
    - El correo de un inicio fallido se guarda con HMAC-SHA256 y una clave secreta de configuración.
-6. **Antes de producción:**
-   - fijar una versión publicada hace al menos dos semanas y repetir la suite de T-002;
-   - repetirla con cada actualización.
+6. **Actualizaciones:** cada actualización de Better Auth repite la suite de T-002 (ver la condición 4).
+
+## Condiciones de la aceptación
+
+1. **Versión.** Antes de la fase 1, fijar una versión de Better Auth publicada hace al menos 2 semanas y repetir con ella las 54 pruebas de `apps/api` de la prueba T-002.
+2. **Contexto RLS solo por sus funciones.** Añadir a la CI una comprobación que falle si se fija `app.org_id` o `app.user_id` fuera de `withTenant` o `withUser`.
+3. **Contraseña y MFA.** En la fase 1, pruebas y permisos mínimos de `clinic_app` para cambiar la contraseña y para desactivar el MFA.
+4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
+5. **Operador de la plataforma.** El rol de base de datos del operador (el único que lee los eventos de auditoría sin organización) es una tarea de la fase 1. Queda como pendiente P-11.
 
 ## Consecuencias
 

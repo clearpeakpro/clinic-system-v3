@@ -4,6 +4,7 @@
 - **Tarea:** [`docs/tasks/T-002-prueba-better-auth.md`](../tasks/T-002-prueba-better-auth.md) · ADR 0021, 0002
 - **Código:** rama [`spike/t-002-better-auth`](https://github.com/clearpeakpro/clinic-system-v3/tree/spike/t-002-better-auth) (commit `264a6fe`). **No se fusiona.**
 - **Recomendación:** **adoptar Better Auth** para identidad y sesiones, con las condiciones de la sección «Condiciones». Los criterios eliminatorios (3, 5 y 6) pasan.
+- **Decisión:** [ADR 0023](../decisions/0023-autenticacion.md), aceptada con condiciones.
 
 ## Resultado por criterio
 
