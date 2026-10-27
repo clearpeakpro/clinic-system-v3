@@ -114,6 +114,8 @@ Cada una de esas salidas tiene su control propio.
 
 Todas las tablas con datos de una organización tienen `ENABLE` y `FORCE ROW LEVEL SECURITY`.
 
+Los roles los crea un superusuario con `packages/db/sql/bootstrap.sql`, una vez por base de datos y antes de la primera migración: `clinic_migrator` no puede crear roles. La semilla ficticia (solo desarrollo y pruebas) también corre como `clinic_migrator` con `SET ROLE clinic_owner`, fijando el contexto de cada organización.
+
 ### Contexto por transacción
 
 - El servidor obtiene `org_id` y `location_id` de la sesión y de la membresía validada, nunca de un encabezado enviado por el cliente.
@@ -122,7 +124,7 @@ Todas las tablas con datos de una organización tienen `ENABLE` y `FORCE ROW LEV
 
 ### Políticas
 
-- `USING (organization_id = current_setting('app.org_id', true)::uuid)` para SELECT, UPDATE y DELETE.
+- `USING (organization_id = NULLIF(current_setting('app.org_id', true), '')::uuid)` para SELECT, UPDATE y DELETE. `NULLIF` es necesario porque, en una conexión reutilizada, el valor vuelve a `''` tras la transacción y `''::uuid` lanzaría un error.
 - `WITH CHECK` con la misma condición para INSERT y UPDATE.
 - `audit_log` solo tiene política de INSERT, sin UPDATE ni DELETE.
 
