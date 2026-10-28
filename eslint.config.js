@@ -1,8 +1,9 @@
 import js from '@eslint/js';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/', '**/dist/', '**/coverage/', '**/.turbo/'] },
+  { ignores: ['**/node_modules/', '**/dist/', '**/coverage/', '**/.turbo/', '**/dev-dist/', '**/playwright-report/', '**/test-results/'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
@@ -18,6 +19,11 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
     },
+  },
+  {
+    files: ['**/*.tsx'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
   },
   {
     files: ['**/*.js'],

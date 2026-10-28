@@ -26,10 +26,12 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { AuditService } from './audit.ts';
 import type { Principal } from './principal.ts';
 import { ContextService, HttpError, InvitationService, MembershipService, type RequestMeta } from './services.ts';
 
 export const USER_EMAIL_LOOKUP = Symbol('USER_EMAIL_LOOKUP');
+export const IDLE_TIMEOUT_SECONDS = Symbol('IDLE_TIMEOUT_SECONDS');
 export type UserEmailLookup = (userId: string) => Promise<string | null>;
 
 const PUBLIC = 'clinic:public';
@@ -96,8 +98,16 @@ function metaOf(request: FastifyRequest): RequestMeta {
 @Controller('me')
 export class MeController {
   readonly #contexts: ContextService;
-  constructor(@Inject(ContextService) contexts: ContextService) {
+  readonly #audit: AuditService;
+  readonly #idleTimeoutSeconds: number;
+  constructor(
+    @Inject(ContextService) contexts: ContextService,
+    @Inject(AuditService) audit: AuditService,
+    @Inject(IDLE_TIMEOUT_SECONDS) idleTimeoutSeconds: number,
+  ) {
     this.#contexts = contexts;
+    this.#audit = audit;
+    this.#idleTimeoutSeconds = idleTimeoutSeconds;
   }
 
   @Get()
@@ -105,6 +115,9 @@ export class MeController {
     const principal = principalOf(request);
     return {
       userId: principal.userId,
+      name: principal.name,
+      email: principal.email,
+      idleTimeoutSeconds: this.#idleTimeoutSeconds,
       twoFactorEnabled: principal.twoFactorEnabled,
       mfaRequired: principal.mfaRequired,
       context: principal.context,
@@ -115,6 +128,22 @@ export class MeController {
   @Get('locations')
   locations(@Req() request: FastifyRequest) {
     return this.#contexts.choices(principalOf(request));
+  }
+
+  /**
+   * S-GEN-20: la web avisa que cierra la sesión por inactividad (para la
+   * auditoría) y después llama a /api/auth/sign-out.
+   */
+  @Post('idle-logout')
+  @HttpCode(204)
+  async idleLogout(@Req() request: FastifyRequest) {
+    const principal = principalOf(request);
+    await this.#audit.platform({
+      action: 'auth.sign_out.idle',
+      actorType: 'user',
+      actorId: principal.userId,
+      ...metaOf(request),
+    });
   }
 }
 
@@ -200,6 +229,8 @@ export interface ApiProviders {
   invitations: InvitationService;
   memberships: MembershipService;
   emailOf: UserEmailLookup;
+  audit: AuditService;
+  idleTimeoutSeconds: number;
 }
 
 export function createApiModule(providers: ApiProviders) {
@@ -210,6 +241,8 @@ export function createApiModule(providers: ApiProviders) {
       { provide: InvitationService, useValue: providers.invitations },
       { provide: MembershipService, useValue: providers.memberships },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
+      { provide: AuditService, useValue: providers.audit },
+      { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },
     ],
   })
   class ApiModule {}

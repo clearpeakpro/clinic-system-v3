@@ -22,6 +22,8 @@ export interface RoleAssignment {
 
 export interface Principal {
   userId: string;
+  name: string;
+  email: string;
   sessionId: string;
   twoFactorEnabled: boolean;
   /** Roles activos en todas sus organizaciones (leídos con withUser). */
@@ -114,6 +116,8 @@ export class PrincipalResolver {
       ok: true,
       principal: {
         userId: user.id,
+        name: user.name,
+        email: user.email,
         sessionId: session.id,
         twoFactorEnabled: user.twoFactorEnabled === true,
         assignments,

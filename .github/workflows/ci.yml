@@ -27,3 +27,24 @@ jobs:
       # Testcontainers usa el Docker del runner. Incluye siempre las pruebas de
       # configuración de Better Auth (ADR 0023, condición 4: apps/api/test/config.test.ts).
       - run: pnpm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Navegador de Playwright
+        run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
+      # Flujos de rol de T-004: Postgres (Testcontainers) + API real + web compilada.
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

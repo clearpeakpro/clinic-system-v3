@@ -57,20 +57,20 @@ describe('criterio 8: auditoría', () => {
 
     // Invitación, aceptación y revocación de la membresía.
     await selectContext(withTotp, NORTE);
-    await withTotp.post('/invitations', { email: 'auditada@example.test', role: 'recepcion', locationId: NORTE.locations[0].id });
+    await withTotp.post('/api/invitations', { email: 'auditada@example.test', role: 'recepcion', locationId: NORTE.locations[0].id });
     const link = lastInvitationLink(app);
     const token = link.searchParams.get('token') ?? '';
     secrets.push(token);
     const newPassword = 'Ficticia-auditada-555';
     secrets.push(newPassword);
-    const accepted = await new Client(app, ips[4]).post('/invitations/accept', {
+    const accepted = await new Client(app, ips[4]).post('/api/invitations/accept', {
       organizationId: NORTE.id,
       token,
       name: 'Persona Auditada',
       password: newPassword,
     });
     const { membershipId } = accepted.json<{ membershipId: string }>();
-    await withTotp.post(`/memberships/${membershipId}/deactivate`, { reason: 'Baja de prueba' });
+    await withTotp.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Baja de prueba' });
 
     // Cookies de sesión: también son secretos.
     for (const value of [...client.cookies.values(), ...withTotp.cookies.values()]) secrets.push(value);

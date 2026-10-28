@@ -67,7 +67,7 @@ describe('regla escalonada de roles', () => {
 
   describe('invitar', () => {
     const invite = (client: Client, role: string, locationId: string | null = location0) =>
-      client.post('/invitations', { email: `inv.${role}.${String(Date.now())}@example.test`, role, locationId });
+      client.post('/api/invitations', { email: `inv.${role}.${String(Date.now())}@example.test`, role, locationId });
 
     it('el Administrador invita roles clínicos', async () => {
       for (const role of ['recepcion', 'enfermeria', 'proveedor']) {
@@ -102,7 +102,7 @@ describe('regla escalonada de roles', () => {
 
   describe('quitar o desactivar membresías', () => {
     const deactivate = (client: Client, membershipId: string) =>
-      client.post(`/memberships/${membershipId}/deactivate`, { reason: 'Prueba de la regla escalonada' });
+      client.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Prueba de la regla escalonada' });
 
     it('el Administrador no puede desactivar a un Propietario', async () => {
       const target = await member('reg-objetivo-prop', 'propietario');
@@ -149,7 +149,7 @@ describe('regla escalonada de roles', () => {
 
   describe('cambiar roles', () => {
     const change = (client: Client, membershipId: string, roles: { role: string; locationId: string | null }[]) =>
-      client.post(`/memberships/${membershipId}/roles`, { roles, reason: 'Prueba de la regla escalonada' });
+      client.post(`/api/memberships/${membershipId}/roles`, { roles, reason: 'Prueba de la regla escalonada' });
 
     it('el Administrador cambia un rol clínico por otro', async () => {
       const target = await member('reg-cambio-ok', 'recepcion');
@@ -188,7 +188,7 @@ describe('regla escalonada de roles', () => {
 
     it('cambiar roles exige motivo', async () => {
       const target = await member('reg-sin-motivo', 'recepcion');
-      const response = await admin.post(`/memberships/${target.membershipId}/roles`, {
+      const response = await admin.post(`/api/memberships/${target.membershipId}/roles`, {
         roles: [{ role: 'enfermeria', locationId: location0 }],
       });
       expect(response.statusCode).toBe(400);
@@ -198,7 +198,7 @@ describe('regla escalonada de roles', () => {
       // Solo la semilla de desarrollo (y, desde T-007, el operador) lo crea.
       expect(ownerStaff.userId).toBeTruthy();
       for (const client of [owner, admin]) {
-        const response = await client.post('/invitations', {
+        const response = await client.post('/api/invitations', {
           email: 'otro.propietario@example.test',
           role: 'propietario',
           locationId: null,

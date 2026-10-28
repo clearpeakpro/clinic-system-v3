@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DEV_OWNERS, seedDevOwners } from '../src/dev-seed.ts';
+import { DEV_OWNERS, DEV_USERS, seedDevUsers } from '../src/dev-seed.ts';
 import { Client, enrollTotp, NORTE, selectContext, signIn, startApp, SUR, type TestApp } from './support.ts';
 
 // El primer Propietario de cada organización ficticia lo crea solo la semilla
@@ -11,9 +11,9 @@ describe('semilla de desarrollo: Propietarios ficticios', () => {
 
   beforeAll(async () => {
     app = await startApp();
-    await seedDevOwners(app, password);
+    await seedDevUsers(app, password);
     // Idempotente: una segunda ejecución no duplica nada.
-    await seedDevOwners(app, password);
+    await seedDevUsers(app, password);
   });
   afterAll(async () => {
     await app.close();
@@ -25,9 +25,9 @@ describe('semilla de desarrollo: Propietarios ficticios', () => {
       const staff = { userId: '', email: owner.email, password };
       expect((await signIn(client, staff)).statusCode).toBe(200);
       // Rol que exige MFA: obligado a inscribirse primero.
-      expect((await client.get('/me/locations')).statusCode).toBe(403);
+      expect((await client.get('/api/me/locations')).statusCode).toBe(403);
       await enrollTotp(client, staff);
-      const choices = (await client.get('/me/locations')).json<{ organizationId: string; locations: unknown[] }[]>();
+      const choices = (await client.get('/api/me/locations')).json<{ organizationId: string; locations: unknown[] }[]>();
       expect(choices).toHaveLength(1);
       expect(choices[0]?.organizationId).toBe(owner.org.id);
       expect(choices[0]?.locations).toHaveLength(owner.org.locations.length);
@@ -40,8 +40,8 @@ describe('semilla de desarrollo: Propietarios ficticios', () => {
   it('no duplica usuarios ni roles al repetirse', async () => {
     const { rows } = await app.pool.query<{ n: number }>(
       `select count(*)::int as n from auth."user" where email = any($1)`,
-      [DEV_OWNERS.map((o) => o.email)],
+      [DEV_USERS.map((u) => u.email)],
     );
-    expect(rows[0]?.n).toBe(2);
+    expect(rows[0]?.n).toBe(DEV_USERS.length);
   });
 });

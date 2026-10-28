@@ -8,7 +8,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { AuditService } from './audit.ts';
-import type { AppConfig } from './config.ts';
+import { IDLE_GRACE_SECONDS, type AppConfig } from './config.ts';
 import type { LogSink } from './logging.ts';
 import { checkPassword } from './password-policy.ts';
 import { SignInLimiter } from './sign-in-limits.ts';
@@ -72,7 +72,9 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
     session: {
       // Inactividad: expiración deslizante. updateAge corto para que cada uso
       // extienda la sesión. La expiración absoluta la aplica nuestro guard.
-      expiresIn: config.idleTimeoutSeconds,
+      // El servidor corta a límite + 2 min sin actividad (S-GEN-20); la web
+      // cierra antes, al llegar al límite.
+      expiresIn: config.idleTimeoutSeconds + IDLE_GRACE_SECONDS,
       updateAge: Math.min(60, Math.floor(config.idleTimeoutSeconds / 2)),
       // Condición 4: sin cookieCache. Cada petición consulta la base de datos,
       // así la revocación es inmediata.

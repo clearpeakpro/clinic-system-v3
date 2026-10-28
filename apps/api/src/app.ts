@@ -51,7 +51,7 @@ export async function createApp({ config, mailer, logs }: AppDeps) {
       },
     },
   });
-  const app = await NestFactory.create<NestFastifyApplication>(createApiModule({ emailOf, ...services }), adapter, {
+  const app = await NestFactory.create<NestFastifyApplication>(createApiModule({ emailOf, audit, idleTimeoutSeconds: config.idleTimeoutSeconds, ...services }), adapter, {
     logger: false,
   });
   const fastify = app.getHttpAdapter().getInstance();
@@ -108,6 +108,8 @@ export async function createApp({ config, mailer, logs }: AppDeps) {
     void reply.header('cache-control', 'no-store');
   });
 
+  // Todo bajo /api (mismo origen que la web: proxy de Vite en local, Caddy en B).
+  app.setGlobalPrefix('api');
   app.useGlobalGuards(new PermissionGuard(app.get(Reflector)));
   app.useGlobalFilters(new ErrorFilter());
   await app.init();
