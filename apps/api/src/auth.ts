@@ -1,3 +1,4 @@
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@clinic/shared';
 import { authSchema, account, session, twoFactor as twoFactorTable, user, verification } from '@clinic/db';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -9,6 +10,8 @@ import { v7 as uuidv7 } from 'uuid';
 import type { AuditService } from './audit.ts';
 import type { AppConfig } from './config.ts';
 import type { LogSink } from './logging.ts';
+import { checkPassword } from './password-policy.ts';
+import { SignInLimiter } from './sign-in-limits.ts';
 
 /** Encabezado que pone nuestro montaje con la IP vista por Fastify. Se sobrescribe siempre. */
 export const CLIENT_IP_HEADER = 'x-clinic-client-ip';
@@ -32,6 +35,11 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
 
   const ipOf = (headers: Headers | undefined) => headers?.get(CLIENT_IP_HEADER) ?? null;
   const requestIdOf = (headers: Headers | undefined) => headers?.get(REQUEST_ID_HEADER) ?? undefined;
+  const limiter = new SignInLimiter(pool, config.signInAccountMaxFailures, config.signInAccountWindowSeconds);
+  const emailOf = (body: unknown) => {
+    const email = (body as { email?: unknown } | undefined)?.email;
+    return typeof email === 'string' ? email : null;
+  };
 
   return betterAuth({
     appName: 'Clinic System',
@@ -48,9 +56,14 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
     // autoSignIn: false: crear la cuenta al aceptar una invitación no abre sesión.
     // No se usa disableSignUp: también bloquea la creación desde el servidor
     // (informe T-002). El registro público se cierra con el hook de abajo.
-    // Longitud mínima: la de Better Auth (8). La política de contraseñas no está
-    // decidida todavía (se anota en el PR).
-    emailAndPassword: { enabled: true, autoSignIn: false },
+    // Política de contraseñas (ADR 0023): Better Auth aplica la longitud en
+    // alta, cambio y restablecimiento; el hook de abajo, la lista de comunes.
+    emailAndPassword: {
+      enabled: true,
+      autoSignIn: false,
+      minPasswordLength: PASSWORD_MIN_LENGTH,
+      maxPasswordLength: PASSWORD_MAX_LENGTH,
+    },
     user: {
       additionalFields: {
         disabledAt: { type: 'date', required: false, input: false },
@@ -69,6 +82,12 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
         activeLocationId: { type: 'string', required: false, input: false },
       },
     },
+    // Límite por IP (ADR 0023): el de Better Auth, activo en TODOS los
+    // entornos (por defecto solo en producción). Reglas de 1.7.7: /sign-in*,
+    // /sign-up*, /change-password: 3 intentos cada 10 s por IP y ruta;
+    // /two-factor/*: 3 cada 10 s. La IP sale de CLIENT_IP_HEADER, que pone el
+    // servidor. En memoria: vale con una instancia (entorno B).
+    rateLimit: { enabled: true, storage: 'memory' },
     advanced: {
       database: { generateId: () => uuidv7() },
       useSecureCookies: config.secureCookies,
@@ -106,7 +125,32 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
       },
     },
     hooks: {
-      before: createAuthMiddleware((ctx) => {
+      before: createAuthMiddleware(async (ctx) => {
+        // Límite por cuenta (ADR 0023), además del de IP de Better Auth.
+        if (ctx.path === '/sign-in/email') {
+          const email = emailOf(ctx.body);
+          if (email && (await limiter.isLocked(audit.hmacEmail(email)))) {
+            await audit.platform({
+              action: 'auth.sign_in.throttled',
+              actorType: 'anonymous',
+              ip: ipOf(ctx.headers),
+              requestId: requestIdOf(ctx.headers),
+              metadata: { emailHmac: audit.hmacEmail(email) },
+            });
+            throw new APIError('TOO_MANY_REQUESTS', {
+              message: 'Demasiados intentos. Espere unos minutos.',
+              code: 'too_many_attempts',
+            });
+          }
+        }
+        // Lista de contraseñas comunes en todo punto que fija una contraseña
+        // (también en las llamadas de servidor, como al aceptar una invitación).
+        const body = ctx.body as { password?: unknown; newPassword?: unknown } | undefined;
+        const newPassword =
+          ctx.path === '/sign-up/email' ? body?.password : ['/change-password', '/reset-password'].includes(ctx.path) ? body?.newPassword : undefined;
+        if (typeof newPassword === 'string' && checkPassword(newPassword) === 'password_too_common') {
+          throw new APIError('BAD_REQUEST', { message: 'Contraseña demasiado común', code: 'password_too_common' });
+        }
         // Registro público cerrado: solo el servidor crea usuarios, al aceptar
         // una invitación. Las llamadas de auth.api no traen `request`.
         if (ctx.path === '/sign-up/email' && ctx.request) {
@@ -117,7 +161,6 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
         if (ctx.path.startsWith('/two-factor/verify-') && (ctx.body as { trustDevice?: unknown } | undefined)?.trustDevice) {
           throw new APIError('BAD_REQUEST', { message: 'trustDevice no permitido', code: 'trust_device_disabled' });
         }
-        return Promise.resolve();
       }),
       after: createAuthMiddleware(async (ctx) => {
         const ip = ipOf(ctx.headers);
@@ -128,6 +171,12 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
 
         switch (ctx.path) {
           case '/sign-in/email': {
+            const email = emailOf(ctx.body);
+            if (email) {
+              // Contraseña correcta (con o sin MFA pendiente): se olvidan los fallos.
+              if (newSession) await limiter.reset(audit.hmacEmail(email));
+              else if (failed) await limiter.recordFailure(audit.hmacEmail(email));
+            }
             // OJO: este hook corre ANTES que el del plugin twoFactor. Aquí
             // newSession todavía existe aunque el plugin la descarte después
             // (twoFactorRedirect). Con trustDevice desactivado, un usuario con
@@ -137,13 +186,12 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
             } else if (newSession) {
               await audit.platform({ action: 'auth.sign_in.success', actorType: 'user', actorId: newSession.user.id, ip, requestId });
             } else if (failed) {
-              const email = (ctx.body as { email?: unknown } | undefined)?.email;
               await audit.platform({
                 action: 'auth.sign_in.failure',
                 actorType: 'anonymous',
                 ip,
                 requestId,
-                metadata: typeof email === 'string' ? { emailHmac: audit.hmacEmail(email) } : {},
+                metadata: email ? { emailHmac: audit.hmacEmail(email) } : {},
               });
             }
             break;

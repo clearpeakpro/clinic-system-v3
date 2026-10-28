@@ -26,6 +26,7 @@ import type { AuditService } from './audit.ts';
 import type { Auth } from './auth.ts';
 import type { AppConfig } from './config.ts';
 import type { Mailer } from './mailer.ts';
+import { checkPassword } from './password-policy.ts';
 import {
   rolesAt,
   rolesInOrganization,
@@ -217,6 +218,9 @@ export class InvitationService {
       userId = signedIn.principal.userId;
     } else {
       if (!input.name || !input.password) throw new HttpError(400, 'account_required');
+      // Política de contraseñas (ADR 0023), con un código claro para la pantalla.
+      const problem = checkPassword(input.password);
+      if (problem) throw new HttpError(400, problem);
       // Llamada de servidor (sin `request`): el hook de registro cerrado la deja pasar.
       try {
         const created = await this.#auth.api.signUpEmail({

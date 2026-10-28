@@ -29,8 +29,11 @@ export const acceptInvitationSchema = z.object({
   token: z.string().min(20).max(200),
   /** Solo si la persona aún no tiene cuenta. */
   name: z.string().trim().min(1).max(200).optional(),
-  /** Mismos límites que Better Auth por defecto (8–128). */
-  password: z.string().min(8).max(128).optional(),
+  /**
+   * La política (longitud y lista de contraseñas comunes) la aplica la API con
+   * códigos de error propios; aquí solo un tope para no procesar textos enormes.
+   */
+  password: z.string().max(1024).optional(),
 });
 
 export const deactivateMembershipSchema = z.object({ reason });

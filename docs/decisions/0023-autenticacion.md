@@ -44,6 +44,31 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
 4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
 5. **Operador de la plataforma.** El rol de base de datos del operador (el único que lee los eventos de auditoría sin organización) es una tarea de la fase 1. Queda como pendiente P-11.
 
+## Política de contraseñas y límite de intentos (T-003b, 2026-10-27)
+
+**Contraseñas** (`apps/api/src/password-policy.ts`, `packages/shared/src/password.ts`):
+
+- **Longitud:** de 12 a 128 caracteres. Better Auth la aplica en el alta, el cambio y el restablecimiento (`minPasswordLength` / `maxPasswordLength`), y la API también al aceptar una invitación, con códigos `password_too_short` / `password_too_long`.
+- **Sin reglas de composición:** no se exigen mayúsculas, números ni símbolos.
+- **Contraseñas comunes:** se rechazan las de una **lista local** de 46,825 contraseñas comunes de 12 o más caracteres (SecLists, MIT; ver `apps/api/data/README.md`), sin distinguir mayúsculas y sin servicios externos. Responde `password_too_common`.
+  - Se aplica en todo punto que fija una contraseña: alta, `/change-password` y `/reset-password`, también en las llamadas de servidor.
+- **Sin caducidad periódica.**
+
+**Límite de intentos de inicio de sesión:**
+
+- **Por IP (Better Auth):** el límite propio de Better Auth, que en 1.7.7 solo existe por IP y solo se activa por defecto en producción. Aquí se activa **en todos los entornos** (`rateLimit.enabled: true`, en memoria).
+  - Reglas de 1.7.7: `/sign-in*`, `/sign-up*` y `/change-password`, 3 intentos cada 10 s por IP y ruta; `/two-factor/*`, 3 cada 10 s.
+  - La IP la pone el servidor (`x-clinic-client-ip`).
+- **Por cuenta (nuestro):** Better Auth no lo tiene.
+  - Con **10 fallos en 15 minutos** sobre el mismo correo, desde cualquier IP, el inicio de sesión responde `429 too_many_attempts` hasta que los fallos salen de la ventana. Es configurable (`SIGN_IN_ACCOUNT_MAX_FAILURES`, `SIGN_IN_ACCOUNT_WINDOW_SECONDS`).
+  - Un inicio correcto borra los fallos.
+  - Se cuenta por el HMAC del correo (`auth.sign_in_failures`), exista o no la cuenta, así la respuesta no revela si el correo está registrado.
+  - Cada bloqueo se audita (`auth.sign_in.throttled`).
+- **MFA:** además, el plugin `twoFactor` bloquea la cuenta tras varios códigos fallidos (`failedVerificationCount` / `lockedUntil`).
+- **Límite conocido:** el límite por IP vive en memoria. Vale con una instancia (entorno B); con varias (entorno C), pasar a `storage: 'database'`.
+
+Pruebas: `apps/api/test/password-policy.test.ts` y `apps/api/test/sign-in-limits.test.ts`.
+
 ## Consecuencias
 
 - Se evita escribir hash de contraseñas, sesiones, cookies y TOTP propios. A cambio, se depende de un proyecto que publica con mucha frecuencia (dos versiones en dos días), y la suite de T-002 se vuelve una prueba de regresión obligatoria.

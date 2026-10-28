@@ -122,6 +122,7 @@ describe('configuración de roles y tablas', () => {
     expect(rows).toEqual([
       { table_name: 'account', privileges: 'INSERT,SELECT' },
       { table_name: 'session', privileges: 'DELETE,INSERT,SELECT,UPDATE' },
+      { table_name: 'sign_in_failures', privileges: 'DELETE,INSERT,SELECT' },
       { table_name: 'two_factor', privileges: 'INSERT,SELECT,UPDATE' },
       { table_name: 'user', privileges: 'INSERT,SELECT,UPDATE' },
       { table_name: 'verification', privileges: 'DELETE,INSERT,SELECT' },

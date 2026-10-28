@@ -82,6 +82,7 @@ describe('criterio 6: compatibilidad con RLS', () => {
     expect(rows).toEqual([
       { relname: 'account', rls: false },
       { relname: 'session', rls: false },
+      { relname: 'sign_in_failures', rls: false },
       { relname: 'two_factor', rls: false },
       { relname: 'user', rls: false },
       { relname: 'verification', rls: false },

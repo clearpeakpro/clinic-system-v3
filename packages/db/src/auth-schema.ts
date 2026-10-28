@@ -94,3 +94,19 @@ export const twoFactor = authSchema.table(
   },
   (t) => [index('two_factor_secret_idx').on(t.secret), index('two_factor_user_id_idx').on(t.userId)],
 );
+
+/**
+ * Nuestra (no es de Better Auth): intentos fallidos de inicio de sesión por
+ * cuenta, para el límite por cuenta (ADR 0023). Se guarda el HMAC-SHA256 del
+ * correo normalizado, nunca el correo. Las filas viejas se borran al registrar
+ * un fallo nuevo o al iniciar sesión correctamente.
+ */
+export const signInFailures = authSchema.table(
+  'sign_in_failures',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    keyHash: text('key_hash').notNull(),
+    createdAt: ts('created_at').notNull(),
+  },
+  (t) => [index('sign_in_failures_key_hash_created_at_idx').on(t.keyHash, t.createdAt)],
+);

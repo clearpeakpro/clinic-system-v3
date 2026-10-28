@@ -61,6 +61,20 @@ Pruebas: `test/role-assignment.test.ts` y `packages/shared/test/permissions.test
 - Los errores responden solo `{ code }`.
 - Toda respuesta lleva `Cache-Control: no-store`.
 
+## Contraseñas y límite de intentos
+
+Detalle en el ADR 0023.
+
+- **Contraseñas:**
+  - de 12 a 128 caracteres;
+  - sin reglas de composición;
+  - se rechazan las de la lista local `data/common-passwords.txt`;
+  - sin caducidad periódica.
+- **Inicio de sesión:**
+  - límite **por IP** de Better Auth (3 intentos cada 10 s), activo en todos los entornos;
+  - límite **por cuenta**: 10 fallos en 15 min → `429 too_many_attempts`.
+  - Las pruebas dan a cada cliente su propia IP (`support.ts`).
+
 ## Sesiones
 
 - **Inactividad:** `IDLE_TIMEOUT_SECONDS` (30 min por defecto), deslizante.

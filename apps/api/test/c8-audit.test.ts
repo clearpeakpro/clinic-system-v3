@@ -22,7 +22,9 @@ import {
 describe('criterio 8: auditoría', () => {
   let app: TestApp;
   let admin: Staff;
-  const ip = '198.51.100.23';
+  // Una IP por cliente (198.51.100.0/24, de documentación): el límite por IP
+  // de Better Auth permite 3 inicios de sesión cada 10 s desde la misma IP.
+  const ips = ['198.51.100.21', '198.51.100.22', '198.51.100.23', '198.51.100.24', '198.51.100.25'] as const;
   const secrets: string[] = [];
   const startedAt = new Date();
 
@@ -32,24 +34,24 @@ describe('criterio 8: auditoría', () => {
     secrets.push(admin.password);
 
     // Inicio de sesión fallido.
-    const failed = new Client(app, ip);
+    const failed = new Client(app, ips[0]);
     const wrongPassword = 'Clave-equivocada-XYZ-987';
     secrets.push(wrongPassword);
     await failed.post('/api/auth/sign-in/email', { email: admin.email, password: wrongPassword });
 
     // Inicio correcto + inscripción de MFA.
-    const client = new Client(app, ip);
+    const client = new Client(app, ips[1]);
     await signIn(client, admin);
     const { secret, backupCodes } = await enrollTotp(client, admin);
     secrets.push(secret, ...backupCodes);
 
     // Inicio con MFA (TOTP) y con código de recuperación.
-    const withTotp = new Client(app, ip);
+    const withTotp = new Client(app, ips[2]);
     await signIn(withTotp, admin);
     const code = await totp(secret);
     await withTotp.post('/api/auth/two-factor/verify-totp', { code });
     const backup = backupCodes[0] ?? '';
-    const withBackup = new Client(app, ip);
+    const withBackup = new Client(app, ips[3]);
     await signIn(withBackup, admin);
     await withBackup.post('/api/auth/two-factor/verify-backup-code', { code: backup });
 
@@ -61,7 +63,7 @@ describe('criterio 8: auditoría', () => {
     secrets.push(token);
     const newPassword = 'Ficticia-auditada-555';
     secrets.push(newPassword);
-    const accepted = await new Client(app, ip).post('/invitations/accept', {
+    const accepted = await new Client(app, ips[4]).post('/invitations/accept', {
       organizationId: NORTE.id,
       token,
       name: 'Persona Auditada',
@@ -106,11 +108,12 @@ describe('criterio 8: auditoría', () => {
   it('cada evento lleva actor, IP y hora; los de organización, su organización', async () => {
     const events = await eventsSince();
     for (const event of events.filter((e) => /^auth\.(sign_in\.(success|mfa_required)|mfa\.)/.test(e.action))) {
-      expect(event, event.action).toMatchObject({ actor_type: 'user', actor_id: admin.userId, ip, organization_id: null });
+      expect(event, event.action).toMatchObject({ actor_type: 'user', actor_id: admin.userId, organization_id: null });
+      expect(ips, event.action).toContain(event.ip);
     }
     for (const event of events.filter((e) => e.action.startsWith('invitation.') || e.action.startsWith('membership.'))) {
       expect(event.organization_id, event.action).toBe(NORTE.id);
-      expect(event.ip, event.action).toBe(ip);
+      expect(ips, event.action).toContain(event.ip);
       expect(event.actor_id, event.action).not.toBeNull();
     }
     for (const event of events) expect(event.created_at).toBeInstanceOf(Date);
@@ -125,7 +128,7 @@ describe('criterio 8: auditoría', () => {
   it('el inicio de sesión fallido guarda el correo con HMAC-SHA256 y clave secreta', async () => {
     const failure = (await eventsSince()).find((e) => e.action === 'auth.sign_in.failure');
     const expected = createHmac('sha256', app.config.auditHmacKey).update(admin.email.toLowerCase()).digest('hex');
-    expect(failure).toMatchObject({ actor_type: 'anonymous', actor_id: null, ip, organization_id: null });
+    expect(failure).toMatchObject({ actor_type: 'anonymous', actor_id: null, ip: ips[0], organization_id: null });
     expect(failure?.metadata).toEqual({ emailHmac: expected });
     // No es un sha256 simple del correo.
     const { createHash } = await import('node:crypto');
