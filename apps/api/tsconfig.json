@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // NestJS usa decoradores. No dependemos de emitDecoratorMetadata:
+    // toda inyección es explícita con @Inject(Token).
+    "experimentalDecorators": true,
+    "erasableSyntaxOnly": false
+  },
+  "include": ["src", "test", "scripts", "*.ts"]
+}

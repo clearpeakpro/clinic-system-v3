@@ -1,0 +1,41 @@
+{
+  "name": "@clinic/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
+    "seed:dev": "tsx --env-file-if-exists=../../.env scripts/seed-dev-owners.ts"
+  },
+  "dependencies": {
+    "@clinic/db": "workspace:*",
+    "@clinic/shared": "workspace:*",
+    "@nestjs/common": "^12.2.0",
+    "@nestjs/core": "^12.2.0",
+    "@nestjs/platform-fastify": "^12.2.0",
+    "better-auth": "1.7.7",
+    "drizzle-orm": "^0.45.4",
+    "fastify": "^5.12.7",
+    "nodemailer": "^10.2.1",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "uuid": "^14.0.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.1",
+    "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "eslint": "^10.13.0",
+    "otplib": "^13.5.0",
+    "testcontainers": "^12.2.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

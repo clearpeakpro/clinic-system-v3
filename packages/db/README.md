@@ -45,6 +45,19 @@ const rows = await withTenant(orgId, (tx) => tx.select().from(patients));
 
 Abre una transacción, ejecuta `set_config('app.org_id', orgId, true)` (local a la transacción) y luego `fn(tx)`. Fuera de `withTenant`, `clinic_app` no ve ninguna fila.
 
+## `withUser` (ADR 0023)
+
+`withUser(userId, fn)` fija solo `app.user_id`, siempre a partir de la sesión validada. Con las políticas `own_memberships_read` y `own_membership_roles_read`, que son **solo `FOR SELECT`**, la persona lee sus membresías y roles en todas sus organizaciones y nada más. Escribir sigue exigiendo `withTenant`. Pruebas: `test/memberships.test.ts`.
+
+**Condición 2 del ADR 0023:** `scripts/check-rls-context.ts` (`pnpm check:rls-context`, también dentro de `pnpm lint` y en la CI) falla si `app.org_id` o `app.user_id` se fijan fuera de `withTenant` / `withUser` o sin `true` como tercer argumento.
+
+## Identidad (T-003)
+
+- **Esquema `auth`:** las tablas de Better Auth (`user`, `session`, `account`, `verification`, `two_factor`). Son globales y no tienen RLS de organización. `clinic_app` solo tiene los GRANT medidos en T-002 (ver `migrations/0003_identity_rls.sql`).
+- **Esquema `app`:** `memberships`, `membership_roles`, `invitations` y `audit_log`, con RLS + `FORCE`.
+  - `audit_log` es append-only: `clinic_app` solo puede insertar.
+  - Los eventos sin organización solo los lee el operador de la plataforma (T-007).
+
 ## Desarrollo local
 
 ```sh

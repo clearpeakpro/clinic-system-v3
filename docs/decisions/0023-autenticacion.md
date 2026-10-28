@@ -36,6 +36,9 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
 ## Condiciones de la aceptación
 
 1. **Versión.** Antes de la fase 1, fijar una versión de Better Auth publicada hace al menos 2 semanas y repetir con ella las 54 pruebas de `apps/api` de la prueba T-002.
+   - **Cumplida en T-003 (2026-10-27):** **`better-auth@1.7.7`**, publicada el **2026-09-30** (27 días). Es la más reciente con al menos 2 semanas: 1.7.8 salió el 2026-10-14; las beta de 1.8 se descartan.
+   - Las 54 pruebas de la rama `spike/t-002-better-auth` pasan con 1.7.7, con las mismas operaciones sobre `auth.*` que con 1.7.14.
+   - Fijada sin `^` en `apps/api/package.json`.
 2. **Contexto RLS solo por sus funciones.** Añadir a la CI una comprobación que falle si se fija `app.org_id` o `app.user_id` fuera de `withTenant` o `withUser`.
 3. **Contraseña y MFA.** En la fase 1, pruebas y permisos mínimos de `clinic_app` para cambiar la contraseña y para desactivar el MFA.
 4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
