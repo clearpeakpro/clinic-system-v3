@@ -6,12 +6,13 @@
     "node": ">=24"
   },
   "scripts": {
-    "lint": "turbo run lint",
+    "lint": "turbo run lint && pnpm check:rls-context",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "db:bootstrap": "pnpm --filter @clinic/db db:bootstrap",
     "db:migrate": "pnpm --filter @clinic/db db:migrate",
-    "db:seed": "pnpm --filter @clinic/db db:seed"
+    "db:seed": "pnpm --filter @clinic/db db:seed && pnpm --filter @clinic/api seed:dev",
+    "check:rls-context": "node packages/db/scripts/check-rls-context.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

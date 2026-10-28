@@ -1,0 +1,129 @@
+import 'reflect-metadata';
+import { createTenantDb, user as userTable } from '@clinic/db';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import pg from 'pg';
+import { AuditService } from './audit.ts';
+import { CLIENT_IP_HEADER, createAuth, REQUEST_ID_HEADER } from './auth.ts';
+import { assertConfig, type AppConfig } from './config.ts';
+import { createApiModule, ErrorFilter, PermissionGuard } from './http.ts';
+import { LOG_REDACT_PATHS, type LogSink } from './logging.ts';
+import type { Mailer } from './mailer.ts';
+import { PrincipalResolver } from './principal.ts';
+import { hasSessionCookie, isMfaEnrollmentPath, toHeaders } from './request-context.ts';
+import { ContextService, InvitationService, MembershipService } from './services.ts';
+
+export interface AppDeps {
+  config: AppConfig;
+  mailer: Mailer;
+  logs: LogSink;
+}
+
+export async function createApp({ config, mailer, logs }: AppDeps) {
+  assertConfig(config, config.secureCookies);
+  const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
+  const tenantDb = createTenantDb(pool);
+  const audit = new AuditService(pool, tenantDb, config.auditHmacKey);
+  const auth = createAuth({ config, pool, audit, logs });
+  const resolver = new PrincipalResolver(auth, pool, tenantDb, config);
+  const plain = drizzle({ client: pool });
+
+  const services = {
+    contexts: new ContextService(pool, tenantDb),
+    invitations: new InvitationService(tenantDb, auth, mailer, audit, config),
+    memberships: new MembershipService(pool, tenantDb, resolver, audit),
+  };
+  const emailOf = async (userId: string) =>
+    (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;
+
+  const adapter = new FastifyAdapter({
+    trustProxy: config.trustProxy,
+    logger: {
+      level: 'info',
+      redact: LOG_REDACT_PATHS,
+      stream: {
+        write: (line: string) => {
+          logs.write({ source: 'fastify', level: 'info', message: line });
+        },
+      },
+    },
+  });
+  const app = await NestFactory.create<NestFastifyApplication>(createApiModule({ emailOf, ...services }), adapter, {
+    logger: false,
+  });
+  const fastify = app.getHttpAdapter().getInstance();
+
+  fastify.decorateRequest('principal', null);
+
+  // Identificación en todas las rutas, incluidas las de Better Auth.
+  fastify.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+    const path = request.url.split('?')[0] ?? '';
+    const isAuthRoute = path.startsWith('/api/auth/');
+    const resolution = await resolver.resolve(toHeaders(request.headers), hasSessionCookie(request.headers.cookie));
+    if (!resolution.ok) {
+      // Better Auth gestiona por sí mismo una cookie vencida (p. ej. al iniciar sesión).
+      if (isAuthRoute) return;
+      return reply.status(resolution.status).send({ code: resolution.code });
+    }
+    for (const cookie of resolution.setCookies) void reply.header('set-cookie', cookie);
+    request.principal = resolution.principal;
+    const principal = resolution.principal;
+    // MFA por rol (ADR 0021, 0023): la regla vive aquí, no en el plugin.
+    if (principal?.mfaRequired && !principal.twoFactorEnabled && !isMfaEnrollmentPath(path)) {
+      return reply.status(403).send({ code: 'mfa_enrollment_required' });
+    }
+  });
+
+  // Better Auth montado como en su integración oficial con Fastify.
+  fastify.route({
+    method: ['GET', 'POST'],
+    url: '/api/auth/*',
+    async handler(request, reply) {
+      const url = new URL(request.url, config.baseURL);
+      const headers = toHeaders(request.headers);
+      // IP e id de petición los pone el servidor; nunca los que envíe el cliente.
+      headers.set(CLIENT_IP_HEADER, request.ip);
+      headers.set(REQUEST_ID_HEADER, request.id);
+      const response = await auth.handler(
+        new Request(url, {
+          method: request.method,
+          headers,
+          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
+        }),
+      );
+      void reply.status(response.status);
+      response.headers.forEach((value, key) => {
+        if (key !== 'set-cookie') void reply.header(key, value);
+      });
+      for (const cookie of response.headers.getSetCookie()) void reply.header('set-cookie', cookie);
+      return reply.send(response.body ? await response.text() : null);
+    },
+  });
+
+  // ADR 0014 y CLAUDE.md: toda la API responde con no-store.
+  fastify.addHook('onSend', async (_request, reply) => {
+    void reply.header('cache-control', 'no-store');
+  });
+
+  app.useGlobalGuards(new PermissionGuard(app.get(Reflector)));
+  app.useGlobalFilters(new ErrorFilter());
+  await app.init();
+
+  return {
+    app,
+    fastify,
+    auth,
+    pool,
+    services,
+    resolver,
+    async close() {
+      await app.close();
+      await pool.end();
+    },
+  };
+}
+
+export type ClinicApp = Awaited<ReturnType<typeof createApp>>;

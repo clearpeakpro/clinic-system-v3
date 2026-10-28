@@ -20,6 +20,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # ADR 0023, condición 2 (también va dentro de pnpm lint; aquí, visible aparte).
+      - name: Contexto RLS solo con withTenant / withUser
+        run: pnpm check:rls-context
       - run: pnpm typecheck
-      # Testcontainers usa el Docker del runner.
+      # Testcontainers usa el Docker del runner. Incluye siempre las pruebas de
+      # configuración de Better Auth (ADR 0023, condición 4: apps/api/test/config.test.ts).
       - run: pnpm test

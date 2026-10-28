@@ -14,6 +14,12 @@ export default tseslint.config(
     },
   },
   {
+    // Los módulos de NestJS son clases vacías con decorador.
+    rules: {
+      '@typescript-eslint/no-extraneous-class': ['error', { allowWithDecorator: true }],
+    },
+  },
+  {
     files: ['**/*.js'],
     ...tseslint.configs.disableTypeChecked,
   },

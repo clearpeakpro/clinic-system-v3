@@ -33,7 +33,9 @@ TypeScript en todo. pnpm + Turborepo.
 - `pnpm dev` — web + api + Postgres en docker compose
 - `pnpm test` — unitarias + integración (Testcontainers)
 - `pnpm test:e2e` — Playwright
-- `pnpm db:bootstrap` (superusuario, una vez) / `pnpm db:migrate` / `pnpm db:seed`
+- `pnpm db:bootstrap` (superusuario, una vez) / `pnpm db:migrate` / `pnpm db:seed` (clínicas ficticias y sus Propietarios)
+- `pnpm --filter @clinic/api dev` — API en http://127.0.0.1:3001 (Mailpit en http://localhost:8025)
+- `pnpm check:rls-context` — el contexto RLS solo se fija en `withTenant` / `withUser` (va dentro de `pnpm lint`)
 - `pnpm lint` / `pnpm typecheck`
 
 ## Reglas no negociables

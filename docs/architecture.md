@@ -33,7 +33,7 @@ Se mantiene el stack: React + Vite + TypeScript, Tailwind + shadcn/ui, NestJS + 
 | Worker | `apps/worker`: proceso separado con pg-boss (ADR 0020) |
 | Base de datos | PostgreSQL 16 + Drizzle. En B, en el mismo EC2; en C, Amazon RDS. |
 | Tiempo real | WebSockets (Socket.IO) + Postgres LISTEN/NOTIFY |
-| Autenticación | Better Auth, **condicionado a la prueba técnica** (ADR 0021). Los permisos clínicos son siempre nuestros. |
+| Autenticación | Better Auth 1.7.7 (ADR 0023, aceptado con condiciones tras la prueba T-002). Los permisos clínicos son siempre nuestros. |
 | Archivos | S3 (SSE-KMS, URLs firmadas) |
 | PDF | Plantillas HTML impresas con Playwright en el worker. En B, un trabajo a la vez. |
 | Correo | Amazon SES |
@@ -121,6 +121,8 @@ Los roles los crea un superusuario con `packages/db/sql/bootstrap.sql`, una vez 
 - El servidor obtiene `org_id` y `location_id` de la sesión y de la membresía validada, nunca de un encabezado enviado por el cliente.
 - Todo el acceso a datos pasa por `withTenant(ctx, fn)`: abre una transacción y ejecuta `set_config('app.org_id', $1, true)`. El valor es local a la transacción, así que no se filtra a la siguiente petición del pool.
 - Sin contexto, `current_setting('app.org_id', true)` devuelve NULL y las políticas no dejan ver ni escribir nada.
+- **Contexto de usuario (ADR 0023):** `withUser(userId)` fija solo `app.user_id`, desde la sesión validada. Con las políticas `own_memberships_read` y `own_membership_roles_read` (solo `FOR SELECT`), la persona lee sus membresías y roles en todas sus organizaciones; escribir sigue exigiendo `app.org_id`.
+- **Comprobación en la CI** (`pnpm check:rls-context`): `app.org_id` y `app.user_id` solo se fijan en `withTenant` / `withUser`, siempre locales a la transacción.
 
 ### Políticas
 
@@ -175,6 +177,8 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | `audit_log` | ver «Auditoría» | Append-only |
 
 ## Autenticación: prueba técnica de Better Auth
+
+> **Resultado:** la prueba (T-002) pasó los 8 criterios y Better Auth se adoptó con condiciones: [ADR 0023](decisions/0023-autenticacion.md). Implementación en `apps/api` (T-003). La tabla de abajo queda como registro de lo que se exigió.
 
 Better Auth **no se adopta hasta pasar esta prueba**: una rama desechable de 2 a 3 días con NestJS + Fastify, Drizzle y los roles de base de datos descritos arriba. Better Auth se usa para identidad y sesiones; **los permisos clínicos y por sede son siempre nuestros**.
 
