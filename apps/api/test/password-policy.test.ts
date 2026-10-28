@@ -54,7 +54,7 @@ describe('política de contraseñas', () => {
     });
 
     const invite = async (email: string) => {
-      expect((await admin.post('/invitations', { email, role: 'recepcion', locationId: NORTE.locations[0].id })).statusCode).toBe(201);
+      expect((await admin.post('/api/invitations', { email, role: 'recepcion', locationId: NORTE.locations[0].id })).statusCode).toBe(201);
       const link = lastInvitationLink(app, email);
       return { organizationId: link.searchParams.get('org'), token: link.searchParams.get('token') };
     };
@@ -67,12 +67,12 @@ describe('política de contraseñas', () => {
         ['z'.repeat(129), 'password_too_long'],
       ];
       for (const [password, code] of cases) {
-        const response = await new Client(app).post('/invitations/accept', { ...link, name: 'Persona', password });
+        const response = await new Client(app).post('/api/invitations/accept', { ...link, name: 'Persona', password });
         expect(response.statusCode, code).toBe(400);
         expect(response.json(), code).toEqual({ code });
       }
       // La invitación sigue sin usar y acepta una contraseña válida sin composición.
-      const ok = await new Client(app).post('/invitations/accept', { ...link, name: 'Persona', password: 'el gato duerme en la ventana' });
+      const ok = await new Client(app).post('/api/invitations/accept', { ...link, name: 'Persona', password: 'el gato duerme en la ventana' });
       expect(ok.statusCode).toBe(201);
     });
 

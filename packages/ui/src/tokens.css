@@ -1,0 +1,52 @@
+/*
+ * Tokens de Clinic System (T-004). Fuente: design/stitch/<módulo>/<pantalla>/DESIGN.md
+ * (todas las copias son idénticas). Se importa después de `@import "tailwindcss"`.
+ *
+ *  - Colores, tipografía y espaciado: palette.generated.css, generado desde el
+ *    bloque YAML de DESIGN.md (pnpm --filter @clinic/ui tokens:palette).
+ *  - Modo oscuro: DERIVADO con material-color-utilities (Stitch no lo trae).
+ *  - Radios y elevación: prosa de DESIGN.md (decisión de T-004; el YAML y
+ *    code.html dan otros radios).
+ */
+@import './palette.generated.css';
+
+:root {
+  /* Elevación (prosa, «Elevation Levels»). */
+  --shadow-level-1: 0 1px 3px 0 rgb(16 32 30 / 0.05), 0 1px 2px -1px rgb(16 32 30 / 0.03);
+  --shadow-level-2: 0 4px 6px -1px rgb(16 32 30 / 0.07), 0 2px 4px -2px rgb(16 32 30 / 0.05);
+  --shadow-level-3: 0 10px 15px -3px rgb(16 32 30 / 0.1), 0 4px 6px -4px rgb(16 32 30 / 0.05);
+  /* Nivel 2 hacia arriba: barra inferior del teléfono (S-GEN-12). */
+  --shadow-level-2-up: 0 -2px 10px 0 rgb(16 32 30 / 0.06);
+  --backdrop: rgb(16 32 30 / 0.4);
+  color-scheme: light;
+}
+
+.dark {
+  /* Derivado: en oscuro las sombras apenas se ven; se refuerzan. */
+  --shadow-level-1: 0 1px 3px 0 rgb(0 0 0 / 0.4);
+  --shadow-level-2: 0 4px 8px -1px rgb(0 0 0 / 0.45);
+  --shadow-level-3: 0 12px 20px -4px rgb(0 0 0 / 0.55);
+  --shadow-level-2-up: 0 -2px 10px 0 rgb(0 0 0 / 0.45);
+  --backdrop: rgb(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+@theme inline {
+  /* Fuentes (alojadas en la app con @fontsource, sin CDN). */
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Radios (prosa, «Shapes»): componentes 8 px, superficies 12 px, insignias redondas. */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-full: 9999px;
+
+  --shadow-level-1: var(--shadow-level-1);
+  --shadow-level-2: var(--shadow-level-2);
+  --shadow-level-3: var(--shadow-level-3);
+  --shadow-level-2-up: var(--shadow-level-2-up);
+
+  /* Objetivo táctil mínimo (CLAUDE.md, regla 10): 48 dp; kiosco 64 dp. */
+  --spacing-touch: 3rem;
+  --spacing-touch-kiosk: 4rem;
+}

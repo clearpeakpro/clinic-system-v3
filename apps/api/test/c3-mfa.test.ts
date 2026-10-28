@@ -27,10 +27,10 @@ describe('criterio 3: MFA por rol', () => {
   });
 
   const blockedPaths = [
-    ['GET', '/me'],
-    ['POST', '/context'],
-    ['GET', '/me/locations'],
-    ['POST', '/invitations'],
+    ['GET', '/api/me'],
+    ['POST', '/api/context'],
+    ['GET', '/api/me/locations'],
+    ['POST', '/api/invitations'],
     ['GET', '/api/auth/list-sessions'],
     ['POST', '/api/auth/update-user'],
   ] as const;
@@ -49,7 +49,7 @@ describe('criterio 3: MFA por rol', () => {
       // La inscripción y la sesión sí están permitidas.
       expect((await client.get('/api/auth/get-session')).statusCode).toBe(200);
       await enrollTotp(client, staff);
-      expect((await client.get('/me')).statusCode).toBe(200);
+      expect((await client.get('/api/me')).statusCode).toBe(200);
     });
   }
 
@@ -69,7 +69,7 @@ describe('criterio 3: MFA por rol', () => {
     const client = new Client(app);
     await signIn(client, staff);
     expect((await selectContext(client, SUR, 1)).statusCode).toBe(204);
-    expect((await client.get('/me/locations')).statusCode).toBe(200);
+    expect((await client.get('/api/me/locations')).statusCode).toBe(200);
   });
 
   describe('con TOTP inscrito', () => {
@@ -90,14 +90,14 @@ describe('criterio 3: MFA por rol', () => {
       expect(first.statusCode).toBe(200);
       expect(first.json()).toMatchObject({ twoFactorRedirect: true });
       // Sin el código no hay sesión.
-      expect((await client.get('/me')).statusCode).toBe(401);
+      expect((await client.get('/api/me')).statusCode).toBe(401);
 
       const wrong = await client.post('/api/auth/two-factor/verify-totp', { code: '000000' });
       expect(wrong.statusCode).toBe(401);
 
       const ok = await client.post('/api/auth/two-factor/verify-totp', { code: await totp(secret) });
       expect(ok.statusCode).toBe(200);
-      expect((await client.get('/me')).statusCode).toBe(200);
+      expect((await client.get('/api/me')).statusCode).toBe(200);
     });
 
     it('un código de recuperación funciona una sola vez', async () => {
@@ -107,12 +107,12 @@ describe('criterio 3: MFA por rol', () => {
       const first = new Client(app);
       await signIn(first, staff);
       expect((await first.post('/api/auth/two-factor/verify-backup-code', { code })).statusCode).toBe(200);
-      expect((await first.get('/me')).statusCode).toBe(200);
+      expect((await first.get('/api/me')).statusCode).toBe(200);
 
       const second = new Client(app);
       await signIn(second, staff);
       expect((await second.post('/api/auth/two-factor/verify-backup-code', { code })).statusCode).toBe(401);
-      expect((await second.get('/me')).statusCode).toBe(401);
+      expect((await second.get('/api/me')).statusCode).toBe(401);
     });
 
     it('«dispositivo de confianza» rechazado', async () => {
@@ -123,7 +123,7 @@ describe('criterio 3: MFA por rol', () => {
         trustDevice: true,
       });
       expect(response.statusCode).toBe(400);
-      expect((await client.get('/me')).statusCode).toBe(401);
+      expect((await client.get('/api/me')).statusCode).toBe(401);
     });
 
     it('el secreto TOTP y los códigos de recuperación se guardan cifrados', async () => {

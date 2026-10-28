@@ -6,7 +6,22 @@
 export const ROLES = ['propietario', 'administrador', 'recepcion', 'enfermeria', 'proveedor'] as const;
 export type Role = (typeof ROLES)[number];
 
-export const PERMISSIONS = ['members.invite', 'members.manage'] as const;
+export const PERMISSIONS = [
+  'members.invite',
+  'members.manage',
+  // Acceso a cada destino del menú (T-004). Salen de la tabla «Destinos del
+  // menú» del manual (docs/manual/README.md, «Los cuatro roles»). Cada fase
+  // los afinará en permisos de acción.
+  'panel.view',
+  'patients.access',
+  'appointments.access',
+  'nursing_queue.access',
+  'provider_queue.access',
+  'orders_queue.access',
+  'checkout.access',
+  'reports.location',
+  'admin.access',
+] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
 /** Roles que exigen MFA (ADR 0021). La regla la aplica el guard de la API. */
@@ -16,13 +31,22 @@ export const MFA_REQUIRED_ROLES: readonly Role[] = ['propietario', 'administrado
 export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 
 // Propietario y Administrador son roles administrativos: ningún permiso
-// clínico implícito (docs/architecture.md, «Permisos»).
+// clínico implícito (docs/architecture.md, «Permisos»). Para ver la parte
+// clínica necesitan además un rol clínico en la sede. Por eso, a diferencia del
+// manual, su menú es solo «Administración».
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  propietario: ['members.invite', 'members.manage'],
-  administrador: ['members.invite', 'members.manage'],
-  recepcion: [],
-  enfermeria: [],
-  proveedor: [],
+  propietario: ['members.invite', 'members.manage', 'admin.access'],
+  administrador: ['members.invite', 'members.manage', 'admin.access'],
+  recepcion: ['panel.view', 'patients.access', 'appointments.access', 'checkout.access', 'reports.location'],
+  enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
+  proveedor: [
+    'panel.view',
+    'patients.access',
+    'appointments.access',
+    'nursing_queue.access',
+    'provider_queue.access',
+    'orders_queue.access',
+  ],
 };
 
 export function permissionsFor(roles: Iterable<Role>): Set<Permission> {

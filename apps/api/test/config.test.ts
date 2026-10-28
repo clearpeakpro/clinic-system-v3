@@ -41,10 +41,10 @@ describe('condición 4 del ADR 0023: configuración de Better Auth', () => {
       const admin = await signedInWithContext(app, adminStaff, NORTE, 0, { mfa: true });
       const staff = await createStaff(app, 'cfg-revocada', [{ org: NORTE, location: 0, role: 'recepcion' }]);
       const client = await signedInWithContext(app, staff, NORTE);
-      expect((await client.get('/me')).statusCode).toBe(200);
+      expect((await client.get('/api/me')).statusCode).toBe(200);
       const membershipId = await membershipIdOf(app, NORTE, staff.userId);
-      await admin.post(`/memberships/${membershipId}/deactivate`, { reason: 'Prueba de configuración' });
-      expect((await client.get('/me')).statusCode).toBe(401);
+      await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Prueba de configuración' });
+      expect((await client.get('/api/me')).statusCode).toBe(401);
     });
   });
 

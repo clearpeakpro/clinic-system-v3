@@ -32,7 +32,7 @@ describe('criterio 2: organizaciones y contexto', () => {
   it('ve solo las organizaciones y sedes donde tiene rol', async () => {
     const client = new Client(app);
     await signIn(client, multi);
-    const choices = (await client.get('/me/locations')).json<Choice[]>();
+    const choices = (await client.get('/api/me/locations')).json<Choice[]>();
     expect(choices.map((c) => [c.organizationName, c.locations.map((l) => l.id)])).toEqual(
       [
         [NORTE.name, [NORTE.locations[0].id]],
@@ -44,16 +44,16 @@ describe('criterio 2: organizaciones y contexto', () => {
   it('cambia de una organización a otra', async () => {
     const client = new Client(app);
     await signIn(client, multi);
-    expect((await client.get('/me')).json<Me>().context).toBeNull();
+    expect((await client.get('/api/me')).json<Me>().context).toBeNull();
 
     expect((await selectContext(client, NORTE, 0)).statusCode).toBe(204);
-    expect((await client.get('/me')).json<Me>().context).toEqual({
+    expect((await client.get('/api/me')).json<Me>().context).toEqual({
       organizationId: NORTE.id,
       locationId: NORTE.locations[0].id,
     });
 
     expect((await selectContext(client, SUR, 1)).statusCode).toBe(204);
-    expect((await client.get('/me')).json<Me>().context).toEqual({
+    expect((await client.get('/api/me')).json<Me>().context).toEqual({
       organizationId: SUR.id,
       locationId: SUR.locations[1].id,
     });
@@ -66,9 +66,9 @@ describe('criterio 2: organizaciones y contexto', () => {
     expect((await selectContext(client, SUR, 0)).statusCode).toBe(403);
     expect((await selectContext(client, NORTE, 1)).statusCode).toBe(403);
     // Una sede de Sur con el id de organización de Norte tampoco.
-    const mixed = await client.post('/context', { organizationId: NORTE.id, locationId: SUR.locations[0].id });
+    const mixed = await client.post('/api/context', { organizationId: NORTE.id, locationId: SUR.locations[0].id });
     expect(mixed.statusCode).toBe(403);
-    expect((await client.get('/me')).json<Me>().context).toBeNull();
+    expect((await client.get('/api/me')).json<Me>().context).toBeNull();
   });
 
   it('los encabezados del cliente no cambian el contexto', async () => {
@@ -76,7 +76,7 @@ describe('criterio 2: organizaciones y contexto', () => {
     const client = new Client(app);
     await signIn(client, onlyNorte);
     await selectContext(client, NORTE, 0);
-    const response = await client.get('/me', {
+    const response = await client.get('/api/me', {
       'x-org-id': SUR.id,
       'x-organization-id': SUR.id,
       'x-location-id': SUR.locations[0].id,
@@ -91,13 +91,13 @@ describe('criterio 2: organizaciones y contexto', () => {
     // Los campos son input: false: Better Auth los ignora o rechaza.
     await client.post('/api/auth/update-user', { activeOrganizationId: SUR.id });
     await client.post('/api/auth/update-session', { activeOrganizationId: SUR.id, activeLocationId: SUR.locations[0].id });
-    expect((await client.get('/me')).json<Me>().context).toBeNull();
+    expect((await client.get('/api/me')).json<Me>().context).toBeNull();
   });
 
   it('datos de entrada inválidos responden 400 sin eco', async () => {
     const client = new Client(app);
     await signIn(client, multi);
-    const response = await client.post('/context', { organizationId: 'no-es-uuid', locationId: '<script>' });
+    const response = await client.post('/api/context', { organizationId: 'no-es-uuid', locationId: '<script>' });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ code: 'invalid_request' });
   });

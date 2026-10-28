@@ -66,6 +66,8 @@ flowchart TB
 
 El diagrama muestra C. En B todo corre en un solo EC2 (ver «Entornos y presupuesto»).
 
+**Mismo origen:** la API sirve todo bajo `/api` (Better Auth en `/api/auth/*`) y la web la consume desde el mismo origen, sin CORS. En local, el proxy de Vite reenvía `/api`; en B, Caddy. Las cookies de sesión son httpOnly, y la web no guarda tokens ni datos de pacientes (ADR 0014).
+
 **Worker:** es un proceso separado (`apps/worker`) que comparte paquetes con la API. En local es un servicio de docker compose; en B, un contenedor aparte en el mismo EC2 con su propio límite de memoria; en C, un servicio de ECS Fargate. Nunca corre dentro del proceso de la API.
 
 | Módulo | Pantallas | Responsabilidad |
@@ -161,7 +163,7 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | Entidad | Campos clave | Notas |
 | --- | --- | --- |
 | `organizations` | name, status | El tenant |
-| `locations` | org, code, name, timezone | `code` es único por organización y aparece en la URL |
+| `locations` | org, code, name, timezone, address (opcional) | `code` es único por organización y aparece en la URL |
 | `users` (global) / `memberships` / `membership_roles` | correo; usuario–organización; rol por sede | |
 | `patients` | código, nombre, apellidos, fecha de nacimiento, teléfono, merged_into | Pertenecen a la organización |
 | `appointments` | sede, paciente, proveedor, tipo, inicio, estado, version | |

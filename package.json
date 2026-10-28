@@ -12,11 +12,14 @@
     "db:bootstrap": "pnpm --filter @clinic/db db:bootstrap",
     "db:migrate": "pnpm --filter @clinic/db db:migrate",
     "db:seed": "pnpm --filter @clinic/db db:seed && pnpm --filter @clinic/api seed:dev",
-    "check:rls-context": "node packages/db/scripts/check-rls-context.ts"
+    "check:rls-context": "node packages/db/scripts/check-rls-context.ts",
+    "dev": "docker compose up -d && turbo run dev",
+    "test:e2e": "pnpm --filter @clinic/web test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "turbo": "^2.11.10",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.0"

@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+@import '@clinic/ui/tokens.css';
+
+/* Puntos de corte del marco (manual, S-GEN-12): riel 600–1024 px, menú lateral > 1024 px. */
+@theme {
+  --breakpoint-tab: 600px;
+  --breakpoint-desk: 1025px;
+}
+
+/* Modo oscuro por clase en <html> (lo fija src/lib/storage.ts). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-on-background font-sans text-body-lg antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+}

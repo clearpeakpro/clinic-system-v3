@@ -42,13 +42,13 @@ describe('criterio 6: compatibilidad con RLS', () => {
     expect((await selectContext(client, NORTE)).statusCode).toBe(204);
 
     // /me/locations lee organizations y locations con withTenant.
-    const choices = (await client.get('/me/locations')).json<Choice[]>();
+    const choices = (await client.get('/api/me/locations')).json<Choice[]>();
     expect(choices).toEqual([
       expect.objectContaining({ organizationId: NORTE.id, locations: [expect.objectContaining({ id: NORTE.locations[0].id })] }),
     ]);
 
     expect((await client.post('/api/auth/sign-out', {})).statusCode).toBe(200);
-    expect((await client.get('/me')).statusCode).toBe(401);
+    expect((await client.get('/api/me')).statusCode).toBe(401);
   });
 
   it('un rol de toda la organización ve todas sus sedes, y ninguna de la otra', async () => {
@@ -56,10 +56,10 @@ describe('criterio 6: compatibilidad con RLS', () => {
     const client = new Client(app);
     await signIn(client, staff);
     // Sin MFA solo llega a la inscripción: /me/locations queda bloqueado.
-    expect((await client.get('/me/locations')).statusCode).toBe(403);
+    expect((await client.get('/api/me/locations')).statusCode).toBe(403);
     const { enrollTotp } = await import('./support.ts');
     await enrollTotp(client, staff);
-    const choices = (await client.get('/me/locations')).json<Choice[]>();
+    const choices = (await client.get('/api/me/locations')).json<Choice[]>();
     expect(choices.map((c) => c.organizationId)).toEqual([SUR.id]);
     expect(choices[0]?.locations.map((l) => l.id).sort()).toEqual(SUR.locations.map((l) => l.id).sort());
   });

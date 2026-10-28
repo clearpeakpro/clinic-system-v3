@@ -1,10 +1,11 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { IDLE_GRACE_SECONDS } from '../src/config.ts';
 import { Client, createStaff, NORTE, signIn, startApp, type TestApp } from './support.ts';
 
 // Criterio 4: sesiones en la base de datos, cookie segura, expiración por
 // inactividad (Better Auth, deslizante) y absoluta (nuestro guard).
 
-const IDLE = 30 * 60; // 30 min
+const IDLE = 30 * 60; // 30 min (el servidor suma IDLE_GRACE_SECONDS)
 const ABSOLUTE = 2 * 60 * 60; // 2 h
 
 describe('criterio 4: sesiones', () => {
@@ -64,10 +65,10 @@ describe('criterio 4: sesiones', () => {
   it('expira por inactividad', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: Date.now() });
     const { client } = await newSignedInClient('ses-idle');
-    expect((await client.get('/me')).statusCode).toBe(200);
+    expect((await client.get('/api/me')).statusCode).toBe(200);
 
-    vi.setSystemTime(Date.now() + (IDLE + 60) * 1000);
-    expect((await client.get('/me')).statusCode).toBe(401);
+    vi.setSystemTime(Date.now() + (IDLE + IDLE_GRACE_SECONDS + 60) * 1000);
+    expect((await client.get('/api/me')).statusCode).toBe(401);
   });
 
   it('el uso extiende la sesión (deslizante)', async () => {
@@ -76,7 +77,7 @@ describe('criterio 4: sesiones', () => {
     // 3 × 20 min = 60 min de uso, más que IDLE (30 min), sin cortarse.
     for (let i = 0; i < 3; i++) {
       vi.setSystemTime(Date.now() + 20 * 60 * 1000);
-      expect((await client.get('/me')).statusCode, `vuelta ${String(i)}`).toBe(200);
+      expect((await client.get('/api/me')).statusCode, `vuelta ${String(i)}`).toBe(200);
     }
   });
 
@@ -88,7 +89,7 @@ describe('criterio 4: sesiones', () => {
     let cut: { status: number; code: unknown; elapsed: number } | null = null;
     for (let elapsed = 0; elapsed <= ABSOLUTE + 20 * 60; elapsed += 20 * 60) {
       vi.setSystemTime(Date.now() + 20 * 60 * 1000);
-      const response = await client.get('/me');
+      const response = await client.get('/api/me');
       if (response.statusCode !== 200) {
         cut = { status: response.statusCode, code: response.json<{ code: unknown }>().code, elapsed: Date.now() - start };
         break;
@@ -105,7 +106,7 @@ describe('criterio 4: sesiones', () => {
 
   it('la API responde con Cache-Control: no-store', async () => {
     const { client } = await newSignedInClient('ses-nostore');
-    expect((await client.get('/me')).headers['cache-control']).toBe('no-store');
+    expect((await client.get('/api/me')).headers['cache-control']).toBe('no-store');
     expect((await client.get('/api/auth/get-session')).headers['cache-control']).toBe('no-store');
   });
 });

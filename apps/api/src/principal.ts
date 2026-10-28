@@ -22,12 +22,16 @@ export interface RoleAssignment {
 
 export interface Principal {
   userId: string;
+  name: string;
+  email: string;
   sessionId: string;
   twoFactorEnabled: boolean;
   /** Roles activos en todas sus organizaciones (leídos con withUser). */
   assignments: RoleAssignment[];
   /** Contexto activo validado en esta petición; nulo si no eligió o ya no es válido. */
   context: { organizationId: string; locationId: string } | null;
+  /** Roles en el contexto activo (sede elegida y los de toda la organización); vacío sin contexto. */
+  roles: Role[];
   /** Permisos en el contexto activo: unión de sus roles en esa sede y de toda la organización. */
   permissions: Set<Permission>;
   mfaRequired: boolean;
@@ -114,10 +118,13 @@ export class PrincipalResolver {
       ok: true,
       principal: {
         userId: user.id,
+        name: user.name,
+        email: user.email,
         sessionId: session.id,
         twoFactorEnabled: user.twoFactorEnabled === true,
         assignments,
         context,
+        roles: context ? roles : [],
         permissions: permissionsFor(roles),
         mfaRequired,
       },

@@ -65,7 +65,7 @@ cp .env.example .env          # en la raíz del repositorio
 docker compose up -d
 pnpm db:bootstrap
 pnpm db:migrate
-pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur»
+pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» (sedes en hora Central, America/Chicago, con direcciones ficticias)
 ```
 
 ## Pruebas

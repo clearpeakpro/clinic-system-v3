@@ -48,7 +48,7 @@ describe('criterio 1: invitaciones', () => {
   });
 
   const invite = async (email: string, role = 'recepcion', location: 0 | 1 = 1) => {
-    const response = await admin.post('/invitations', {
+    const response = await admin.post('/api/invitations', {
       email,
       role,
       locationId: NORTE.locations[location].id,
@@ -74,7 +74,7 @@ describe('criterio 1: invitaciones', () => {
     const email = 'nueva.recepcion@example.test';
     const link = await invite(email);
     const guest = new Client(app);
-    const accepted = await guest.post('/invitations/accept', { ...link, name: 'Persona Nueva', password: 'Ficticia-clave-123' });
+    const accepted = await guest.post('/api/invitations/accept', { ...link, name: 'Persona Nueva', password: 'Ficticia-clave-123' });
     expect(accepted.statusCode).toBe(201);
 
     const { rows } = await app.pool.query<{ id: string }>('select id from auth."user" where email = $1', [email]);
@@ -95,7 +95,7 @@ describe('criterio 1: invitaciones', () => {
     const link = await invite(existing.email, 'enfermeria', 0);
     const client = new Client(app);
     await signIn(client, existing);
-    expect((await client.post('/invitations/accept', link)).statusCode).toBe(201);
+    expect((await client.post('/api/invitations/accept', link)).statusCode).toBe(201);
     expect(await membershipOf(existing.userId)).toEqual([
       { role: 'enfermeria', locationId: NORTE.locations[0].id, status: 'active' },
     ]);
@@ -103,9 +103,9 @@ describe('criterio 1: invitaciones', () => {
 
   it('un enlace usado se rechaza', async () => {
     const link = await invite('dos.veces@example.test');
-    const first = await new Client(app).post('/invitations/accept', { ...link, name: 'Una', password: 'Ficticia-clave-123' });
+    const first = await new Client(app).post('/api/invitations/accept', { ...link, name: 'Una', password: 'Ficticia-clave-123' });
     expect(first.statusCode).toBe(201);
-    const second = await new Client(app).post('/invitations/accept', { ...link, name: 'Otra', password: 'Ficticia-clave-456' });
+    const second = await new Client(app).post('/api/invitations/accept', { ...link, name: 'Otra', password: 'Ficticia-clave-456' });
     expect(second.statusCode).toBe(410);
     expect(second.json()).toEqual({ code: 'invitation_used' });
   });
@@ -114,7 +114,7 @@ describe('criterio 1: invitaciones', () => {
     const link = await invite('vencida@example.test');
     vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 2 * 60 * 60 * 1000 });
     try {
-      const response = await new Client(app).post('/invitations/accept', { ...link, name: 'Tarde', password: 'Ficticia-clave-123' });
+      const response = await new Client(app).post('/api/invitations/accept', { ...link, name: 'Tarde', password: 'Ficticia-clave-123' });
       expect(response.statusCode).toBe(410);
       expect(response.json()).toEqual({ code: 'invitation_expired' });
     } finally {
@@ -125,9 +125,9 @@ describe('criterio 1: invitaciones', () => {
   it('un enlace alterado se rechaza (token u organización)', async () => {
     const link = await invite('alterada@example.test');
     const flipped = `${link.token.slice(0, -1)}${link.token.endsWith('A') ? 'B' : 'A'}`;
-    const badToken = await new Client(app).post('/invitations/accept', { ...link, token: flipped, name: 'X', password: 'Ficticia-clave-123' });
+    const badToken = await new Client(app).post('/api/invitations/accept', { ...link, token: flipped, name: 'X', password: 'Ficticia-clave-123' });
     expect(badToken.statusCode).toBe(404);
-    const otherOrg = await new Client(app).post('/invitations/accept', { ...link, organizationId: SUR.id, name: 'X', password: 'Ficticia-clave-123' });
+    const otherOrg = await new Client(app).post('/api/invitations/accept', { ...link, organizationId: SUR.id, name: 'X', password: 'Ficticia-clave-123' });
     expect(otherOrg.statusCode).toBe(404);
     // La invitación original sigue sin usar.
     const pending = await createTenantDb(app.pool).withTenant(NORTE.id, (tx) =>
@@ -141,7 +141,7 @@ describe('criterio 1: invitaciones', () => {
     const other = await createStaff(app, 'inv-otra', [{ org: SUR, location: 0, role: 'recepcion' }]);
     const client = new Client(app);
     await signIn(client, other);
-    expect((await client.post('/invitations/accept', link)).statusCode).toBe(403);
+    expect((await client.post('/api/invitations/accept', link)).statusCode).toBe(403);
   });
 
   it('el token no se guarda en claro', async () => {
@@ -158,7 +158,7 @@ describe('criterio 1: invitaciones', () => {
     const client = new Client(app);
     await signIn(client, staff);
     await selectContext(client, NORTE);
-    const response = await client.post('/invitations', { email: 'x@example.test', role: 'recepcion', locationId: NORTE.locations[0].id });
+    const response = await client.post('/api/invitations', { email: 'x@example.test', role: 'recepcion', locationId: NORTE.locations[0].id });
     expect(response.statusCode).toBe(403);
   });
 });

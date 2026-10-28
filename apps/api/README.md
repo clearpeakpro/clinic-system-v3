@@ -19,7 +19,7 @@ La API se conecta **solo** como `clinic_app`: `loadConfig` no arranca con otro u
 
 ## Primer Propietario de cada organización
 
-- **En T-003, el primer Propietario solo lo crea la semilla de desarrollo** de las dos clínicas ficticias (`pnpm db:seed`, que ejecuta `scripts/seed-dev-owners.ts`). Usuarios:
+- **En T-003, el primer Propietario solo lo crea la semilla de desarrollo** de las dos clínicas ficticias (`pnpm db:seed`, que ejecuta `scripts/seed-dev-users.ts`). Usuarios:
   - `propietario.norte@example.test`;
   - `propietario.sur@example.test`;
   - contraseña: `DEV_SEED_PASSWORD` de `.env`.
@@ -48,13 +48,13 @@ Pruebas: `test/role-assignment.test.ts` y `packages/shared/test/permissions.test
 | Método y ruta | Permiso | Qué hace |
 | --- | --- | --- |
 | `GET/POST /api/auth/*` | — | Better Auth: inicio y cierre de sesión, sesión, TOTP y códigos de recuperación. El registro público está cerrado. |
-| `GET /me` | sesión | Usuario, estado del MFA, contexto activo y permisos efectivos |
-| `GET /me/locations` | sesión | Organizaciones y sedes que puede elegir |
-| `POST /context` | sesión | Elegir organización y sede (validado contra `memberships`) |
-| `POST /invitations` | `members.invite` | Invitar (correo con enlace de un solo uso, vence a las 48 h) |
-| `POST /invitations/accept` | pública | Aceptar: crea la cuenta o usa la sesión; membresía y auditoría en una transacción |
-| `POST /memberships/:id/deactivate` | `members.manage` | Quitar la membresía, con motivo; borra sus sesiones en esa organización |
-| `POST /memberships/:id/roles` | `members.manage` | Reemplazar roles, con motivo |
+| `GET /api/me` | sesión | Usuario, estado del MFA, contexto activo y permisos efectivos |
+| `GET /api/me/locations` | sesión | Organizaciones y sedes que puede elegir |
+| `POST /api/context` | sesión | Elegir organización y sede (validado contra `memberships`) |
+| `POST /api/invitations` | `members.invite` | Invitar (correo con enlace de un solo uso, vence a las 48 h) |
+| `POST /api/invitations/accept` | pública | Aceptar: crea la cuenta o usa la sesión; membresía y auditoría en una transacción |
+| `POST /api/memberships/:id/deactivate` | `members.manage` | Quitar la membresía, con motivo; borra sus sesiones en esa organización |
+| `POST /api/memberships/:id/roles` | `members.manage` | Reemplazar roles, con motivo |
 
 **Reglas comunes:**
 - Un Propietario o Administrador sin MFA recibe 403 `mfa_enrollment_required` en todo salvo la inscripción.

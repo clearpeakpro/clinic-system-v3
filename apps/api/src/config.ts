@@ -10,7 +10,11 @@ export interface AppConfig {
   authSecret: string;
   /** Clave del HMAC-SHA256 con que se guarda el correo de un inicio de sesión fallido. */
   auditHmacKey: string;
-  /** Expiración por inactividad, en segundos (session.expiresIn deslizante). */
+  /**
+   * Límite de inactividad del cliente, en segundos (S-GEN-20: 15 min por
+   * defecto). La web cierra la sesión al llegar a él; el servidor la corta a
+   * los IDLE_GRACE_SECONDS siguientes sin actividad (manual: límite + 2 min).
+   */
   idleTimeoutSeconds: number;
   /** Expiración absoluta desde el inicio de sesión, en segundos (nuestro guard). */
   absoluteTimeoutSeconds: number;
@@ -37,8 +41,11 @@ export interface AppConfig {
   mailFrom: string;
 }
 
+/** Margen del servidor sobre el límite de inactividad del cliente (S-GEN-20). */
+export const IDLE_GRACE_SECONDS = 120;
+
 export const DEFAULTS = {
-  idleTimeoutSeconds: 30 * 60,
+  idleTimeoutSeconds: 15 * 60,
   absoluteTimeoutSeconds: 12 * 60 * 60,
   invitationTtlSeconds: 48 * 60 * 60,
   signInAccountMaxFailures: 10,

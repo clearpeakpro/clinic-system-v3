@@ -137,7 +137,7 @@ export async function signIn(client: Client, staff: Staff) {
 }
 
 export async function selectContext(client: Client, org: typeof NORTE | typeof SUR, location: 0 | 1 = 0) {
-  return client.post('/context', { organizationId: org.id, locationId: org.locations[location].id });
+  return client.post('/api/context', { organizationId: org.id, locationId: org.locations[location].id });
 }
 
 export function totpSecretFrom(uri: string): string {

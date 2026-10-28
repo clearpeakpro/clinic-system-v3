@@ -36,6 +36,8 @@ export const locations = appSchema.table(
     code: text('code').notNull(),
     name: text('name').notNull(),
     timezone: text('timezone').notNull(),
+    /** Dirección postal de la sede (opcional; se muestra en S-GEN-11). */
+    address: text('address'),
     createdAt: createdAt(),
   },
   (t) => [

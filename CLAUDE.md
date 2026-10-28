@@ -29,12 +29,10 @@ TypeScript en todo. pnpm + Turborepo.
 
 ## Comandos
 
-(Se completan al crear el monorepo en la fase 1.)
-
 - `pnpm install`
-- `pnpm dev` — web + api + Postgres en docker compose
+- `pnpm dev` — Postgres y Mailpit (docker compose) + API (http://127.0.0.1:3001) + web (http://localhost:5173, reenvía `/api` a la API)
 - `pnpm test` — unitarias + integración (Testcontainers)
-- `pnpm test:e2e` — Playwright
+- `pnpm test:e2e` — Playwright (compila la web y levanta Postgres con Testcontainers, la API y `vite preview`)
 - `pnpm db:bootstrap` (superusuario, una vez) / `pnpm db:migrate` / `pnpm db:seed` (clínicas ficticias y sus Propietarios)
 - `pnpm --filter @clinic/api dev` — API en http://127.0.0.1:3001 (Mailpit en http://localhost:8025)
 - `pnpm check:rls-context` — el contexto RLS solo se fija en `withTenant` / `withUser` (va dentro de `pnpm lint`)
