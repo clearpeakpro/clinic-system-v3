@@ -1,4 +1,4 @@
-import { cn } from '../lib/cn.ts';
+import { cn } from '@clinic/ui';
 
 export function BrandMark({ className }: { className?: string }) {
   return (

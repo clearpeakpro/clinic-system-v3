@@ -68,6 +68,8 @@ El diagrama muestra C. En B todo corre en un solo EC2 (ver «Entornos y presupue
 
 **Mismo origen:** la API sirve todo bajo `/api` (Better Auth en `/api/auth/*`) y la web la consume desde el mismo origen, sin CORS. En local, el proxy de Vite reenvía `/api`; en B, Caddy. Las cookies de sesión son httpOnly, y la web no guarda tokens ni datos de pacientes (ADR 0014).
 
+**Interfaz compartida:** `packages/ui` tiene los tokens (`tokens.css`) y los componentes de React que usan todas las pantallas: botones, chips de estado y ruta, diálogos (S-GEN-26/27), estados de carga, vacío y error (S-GEN-28), dinero, códigos, fechas en la zona de la sede y tablas (S-GEN-30). React es una dependencia de pares y Tailwind de `apps/web` lee las clases del paquete (`@source`). Los catálogos de estados y rutas de la visita están en `packages/shared`. La página `/dev/ui`, solo en desarrollo, los muestra todos en claro y oscuro.
+
 **Worker:** es un proceso separado (`apps/worker`) que comparte paquetes con la API. En local es un servicio de docker compose; en B, un contenedor aparte en el mismo EC2 con su propio límite de memoria; en C, un servicio de ECS Fargate. Nunca corre dentro del proceso de la API.
 
 | Módulo | Pantallas | Responsabilidad |

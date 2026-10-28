@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { argbFromHex, Contrast, Hct } from '@material/material-color-utilities';
 import { describe, expect, it } from 'vitest';

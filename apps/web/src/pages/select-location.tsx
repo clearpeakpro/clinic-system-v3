@@ -1,12 +1,10 @@
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeftRight, ArrowRight, Building2, CircleCheck, CircleHelp, Clock, LogOut, MapPin, MapPinOff } from 'lucide-react';
 import { useId, useState } from 'react';
+import { Banner, Button, cn, Spinner } from '@clinic/ui';
 import { AuthLayout } from '../components/auth-layout.tsx';
 import { LogoutDialog } from '../components/logout-dialog.tsx';
-import { Button } from '../components/ui/button.tsx';
-import { Banner, Spinner } from '../components/ui/field.tsx';
 import { api, type LocationChoice } from '../lib/api.ts';
-import { cn } from '../lib/cn.ts';
 import { timezoneLabel } from '../lib/format.ts';
 import { landingPath } from '../lib/nav.ts';
 import { keys, queryClient, useLocations, useMe, type FlatLocation } from '../lib/session.ts';

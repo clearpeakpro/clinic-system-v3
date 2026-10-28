@@ -7,10 +7,13 @@ import type { Permission, Role } from '@clinic/shared';
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string) {
+  /** Segundos de Retry-After (respuestas 429), para el mensaje de S-GEN-28. */
+  readonly retryAfterSeconds: number | undefined;
+  constructor(status: number, code: string, retryAfterSeconds?: number) {
     super(code);
     this.status = status;
     this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -25,7 +28,12 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
   const data: unknown = text ? JSON.parse(text) : null;
   if (!response.ok) {
     const code = (data as { code?: unknown } | null)?.code;
-    throw new ApiError(response.status, typeof code === 'string' ? code : `http_${String(response.status)}`);
+    const retryAfter = Number(response.headers.get('retry-after'));
+    throw new ApiError(
+      response.status,
+      typeof code === 'string' ? code : `http_${String(response.status)}`,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+    );
   }
   return data as T;
 }

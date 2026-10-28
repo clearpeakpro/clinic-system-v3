@@ -1,5 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "types": ["node"] },
-  "include": ["scripts", "test", "*.ts"]
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": ["node", "@testing-library/jest-dom"]
+  },
+  "include": ["src", "scripts", "test", "*.ts"]
 }

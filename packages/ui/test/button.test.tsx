@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { Button } from './button.tsx';
+import { Button } from '../src/components/button.tsx';
 
 describe('Button', () => {
   it('con asChild envuelve un único hijo (no rompe la página 404)', () => {

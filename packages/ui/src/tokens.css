@@ -49,4 +49,15 @@
   /* Objetivo táctil mínimo (CLAUDE.md, regla 10): 48 dp; kiosco 64 dp. */
   --spacing-touch: 3rem;
   --spacing-touch-kiosk: 4rem;
+
+  /* Puntos de corte (manual, S-GEN-12): riel y tabla 600 px, menú lateral > 1024 px. */
+  --breakpoint-tab: 600px;
+  --breakpoint-desk: 1025px;
+
+  /* Barra de «refrescando» (S-GEN-28): indeterminada, 2 px. */
+  --animate-refresh: refresh 1.2s ease-in-out infinite;
+  @keyframes refresh {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+  }
 }

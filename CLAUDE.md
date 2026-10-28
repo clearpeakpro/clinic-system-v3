@@ -23,7 +23,7 @@ TypeScript en todo. pnpm + Turborepo.
 - `apps/api` — NestJS (Fastify), Drizzle ORM, Socket.IO. Autenticación: Better Auth solo si pasa la prueba (ADR 0021).
 - `apps/worker` — proceso separado con pg-boss (ADR 0020).
 - `packages/shared` — esquemas Zod, `permissions.ts`, máquina de estados de la visita, tipos.
-- `packages/ui` — tokens y componentes.
+- `packages/ui` — tokens y componentes (React como dependencia de pares; `/dev/ui` los muestra todos).
 - `packages/db` — esquema Drizzle, migraciones, políticas RLS, seed ficticio.
 - `infra/` — AWS CDK (entorno B: un EC2; ver ADR 0017).
 
@@ -33,6 +33,7 @@ TypeScript en todo. pnpm + Turborepo.
 - `pnpm dev` — Postgres y Mailpit (docker compose) + API (http://127.0.0.1:3001) + web (http://localhost:5173, reenvía `/api` a la API)
 - `pnpm test` — unitarias + integración (Testcontainers)
 - `pnpm test:e2e` — Playwright (compila la web y levanta Postgres con Testcontainers, la API y `vite preview`)
+- `pnpm --filter @clinic/web test:a11y` — axe sobre `/dev/ui` (hoja de componentes, solo en desarrollo: http://localhost:5173/dev/ui)
 - `pnpm db:bootstrap` (superusuario, una vez) / `pnpm db:migrate` / `pnpm db:seed` (clínicas ficticias y sus Propietarios)
 - `pnpm --filter @clinic/api dev` — API en http://127.0.0.1:3001 (Mailpit en http://localhost:8025)
 - `pnpm check:rls-context` — el contexto RLS solo se fija en `withTenant` / `withUser` (va dentro de `pnpm lint`)

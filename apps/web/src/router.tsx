@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router';
 import { Frame } from './components/frame.tsx';
 import { IdleGuard } from './components/idle-guard.tsx';
 import { useMe } from './lib/session.ts';
@@ -96,12 +96,19 @@ const adminDestinationRoute = createRoute({
   },
 });
 
+// /dev/ui (T-005): hoja de componentes, solo en desarrollo. Con
+// import.meta.env.DEV en false, Vite elimina la rama y la página no se compila.
+const devRoutes = import.meta.env.DEV
+  ? [createRoute({ getParentRoute: () => rootRoute, path: '/dev/ui', component: lazyRouteComponent(() => import('./pages/dev-ui.tsx'), 'DevUiPage') })]
+  : [];
+
 const routeTree = rootRoute.addChildren([
   bootRoute,
   loginRoute,
   selectRoute,
   appRoute.addChildren([appIndexRoute, appDestinationRoute]),
   adminRoute.addChildren([adminIndexRoute, adminDestinationRoute]),
+  ...devRoutes,
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: false });

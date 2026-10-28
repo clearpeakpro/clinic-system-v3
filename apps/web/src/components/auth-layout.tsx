@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cn } from '../lib/cn.ts';
+import { cn } from '@clinic/ui';
 import { APP_VERSION } from '../lib/format.ts';
 import { Brand } from './brand.tsx';
 

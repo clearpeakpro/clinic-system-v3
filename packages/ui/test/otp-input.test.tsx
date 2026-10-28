@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { OtpInput, totpSecondsLeft } from './otp-input.tsx';
+import { OtpInput, totpSecondsLeft } from '../src/components/otp-input.tsx';
 
 function Harness({ onComplete }: { onComplete: (v: string) => void }) {
   const [value, setValue] = useState('');

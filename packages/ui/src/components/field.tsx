@@ -1,6 +1,6 @@
-import { CircleAlert, Info, Loader2 } from 'lucide-react';
+import { CircleAlert, Info } from 'lucide-react';
 import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '../cn.ts';
 
 // Campos rellenos como en Stitch: fondo menta sin borde; al enfocar, fondo
 // claro y anillo primary. Alto 48 px, radio de componente (8 px).
@@ -65,15 +65,6 @@ export function Banner({ tone = 'info', title, children }: { tone?: 'info' | 'er
         <p className="text-body-md-medium">{title}</p>
         {children ? <div className={cn('text-body-md', tone === 'info' && 'text-on-surface-variant')}>{children}</div> : null}
       </div>
-    </div>
-  );
-}
-
-export function Spinner({ label = 'Cargando…' }: { label?: string }) {
-  return (
-    <div role="status" className="flex items-center justify-center p-space-xl text-primary">
-      <Loader2 aria-hidden className="size-8 animate-spin" />
-      <span className="sr-only">{label}</span>
     </div>
   );
 }

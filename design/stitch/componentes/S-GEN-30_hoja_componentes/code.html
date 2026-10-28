@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"surface-container-high":"#d9ece9","on-secondary-fixed-variant":"#0040a0","inverse-on-surface":"#e2f5f2","surface-container-highest":"#d4e6e3","on-primary-container":"#a3faef","on-tertiary":"#ffffff","on-error":"#ffffff","primary-fixed":"#9cf2e8","tertiary":"#5d33ba","surface-container-lowest":"#ffffff","on-error-container":"#93000a","primary":"#005c55","error":"#ba1a1a","on-surface":"#0e1e1d","outline":"#6e7977","on-primary":"#ffffff","on-tertiary-container":"#f0e6ff","inverse-surface":"#233332","surface":"#ebfdfa","primary-fixed-dim":"#80d5cb","tertiary-fixed-dim":"#d0bcff","tertiary-container":"#764fd4","surface-bright":"#ebfdfa","outline-variant":"#bdc9c6","surface-container-low":"#e5f7f5","surface-variant":"#d4e6e3","surface-tint":"#006a63","secondary-fixed":"#dae2ff","on-primary-fixed":"#00201d","surface-container":"#dff2ef","primary-container":"#0f766e","surface-dim":"#cbdedb","secondary":"#0054cb","on-background":"#0e1e1d","on-secondary-container":"#fefcff","on-primary-fixed-variant":"#00504a","secondary-fixed-dim":"#b1c5ff","inverse-primary":"#80d5cb","on-secondary":"#ffffff","on-tertiary-fixed-variant":"#5225af","error-container":"#ffdad6","on-tertiary-fixed":"#22005c","secondary-container":"#346ee5","tertiary-fixed":"#e9ddff","on-surface-variant":"#3e4947","background":"#ebfdfa","on-secondary-fixed":"#001847"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-xl":"2rem","space-xs":"0.25rem","margin":"1.5rem","gutter-tablet":"1rem","space-lg":"1.5rem","margin-tablet":"1.25rem","space-md":"1rem","space-sm":"0.5rem","gutter":"1rem"},"fontFamily":{"headline-sm":["Inter"],"body-md-medium":["Inter"],"headline-md":["Inter"],"display-md":["Inter"],"code-sm":["JetBrains Mono"],"body-md":["Inter"],"body-lg":["Inter"],"headline-lg":["Inter"],"caption":["Inter"],"body-lg-medium":["Inter"],"code-md":["JetBrains Mono"]},"fontSize":{"headline-sm":["18px",{"lineHeight":"24px","fontWeight":"600"}],"body-md-medium":["14px",{"lineHeight":"20px","fontWeight":"500"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"display-md":["28px",{"lineHeight":"36px","letterSpacing":"-0.02em","fontWeight":"600"}],"code-sm":["12px",{"lineHeight":"16px","letterSpacing":"0em","fontWeight":"500"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"caption":["12px",{"lineHeight":"16px","fontWeight":"500"}],"body-lg-medium":["16px",{"lineHeight":"24px","fontWeight":"500"}],"code-md":["14px",{"lineHeight":"20px","letterSpacing":"-0.01em","fontWeight":"500"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-low z-50 flex flex-col shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-space-md flex items-center gap-space-sm bg-surface-container-low"><div class="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center text-on-primary"><span class="material-symbols-outlined text-[20px]">local_hospital</span></div><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-primary leading-tight">Clinic System</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Gestión Clínica</span></div></div><div class="flex-1 overflow-y-auto px-space-sm py-space-sm"><div class="px-space-sm pt-space-xs pb-space-xs font-caption text-caption uppercase tracking-wider text-outline">Clínica Operativa</div><nav class="flex flex-col gap-1 mb-space-md" data-active-classes="bg-primary-container text-on-primary font-body-md-medium"><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="panel" href="#"><span class="material-symbols-outlined text-[20px]">dashboard</span><span class="font-body-md-medium text-body-md-medium">Panel</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="pacientes" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span class="font-body-md-medium text-body-md-medium">Pacientes</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="citas" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span><span class="font-body-md-medium text-body-md-medium">Citas</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="cola-de-enfermeria" href="#"><span class="material-symbols-outlined text-[20px]">clinical_notes</span><span class="font-body-md-medium text-body-md-medium">Cola de enfermería</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="cola-de-proveedor" href="#"><span class="material-symbols-outlined text-[20px]">stethoscope</span><span class="font-body-md-medium text-body-md-medium">Cola de proveedor</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="cola-de-ordenes" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="font-body-md-medium text-body-md-medium">Cola de órdenes</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="caja" href="#"><span class="material-symbols-outlined text-[20px]">payments</span><span class="font-body-md-medium text-body-md-medium">Caja</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="reportes" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span class="font-body-md-medium text-body-md-medium">Reportes</span></a></nav><div class="px-space-sm pt-space-xs pb-space-xs font-caption text-caption uppercase tracking-wider text-outline">Administración</div><nav class="flex flex-col gap-1" data-active-classes="bg-primary-container text-on-primary font-body-md-medium"><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="usuarios" href="#"><span class="material-symbols-outlined text-[20px]">manage_accounts</span><span class="font-body-md-medium text-body-md-medium">Usuarios</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="sedes" href="#"><span class="material-symbols-outlined text-[20px]">domain</span><span class="font-body-md-medium text-body-md-medium">Sedes</span></a><a class="flex items-center gap-space-sm px-space-sm min-h-[48px] rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" data-path="catalogos" href="#"><span class="material-symbols-outlined text-[20px]">dataset</span><span class="font-body-md-medium text-body-md-medium">Catálogos</span></a></nav></div><div class="p-space-sm bg-surface-container-low"><div class="flex items-center gap-space-sm p-space-xs rounded-lg bg-surface-container"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span><span class="font-caption text-caption text-on-surface font-semibold">Servidor Clínico Activo</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-16 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 px-space-lg flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-md flex-1 max-w-xl"><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-high text-on-surface min-h-[32px]"><span class="material-symbols-outlined text-[16px] text-primary">location_on</span><span class="font-caption text-caption font-semibold">LAN Lancaster</span><span class="material-symbols-outlined text-[16px] text-on-surface-variant">arrow_drop_down</span></div><div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container-low text-primary min-h-[32px]"><span class="w-2 h-2 rounded-full bg-primary"></span><span class="font-caption text-caption font-semibold">En vivo</span></div><div class="relative flex-1"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span><input class="w-full h-10 pl-10 pr-space-md rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Buscar pacientes por nombre, expediente o ID..." type="text"/></div></div><div class="flex items-center gap-space-md"><button aria-label="Notificaciones" class="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-high text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-error text-on-error font-caption text-[10px] flex items-center justify-center leading-none font-bold">3</span></button><div class="h-8 w-px bg-surface-container-highest"></div><div class="flex items-center gap-space-sm"><div class="flex flex-col text-right"><span class="font-body-md-medium text-body-md-medium text-on-surface leading-tight">Lic. Elena Ramos</span><span class="font-caption text-caption text-on-surface-variant leading-tight">Recepción y Caja</span></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative pt-16 bg-background w-full px-space-lg min-h-screen"><div class="flex flex-col w-full pb-space-xl">
+<!-- ENCABEZADO DE LA HOJA -->
+<section class="py-space-lg flex flex-col gap-space-sm">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs px-space-sm py-1 rounded-full bg-surface-container text-primary">
+<span class="material-symbols-outlined text-[16px]">token</span>
+<span class="font-code-sm text-code-sm tracking-wider uppercase">SYS-COMP-01 · GUÍA DE DISEÑO CLÍNICO</span>
+</div>
+<div class="flex items-center gap-space-xs font-caption text-caption text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">verified_user</span>
+<span>Estándar Operativo HIPAA / FDA Class I Software UX</span>
+</div>
+</div>
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+<div>
+<h1 class="font-display-md text-display-md text-on-surface">Estados comunes y reglas del sistema</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-1">
+          Hoja de especificaciones de componentes reutilizables · Tokens clínicos y estados inalterables
+        </p>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<div class="px-space-md py-space-xs rounded-lg bg-surface-container-high text-on-surface flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+<span class="font-body-md-medium text-body-md-medium">v2.4.0 Estable</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 1: CHIPS DE ESTADO DE LA VISITA (Ciclo de 10 estados) -->
+<section class="mt-space-lg flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">sync_saved_locally</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">1. Ciclo de Visita Médica (10 Estados Inalterables)</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        Regla de oro: cada transición de estado es auditada cronológicamente. No se permiten saltos arbitrarios. Contraste mínimo WCAG AAA (≥ 7.0:1) para personal con visión reducida bajo luz fluorescente.
+      </p>
+</div>
+<!-- Comparativa Tema Claro -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs text-on-surface font-headline-sm text-headline-sm">
+<span class="material-symbols-outlined text-primary">light_mode</span>
+<span>Tema Claro (Modo Estándar Ambulatorio)</span>
+</div>
+<span class="font-caption text-caption px-space-xs py-0.5 rounded bg-surface-container text-on-surface-variant font-code-sm">bg-surface-container-lowest</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-space-sm">
+<!-- 1. Registrado -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-surface-container text-on-surface">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="material-symbols-outlined text-[18px] text-secondary">how_to_reg</span>
+<span class="font-body-md-medium text-body-md-medium">Registrado</span>
+</div>
+<!-- 2. Esperando enfermería -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-surface-container-high text-on-surface">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="material-symbols-outlined text-[18px] text-tertiary">hourglass_top</span>
+<span class="font-body-md-medium text-body-md-medium">Esperando enfermería</span>
+</div>
+<!-- 3. Con enfermería -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-primary-container text-on-primary">
+<span class="w-2 h-2 rounded-full bg-on-primary-container"></span>
+<span class="material-symbols-outlined text-[18px] text-on-primary">clinical_notes</span>
+<span class="font-body-md-medium text-body-md-medium">Con enfermería</span>
+</div>
+<!-- 4. Esperando proveedor -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-tertiary-fixed text-on-tertiary-fixed">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="material-symbols-outlined text-[18px] text-tertiary">person_search</span>
+<span class="font-body-md-medium text-body-md-medium">Esperando proveedor</span>
+</div>
+<!-- 5. Con proveedor -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-secondary-container text-on-secondary-container">
+<span class="w-2 h-2 rounded-full bg-surface-container-lowest"></span>
+<span class="material-symbols-outlined text-[18px] text-on-secondary-container">stethoscope</span>
+<span class="font-body-md-medium text-body-md-medium">Con proveedor</span>
+</div>
+<!-- 6. Procedimiento pendiente -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-surface-container-highest text-on-surface">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="material-symbols-outlined text-[18px] text-primary">medical_services</span>
+<span class="font-body-md-medium text-body-md-medium">Procedimiento pend.</span>
+</div>
+<!-- 7. Listo para caja -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-tertiary-container text-on-tertiary">
+<span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>
+<span class="material-symbols-outlined text-[18px] text-on-tertiary">task_alt</span>
+<span class="font-body-md-medium text-body-md-medium">Listo para caja</span>
+</div>
+<!-- 8. En caja -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-tertiary text-on-tertiary">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="material-symbols-outlined text-[18px] text-on-tertiary">point_of_sale</span>
+<span class="font-body-md-medium text-body-md-medium">En caja</span>
+</div>
+<!-- 9. Completada -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-primary text-on-primary">
+<span class="w-2 h-2 rounded-full bg-primary-fixed"></span>
+<span class="material-symbols-outlined text-[18px] text-on-primary">check_circle</span>
+<span class="font-body-md-medium text-body-md-medium">Completada</span>
+</div>
+<!-- 10. Se retiró -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-error-container text-on-error-container">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="material-symbols-outlined text-[18px] text-error">logout</span>
+<span class="font-body-md-medium text-body-md-medium">Se retiró</span>
+</div>
+</div>
+</div>
+<!-- Comparativa Tema Oscuro -->
+<div class="p-space-lg rounded-xl bg-inverse-surface text-inverse-on-surface shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs text-inverse-on-surface font-headline-sm text-headline-sm">
+<span class="material-symbols-outlined text-inverse-primary">dark_mode</span>
+<span>Tema Oscuro (Modo Nocturno / Diagnóstico en Penumbra)</span>
+</div>
+<span class="font-caption text-caption px-space-xs py-0.5 rounded bg-on-surface text-surface-container font-code-sm">bg-inverse-surface</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-space-sm">
+<!-- 1. Registrado Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-on-surface text-secondary-fixed">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed"></span>
+<span class="material-symbols-outlined text-[18px]">how_to_reg</span>
+<span class="font-body-md-medium text-body-md-medium">Registrado</span>
+</div>
+<!-- 2. Esperando enfermería Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-on-surface text-tertiary-fixed-dim">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="material-symbols-outlined text-[18px]">hourglass_top</span>
+<span class="font-body-md-medium text-body-md-medium">Esperando enfermería</span>
+</div>
+<!-- 3. Con enfermería Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-primary-container text-on-primary">
+<span class="w-2 h-2 rounded-full bg-primary-fixed"></span>
+<span class="material-symbols-outlined text-[18px]">clinical_notes</span>
+<span class="font-body-md-medium text-body-md-medium">Con enfermería</span>
+</div>
+<!-- 4. Esperando proveedor Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-on-surface text-tertiary-fixed">
+<span class="w-2 h-2 rounded-full bg-tertiary-container"></span>
+<span class="material-symbols-outlined text-[18px]">person_search</span>
+<span class="font-body-md-medium text-body-md-medium">Esperando proveedor</span>
+</div>
+<!-- 5. Con proveedor Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-secondary text-on-secondary">
+<span class="w-2 h-2 rounded-full bg-secondary-fixed"></span>
+<span class="material-symbols-outlined text-[18px]">stethoscope</span>
+<span class="font-body-md-medium text-body-md-medium">Con proveedor</span>
+</div>
+<!-- 6. Procedimiento pendiente Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-on-surface text-primary-fixed">
+<span class="w-2 h-2 rounded-full bg-primary-fixed"></span>
+<span class="material-symbols-outlined text-[18px]">medical_services</span>
+<span class="font-body-md-medium text-body-md-medium">Procedimiento pend.</span>
+</div>
+<!-- 7. Listo para caja Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-tertiary-container text-on-tertiary">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed"></span>
+<span class="material-symbols-outlined text-[18px]">task_alt</span>
+<span class="font-body-md-medium text-body-md-medium">Listo para caja</span>
+</div>
+<!-- 8. En caja Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-tertiary text-on-tertiary">
+<span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>
+<span class="material-symbols-outlined text-[18px]">point_of_sale</span>
+<span class="font-body-md-medium text-body-md-medium">En caja</span>
+</div>
+<!-- 9. Completada Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-primary text-on-primary">
+<span class="w-2 h-2 rounded-full bg-primary-fixed"></span>
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+<span class="font-body-md-medium text-body-md-medium">Completada</span>
+</div>
+<!-- 10. Se retiró Dark -->
+<div class="flex items-center gap-2 px-3 min-h-[48px] rounded-full bg-on-surface text-error">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="material-symbols-outlined text-[18px]">logout</span>
+<span class="font-body-md-medium text-body-md-medium">Se retiró</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 2: INSIGNIAS DE RUTA CLÍNICA (Route Badges) -->
+<section class="mt-space-xl flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">alt_route</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">2. Insignias de Ruta Clínica (Route Badges)</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        Definen el camino crítico asignado durante el triage de admisión. Evitan que pacientes de procedimientos menores saturen la cola del médico general.
+      </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- Ruta Estándar -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-primary">
+<span class="material-symbols-outlined text-[18px]">route</span>
+<span class="font-headline-sm text-headline-sm">Estándar</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline">R-01</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Flujo ambulatorio regular: Signos vitales completos → Consulta con Médico o PA → Receta / Órdenes → Facturación y Caja.
+        </p>
+<div class="pt-space-xs flex items-center gap-2 text-on-surface font-caption text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>Tiempo estimado: 40-55 min</span>
+</div>
+</div>
+<!-- Solo Inyección -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant">
+<span class="material-symbols-outlined text-[18px]">vaccines</span>
+<span class="font-headline-sm text-headline-sm">Solo inyección</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline">R-02</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Paso express directo al cubículo de enfermería para inmunizaciones o medicación intramuscular programada. Omite examen médico general.
+        </p>
+<div class="pt-space-xs flex items-center gap-2 text-on-surface font-caption text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>Tiempo estimado: 10-15 min</span>
+</div>
+</div>
+<!-- Solo Laboratorio -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-tertiary">science</span>
+<span class="font-headline-sm text-headline-sm">Solo laboratorio</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline">R-03</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Toma de muestras venosas, pruebas rápidas de estreptococo, glucemia o recolección de orina. Paciente sale directo a cobro de muestras.
+        </p>
+<div class="pt-space-xs flex items-center gap-2 text-on-surface font-caption text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span>Tiempo estimado: 15-20 min</span>
+</div>
+</div>
+<!-- Solo Procedimiento -->
+<div class="p-space-md rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-highest text-primary">
+<span class="material-symbols-outlined text-[18px]">medical_services</span>
+<span class="font-headline-sm text-headline-sm">Solo procedimiento</span>
+</div>
+<span class="font-code-sm text-code-sm text-outline">R-04</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Curaciones de heridas, suturas menores, retiro de puntos, nebulizaciones o lavado óptico en sala técnica especializada.
+        </p>
+<div class="pt-space-xs flex items-center gap-2 text-on-surface font-caption text-caption">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span>Tiempo estimado: 25-35 min</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 3: ESTADOS DE UNA LISTA (List States) -->
+<section class="mt-space-xl flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">table_rows</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">3. Estados de Lista y Tablas Operativas</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        Comportamiento estandarizado ante las 4 realidades de la red clínica: latencia, bandejas vacías, caída de servidor y conectividad intermitente.
+      </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-lg">
+<!-- a) Cargando (Skeleton Loading) -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">a) Estado Cargando (Skeleton)</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container text-primary font-caption text-caption">Animación Pulse</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+            Mantiene la estructura espacial fija para evitar desplazamientos de diseño (CLS = 0) durante la solicitud remota.
+          </p>
+<div class="rounded-lg bg-surface-container-low p-space-sm space-y-3">
+<!-- Table Header Mock -->
+<div class="flex justify-between items-center py-2 px-3 bg-surface-container rounded">
+<div class="w-24 h-4 bg-outline-variant/40 rounded animate-pulse"></div>
+<div class="w-36 h-4 bg-outline-variant/40 rounded animate-pulse"></div>
+<div class="w-16 h-4 bg-outline-variant/40 rounded animate-pulse"></div>
+</div>
+<!-- Row 1 -->
+<div class="flex justify-between items-center py-2.5 px-3 bg-surface-container-lowest rounded shadow-sm">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-full bg-outline-variant/40 animate-pulse"></div>
+<div class="w-28 h-4 bg-outline-variant/30 rounded animate-pulse"></div>
+</div>
+<div class="w-20 h-4 bg-outline-variant/30 rounded animate-pulse"></div>
+<div class="w-14 h-6 bg-outline-variant/30 rounded-full animate-pulse"></div>
+</div>
+<!-- Row 2 -->
+<div class="flex justify-between items-center py-2.5 px-3 bg-surface-container-lowest rounded shadow-sm">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-full bg-outline-variant/40 animate-pulse"></div>
+<div class="w-32 h-4 bg-outline-variant/30 rounded animate-pulse"></div>
+</div>
+<div class="w-24 h-4 bg-outline-variant/30 rounded animate-pulse"></div>
+<div class="w-14 h-6 bg-outline-variant/30 rounded-full animate-pulse"></div>
+</div>
+<!-- Row 3 -->
+<div class="flex justify-between items-center py-2.5 px-3 bg-surface-container-lowest rounded shadow-sm">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-full bg-outline-variant/40 animate-pulse"></div>
+<div class="w-20 h-4 bg-outline-variant/30 rounded animate-pulse"></div>
+</div>
+<div class="w-16 h-4 bg-outline-variant/30 rounded animate-pulse"></div>
+<div class="w-14 h-6 bg-outline-variant/30 rounded-full animate-pulse"></div>
+</div>
+</div>
+</div>
+<span class="font-caption text-caption text-outline mt-space-sm">Uso: Esperas de red mayores a 200 ms</span>
+</div>
+<!-- b) Vacío (Empty State) -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">b) Estado Vacío (Zero Data)</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface-variant font-caption text-caption">Tranquilidad Clínica</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+            Comunica positivamente que la sala o bandeja de trabajo no tiene pendientes urgentes en la sede actual.
+          </p>
+<div class="rounded-lg bg-surface-container-low p-space-xl flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-primary mb-space-sm">
+<span class="material-symbols-outlined text-[36px]">local_cafe</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">No hay pacientes en cola</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-sm mt-1">
+              Todos los turnos programados para hoy han sido atendidos o se encuentran en consulta. La sala de espera está al día.
+            </p>
+<div class="mt-space-md flex gap-space-xs">
+<button class="px-space-md min-h-[44px] rounded-lg bg-surface-container-high text-on-surface font-body-md-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+<span>Actualizar bandeja</span>
+</button>
+</div>
+</div>
+</div>
+<span class="font-caption text-caption text-outline mt-space-sm">Uso: Colas sin registros tras respuesta 200 OK</span>
+</div>
+<!-- c) Error sin datos (Critical Error) -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">c) Error Sin Datos Previos</span>
+<span class="px-space-xs py-0.5 rounded bg-error-container text-on-error-container font-caption text-caption">Severidad Alta</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+            Ocurre cuando la conexión falla por completo y no existe memoria caché utilizable en el navegador local.
+          </p>
+<div class="rounded-lg bg-error-container/20 p-space-xl flex flex-col items-center text-center">
+<div class="w-16 h-16 rounded-full bg-error-container flex items-center justify-center text-error mb-space-sm">
+<span class="material-symbols-outlined text-[36px]">cloud_off</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Algo salió mal al cargar la información</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-sm mt-1">
+              No fue posible establecer conexión con el servidor clínico de LAN Lancaster. Compruebe el enlace Wi-Fi asistencial.
+            </p>
+<div class="mt-space-md flex items-center gap-space-sm">
+<button class="px-space-md min-h-[44px] rounded-lg bg-primary-container text-on-primary font-body-md-medium flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+<span>Reintentar ahora</span>
+</button>
+<button class="px-space-md min-h-[44px] rounded-lg bg-surface-container-high text-on-surface font-body-md-medium">
+                Ver diagnóstico
+              </button>
+</div>
+</div>
+</div>
+<span class="font-caption text-caption text-outline mt-space-sm">Uso: Respuestas 500/503 o falla de timeout</span>
+</div>
+<!-- d) Error con datos previos (Stale Data with Warning) -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-headline-sm text-headline-sm text-on-surface">d) Error con Datos Previos (Caché)</span>
+<span class="px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface-variant font-caption text-caption">Modo Degradado</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-space-md">
+            Mantiene legibles los datos capturados anteriormente pero avisa explícitamente sobre la desactualización.
+          </p>
+<div class="flex flex-col gap-space-xs">
+<!-- Barra de advertencia compacta -->
+<div class="p-space-sm rounded-lg bg-error text-on-error flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+<span class="font-body-md-medium text-body-md-medium">Error de sincronización: Mostrando datos en caché de hace 3 min</span>
+</div>
+<button class="px-space-sm py-1 rounded bg-on-error text-error font-caption text-caption font-semibold shrink-0">
+                Reintentar conexión
+              </button>
+</div>
+<!-- Tabla con datos atenuados -->
+<div class="rounded-lg bg-surface-container-low p-space-sm opacity-80">
+<div class="flex justify-between items-center py-2 px-3 border-b border-surface-container text-on-surface-variant font-caption text-caption">
+<span>PACIENTE / ID</span>
+<span>HORA CITA</span>
+<span>ESTADO</span>
+</div>
+<div class="flex justify-between items-center py-2 px-3 bg-surface-container-lowest rounded my-1 shadow-sm">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-primary">P-001094</span>
+<span class="font-body-md-medium text-body-md-medium">Carlos Méndez Solís</span>
+</div>
+<span class="font-code-sm text-code-sm">10:45 AM</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface font-caption text-caption">Con proveedor</span>
+</div>
+<div class="flex justify-between items-center py-2 px-3 bg-surface-container-lowest rounded shadow-sm">
+<div class="flex items-center gap-2">
+<span class="font-code-sm text-code-sm text-primary">P-001098</span>
+<span class="font-body-md-medium text-body-md-medium">Dra. Beatriz Castillo</span>
+</div>
+<span class="font-code-sm text-code-sm">11:00 AM</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-on-surface font-caption text-caption">Esperando</span>
+</div>
+</div>
+</div>
+</div>
+<span class="font-caption text-caption text-outline mt-space-sm">Uso: Pérdida momentánea de señal en carros móviles</span>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 4: BOTONES Y JERARQUÍA DE ACCIÓN -->
+<section class="mt-space-xl flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">smart_button</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">4. Botones y Jerarquía de Acción</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        Regla ergonómica estricta: Altura mínima de interacción de 48px en todas las variantes para evitar toques erróneos en tablets táctiles.
+      </p>
+</div>
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col gap-space-lg">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+<!-- 1. Principal -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Botón Principal</span>
+<span class="font-caption text-caption text-outline">Fondo teal sólido `#0F766E`, texto blanco</span>
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="min-h-[48px] px-space-md rounded-lg bg-primary-container text-on-primary font-body-md-medium flex items-center justify-center gap-2 hover:bg-primary transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[20px]">check</span>
+<span>Guardar registro médico</span>
+</button>
+<div class="flex items-center justify-between text-caption font-caption text-on-surface-variant px-1">
+<span>Normal &amp; Hover integrado</span>
+<span class="font-code-sm">48px · touch</span>
+</div>
+</div>
+</div>
+<!-- 2. Tonal -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Botón Tonal</span>
+<span class="font-caption text-caption text-outline">Fondo teal suave, texto de alto contraste</span>
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="min-h-[48px] px-space-md rounded-lg bg-surface-container text-primary font-body-md-medium flex items-center justify-center gap-2 hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+<span>Filtrar citas activas</span>
+</button>
+<div class="flex items-center justify-between text-caption font-caption text-on-surface-variant px-1">
+<span>Acciones secundarias sin fatiga</span>
+<span class="font-code-sm">48px · touch</span>
+</div>
+</div>
+</div>
+<!-- 3. Contorno / Outline -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Botón de Contorno</span>
+<span class="font-caption text-caption text-outline">Borde sutil, fondo plano transparente</span>
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="min-h-[48px] px-space-md rounded-lg bg-surface-container-low text-on-surface font-body-md-medium flex items-center justify-center gap-2 hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span>Historial previo</span>
+</button>
+<div class="flex items-center justify-between text-caption font-caption text-on-surface-variant px-1">
+<span>Para cancelaciones o descarte</span>
+<span class="font-code-sm">48px · touch</span>
+</div>
+</div>
+</div>
+<!-- 4. Texto / Icono -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Botón de Texto</span>
+<span class="font-caption text-caption text-outline">Sin caja ni fondo, máxima ligereza visual</span>
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="min-h-[48px] px-space-md rounded-lg text-primary font-body-md-medium flex items-center justify-center gap-2 hover:bg-surface-container transition-colors">
+<span>Ver detalles de laboratorio</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<div class="flex items-center justify-between text-caption font-caption text-on-surface-variant px-1">
+<span>Navegación contextual</span>
+<span class="font-code-sm">48px · touch</span>
+</div>
+</div>
+</div>
+<!-- 5. Destructivo -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Botón Destructivo</span>
+<span class="font-caption text-caption text-outline">Alerta crítica, operaciones irreversibles</span>
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="min-h-[48px] px-space-md rounded-lg bg-error text-on-error font-body-md-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-sm">
+<span class="material-symbols-outlined text-[20px]">delete_forever</span>
+<span>Anular cargo en caja</span>
+</button>
+<div class="flex items-center justify-between text-caption font-caption text-on-surface-variant px-1">
+<span>Exige confirmación modal previa</span>
+<span class="font-code-sm">48px · touch</span>
+</div>
+</div>
+</div>
+<!-- 6. Con indicador de carga -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-headline-sm text-headline-sm text-on-surface">Botón con Carga (Spinner)</span>
+<span class="font-caption text-caption text-outline">Feedback visual para escrituras en servidor</span>
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<button class="min-h-[48px] px-space-md rounded-lg bg-primary-container/80 text-on-primary font-body-md-medium flex items-center justify-center gap-3 cursor-not-allowed" disabled="">
+<svg class="animate-spin h-5 w-5 text-on-primary" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+<span>Guardando expediente...</span>
+</button>
+<div class="flex items-center justify-between text-caption font-caption text-on-surface-variant px-1">
+<span>Evita re-envíos duplicados</span>
+<span class="font-code-sm">Disabled state</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 5 & 6 EN GRID ASIMÉTRICO (Diálogo Destructivo & Timeout HIPAA) -->
+<div class="mt-space-xl grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- SECCIÓN 5: DIÁLOGO DE CONFIRMACIÓN DESTRUCTIVA (Modal Component preview) -->
+<section class="lg:col-span-7 flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-error text-[20px]">warning</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">5. Diálogo de Confirmación Destructiva</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Patrón obligatorio para revocaciones, cancelaciones de turnos y eliminación de recetas en el expediente.
+        </p>
+</div>
+<!-- Modal Card Simulation -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-md flex flex-col gap-space-md">
+<div class="flex items-start gap-space-sm">
+<div class="w-12 h-12 rounded-full bg-error-container text-error flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[28px]">crisis_alert</span>
+</div>
+<div class="flex flex-col">
+<h3 class="font-headline-md text-headline-md text-on-surface">¿Cancelar esta cita médica?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+              Esta acción no se puede deshacer. Se liberará el turno de las <strong>10:30 a. m.</strong> de la paciente <strong>María López García</strong> (Exp: <span class="font-code-sm">P-000492</span>).
+            </p>
+</div>
+</div>
+<!-- Formulario Requerido -->
+<div class="flex flex-col gap-1.5 pt-space-xs">
+<label class="font-body-md-medium text-body-md-medium text-on-surface flex items-center gap-1">
+<span>Motivo de cancelación</span>
+<span class="text-error font-bold">*</span>
+</label>
+<div class="relative">
+<select class="w-full h-12 px-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer">
+<option disabled="" selected="" value="">Seleccione o describa el motivo obligatorio...</option>
+<option value="paciente_no_asistio">Paciente no se presentó a tiempo (No-show)</option>
+<option value="reprogramacion">Paciente solicitó reprogramación para otra fecha</option>
+<option value="emergencia_medica">Proveedor indispuesto por interconsulta de emergencia</option>
+<option value="error_registro">Error de registro administrativo duplicado</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">arrow_drop_down</span>
+</div>
+<div class="flex justify-between items-center px-1">
+<span class="font-caption text-caption text-error font-medium">Campo requerido para auditoría legal</span>
+<span class="font-caption text-caption text-outline">Norma NOM-004-SSA3</span>
+</div>
+</div>
+<!-- Botones de Acción -->
+<div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-space-sm pt-space-sm border-t border-surface-container-high">
+<button class="w-full sm:w-auto min-h-[48px] px-space-md rounded-lg bg-surface-container text-on-surface font-body-md-medium hover:bg-surface-container-high transition-colors">
+            Volver sin cambios
+          </button>
+<button class="w-full sm:w-auto min-h-[48px] px-space-md rounded-lg bg-error text-on-error font-body-md-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+<span>Cancelar cita definitivamente</span>
+</button>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 6: AVISO DE CIERRE POR INACTIVIDAD (Session Timeout Alert) -->
+<section class="lg:col-span-5 flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[20px]">timer</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">6. Aviso de Inactividad (HIPAA)</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Bloqueo de seguridad tras 15 minutos sin interacción del periférico.
+        </p>
+</div>
+<!-- Alerta Estilo Tarjeta Flotante -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-tertiary">
+<span class="material-symbols-outlined text-[24px]">lock_clock</span>
+<span class="font-headline-sm text-headline-sm">Aviso de seguridad</span>
+</div>
+<span class="px-space-xs py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-code-sm text-code-sm">SEC-TIMEOUT</span>
+</div>
+<div class="p-space-md rounded-lg bg-surface-container flex flex-col items-center text-center">
+<span class="font-caption text-caption uppercase tracking-wider text-outline">Tiempo restante para bloqueo</span>
+<div class="font-display-md text-display-md text-primary font-bold my-1 tracking-tight flex items-center gap-1 font-mono">
+<span id="countdown-timer">60</span>
+<span class="text-headline-sm font-normal">segundos</span>
+</div>
+<div class="w-full bg-surface-container-high rounded-full h-2 mt-1 overflow-hidden">
+<div class="bg-primary h-2 rounded-full w-2/3 transition-all"></div>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Por normativas de privacidad clínica <strong>HIPAA Security Rule</strong>, su sesión se cerrará automáticamente si no se detecta actividad para proteger el expediente de la paciente actual.
+        </p>
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<button class="min-h-[48px] w-full px-space-md rounded-lg bg-primary-container text-on-primary font-body-md-medium hover:bg-primary transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[20px]">touch_app</span>
+<span>Mantener la sesión activa</span>
+</button>
+<button class="min-h-[44px] w-full text-center font-body-md-medium text-outline hover:text-error transition-colors">
+            Cerrar sesión ahora mismo
+          </button>
+</div>
+</div>
+</section>
+</div>
+<!-- SECCIÓN 7: CAMPOS DE DATOS FORMATEADOS Y MONOESPACIADO -->
+<section class="mt-space-xl flex flex-col gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">pin</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">7. Campos Formateados, Códigos y Tipografía Monoespaciada</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        Regla de integridad contable: Todas las cantidades monetarias, expedientes de pacientes y folios de visita deben renderizarse con fuentes con ancho fijo (<code class="font-code-sm">font-mono</code>) para garantizar alineación tabular vertical de puntos decimales.
+      </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
+<!-- 1. Campo Monetario -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Campo de Dinero / Facturación</span>
+<span class="font-caption text-caption px-space-xs py-0.5 rounded bg-surface-container text-primary font-code-sm">USD Tabular</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Prefijo invariable con justificación decimal fija a 2 cifras.
+          </p>
+<!-- Input Editable Mock -->
+<div class="mt-2 flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant font-medium">Monto a cobrar en caja</span>
+<div class="relative flex items-center">
+<span class="absolute left-3 font-code-md text-code-md text-primary font-bold">$</span>
+<input class="w-full h-12 pl-8 pr- space-md rounded-lg bg-surface-container-low font-code-md text-code-md text-on-surface font-semibold focus:outline-none focus:ring-2 focus:ring-primary text-right" readonly="" type="text" value="1,234.50"/>
+<span class="absolute right-3 font-caption text-caption text-outline">USD</span>
+</div>
+</div>
+<!-- Display Solo Lectura -->
+<div class="mt-2 p-space-sm rounded-lg bg-surface-container-high/40 flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">Saldo copago:</span>
+<span class="font-code-md text-code-md font-bold text-primary">$45.00</span>
+</div>
+</div>
+<div class="pt-space-xs flex items-center gap-1.5 text-caption font-caption text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">check_box</span>
+<span>Ceros proporcionales desactivados (<code class="font-code-sm">font-mono</code>)</span>
+</div>
+</div>
+<!-- 2. Código de Paciente -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Código de Expediente Clínico</span>
+<span class="font-caption text-caption px-space-xs py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed-variant font-code-sm">MASTER ID</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Identificador permanente no alterable vinculado a la historia médica de por vida.
+          </p>
+<div class="mt-2 flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[22px]">badge</span>
+<span class="font-code-md text-code-md font-bold text-on-surface tracking-wider">P-000123</span>
+</div>
+<button class="px-space-xs py-1 rounded bg-surface-container-highest hover:bg-surface-container text-on-surface font-caption text-caption flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[16px]">content_copy</span>
+<span>Copiar</span>
+</button>
+</div>
+<div class="mt-2 p-space-sm rounded-lg bg-surface-container-high/40 flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface-variant">Estado expediente:</span>
+<span class="inline-flex items-center gap-1 font-caption text-caption text-primary font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span> Verificado
+            </span>
+</div>
+</div>
+<div class="pt-space-xs flex items-center gap-1.5 text-caption font-caption text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">fingerprint</span>
+<span>Prefijo P + 6 dígitos correlativos</span>
+</div>
+</div>
+<!-- 3. Códigos de Visita y Recibo -->
+<div class="p-space-lg rounded-xl bg-surface-container-lowest shadow-sm flex flex-col justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface">Folios de Visita y Caja</span>
+<span class="font-caption text-caption px-space-xs py-0.5 rounded bg-surface-container-high text-on-surface font-code-sm">TRANSACCIÓN</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Segmentados por sede clínica (LAN: Lancaster, TX) y año fiscal.
+          </p>
+<div class="mt-2 space-y-2">
+<!-- Folio Visita -->
+<div class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-outline">Folio de visita diaria</span>
+<span class="font-code-md text-code-md font-semibold text-primary">LAN-V-000210</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[20px]">calendar_today</span>
+</div>
+<!-- Folio Recibo -->
+<div class="flex items-center justify-between p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-caption text-caption text-outline">Comprobante fiscal de pago</span>
+<span class="font-code-md text-code-md font-semibold text-on-surface">LAN-R-2026-000045</span>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[20px]">receipt</span>
+</div>
+</div>
+</div>
+<div class="pt-space-xs flex items-center gap-1.5 text-caption font-caption text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-primary">receipt_long</span>
+<span>Inmutabilidad de auditoría de caja</span>
+</div>
+</div>
+</div>
+</section>
+<!-- REGLAS QUE NO SE ROMPEN (Callout de Cierre Técnico) -->
+<section class="mt-space-xl p-space-lg rounded-xl bg-surface-container-high/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="flex items-start gap-space-sm max-w-3xl">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">policy</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface">Garantía de Estándar Clínico</h4>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Queda prohibido aplicar modificaciones manuales directas fuera de estos tokens. Cualquier nuevo componente debe pasar por la validación del comité de ingeniería clínica de Clinic System.
+        </p>
+</div>
+</div>
+<div class="shrink-0">
+<button class="min-h-[48px] px-space-md rounded-lg bg-primary-container text-on-primary font-body-md-medium flex items-center gap-2 hover:bg-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span>Descargar especificación JSON</span>
+</button>
+</div>
+</section>
+</div></main></div></body></html>
