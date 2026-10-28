@@ -3,45 +3,84 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { Check } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '../cn.ts';
 
-// Diálogo (DESIGN.md, «Elevation Level 3»: radio 12 px, fondo con desenfoque).
-export function Dialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  children,
-  dismissible = true,
-  icon,
-}: {
+export interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
+  /** Botones del pie: a la derecha; en el teléfono, apilados a lo ancho. */
+  footer?: ReactNode;
   /** false: no se cierra tocando fuera ni con Esc (S-GEN-20). */
   dismissible?: boolean;
   icon?: ReactNode;
-}) {
+  /** Color del círculo del icono: `danger` para acciones destructivas. */
+  tone?: 'primary' | 'danger';
+  /** Solo para /dev/ui: se dibuja en la página, sin capa ni foco atrapado. */
+  inline?: boolean;
+}
+
+/**
+ * Diálogo (hoja S-GEN-30, sección 5): icono en un círculo, título de 20 px y
+ * texto al lado; pie con línea superior. Elevación de nivel 3 y fondo con
+ * desenfoque (DESIGN.md).
+ */
+export function Dialog({ open, onOpenChange, title, description, children, footer, dismissible = true, icon, tone = 'primary', inline = false }: DialogProps) {
+  const content = (
+    <DialogPrimitive.Content
+      className={cn(
+        'flex flex-col gap-space-md rounded-lg border border-outline-variant/60 bg-surface-container-lowest p-space-lg shadow-level-3 dark:bg-surface-container-low',
+        inline
+          ? 'relative w-full max-w-lg'
+          : 'fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
+      )}
+      {...(inline ? { onOpenAutoFocus: (e: Event) => { e.preventDefault(); } } : {})}
+      {...(dismissible ? {} : { onPointerDownOutside: (e: Event) => { e.preventDefault(); }, onEscapeKeyDown: (e: Event) => { e.preventDefault(); } })}
+    >
+      <div className="flex items-start gap-space-sm">
+        {icon ? (
+          <div
+            aria-hidden
+            className={cn(
+              'flex size-12 shrink-0 items-center justify-center rounded-full',
+              tone === 'danger' ? 'bg-error-container text-error' : 'bg-surface-container text-primary dark:bg-surface-container-high',
+            )}
+          >
+            {icon}
+          </div>
+        ) : null}
+        <div className="flex min-w-0 flex-col gap-1">
+          <DialogPrimitive.Title className="text-headline-md text-on-surface">{title}</DialogPrimitive.Title>
+          {description ? (
+            <DialogPrimitive.Description className="text-body-md text-on-surface-variant">{description}</DialogPrimitive.Description>
+          ) : (
+            <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
+          )}
+        </div>
+      </div>
+      {children}
+      {footer ? (
+        <div className="flex flex-col-reverse gap-space-sm border-t border-surface-container-high pt-space-md tab:flex-row tab:justify-end [&>*]:w-full tab:[&>*]:w-auto">
+          {footer}
+        </div>
+      ) : null}
+    </DialogPrimitive.Content>
+  );
+
+  if (inline) {
+    return (
+      <DialogPrimitive.Root open modal={false}>
+        {content}
+      </DialogPrimitive.Root>
+    );
+  }
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-[var(--backdrop)] backdrop-blur-[4px]" />
-        <DialogPrimitive.Content
-          className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border border-outline-variant bg-surface-container-lowest p-space-lg shadow-level-3"
-          {...(dismissible ? {} : { onPointerDownOutside: (e) => { e.preventDefault(); }, onEscapeKeyDown: (e) => { e.preventDefault(); } })}
-          aria-describedby={description ? undefined : undefined}
-        >
-          {icon ? <div className="mb-space-md text-primary">{icon}</div> : null}
-          <DialogPrimitive.Title className="text-headline-sm text-on-surface">{title}</DialogPrimitive.Title>
-          {description ? (
-            <DialogPrimitive.Description className="mt-space-sm text-body-md text-on-surface-variant">{description}</DialogPrimitive.Description>
-          ) : (
-            <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
-          )}
-          <div className="mt-space-lg">{children}</div>
-        </DialogPrimitive.Content>
+        {content}
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );

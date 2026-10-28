@@ -1,11 +1,8 @@
 @import 'tailwindcss';
 @import '@clinic/ui/tokens.css';
 
-/* Puntos de corte del marco (manual, S-GEN-12): riel 600–1024 px, menú lateral > 1024 px. */
-@theme {
-  --breakpoint-tab: 600px;
-  --breakpoint-desk: 1025px;
-}
+/* Los componentes de packages/ui también usan clases de Tailwind. */
+@source '../../../packages/ui/src';
 
 /* Modo oscuro por clase en <html> (lo fija src/lib/storage.ts). */
 @custom-variant dark (&:where(.dark, .dark *));

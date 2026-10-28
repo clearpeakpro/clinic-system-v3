@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { cn } from '../../lib/cn.ts';
+import { cn } from '../cn.ts';
 
 export const OTP_LENGTH = 6;
 

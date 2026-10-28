@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { SearchX } from 'lucide-react';
+import { Button } from '@clinic/ui';
 import { Brand } from '../components/brand.tsx';
-import { Button } from '../components/ui/button.tsx';
 
 /** S-GEN-29 Página no encontrada: fuera del marco, aunque haya sesión. «Atrás» lleva al inicio. */
 export function NotFoundPage() {

@@ -142,3 +142,9 @@ test('cierre por inactividad con reloj simulado', async ({ page }) => {
   await page.goto('/app/NOR2/panel');
   await expect(page).toHaveURL(/\/login/);
 });
+
+test('/dev/ui no existe en la compilación de producción', async ({ page }) => {
+  await page.goto('/dev/ui');
+  await expect(page.getByRole('heading', { name: 'Página no encontrada' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Componentes compartidos' })).toHaveCount(0);
+});

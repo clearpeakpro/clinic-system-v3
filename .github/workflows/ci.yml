@@ -42,9 +42,13 @@ jobs:
         run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
       # Flujos de rol de T-004: Postgres (Testcontainers) + API real + web compilada.
       - run: pnpm test:e2e
+      # Accesibilidad de /dev/ui (T-005): axe con el servidor de desarrollo de Vite.
+      - run: pnpm --filter @clinic/web test:a11y
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
-          path: apps/web/playwright-report/
+          path: |
+            apps/web/playwright-report/
+            apps/web/playwright-report-a11y/
           retention-days: 7

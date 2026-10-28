@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
-import { Spinner } from '../components/ui/field.tsx';
+import { Spinner } from '@clinic/ui';
 import { api, ApiError, type Me } from '../lib/api.ts';
 import { landingPath } from '../lib/nav.ts';
 import { flatten, keys, queryClient } from '../lib/session.ts';

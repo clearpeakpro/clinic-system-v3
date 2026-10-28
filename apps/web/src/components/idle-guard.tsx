@@ -1,10 +1,9 @@
 import { useNavigate } from '@tanstack/react-router';
-import { Clock, Loader2 } from 'lucide-react';
+import { Hand, Loader2, Timer } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { IdleClock, secondsText, type IdlePhase } from '../lib/idle.ts';
+import { Button, Dialog } from '@clinic/ui';
+import { IdleClock, secondsText, WARNING_SECONDS, type IdlePhase } from '../lib/idle.ts';
 import { endSession } from '../lib/session.ts';
-import { Button } from './ui/button.tsx';
-import { Dialog } from './ui/overlay.tsx';
 
 // S-GEN-20 Cierre automático por inactividad (HIPAA 164.312(a)(2)(iii)).
 // Solo cuenta la interacción real; timers, peticiones y cambios de foco no.
@@ -67,26 +66,61 @@ export function IdleGuard({ limitSeconds }: { limitSeconds: number }) {
   }
 
   return (
-    <Dialog
+    <IdleWarningDialog
       open={state.phase === 'warning'}
+      secondsLeft={state.phase === 'warning' ? state.secondsLeft : WARNING_SECONDS}
+      onKeepAlive={() => {
+        clock.keepAlive(Date.now());
+        tick();
+      }}
+      onSignOut={() => void expire()}
+    />
+  );
+}
+
+/**
+ * Aviso de S-GEN-20 con el aspecto de la hoja S-GEN-30 (sección 6): cuenta
+ * atrás grande y barra de progreso. Textos del manual.
+ */
+export function IdleWarningDialog({
+  open,
+  secondsLeft,
+  onKeepAlive,
+  onSignOut,
+  inline = false,
+}: {
+  open: boolean;
+  secondsLeft: number;
+  onKeepAlive: () => void;
+  onSignOut: () => void;
+  inline?: boolean;
+}) {
+  return (
+    <Dialog
+      open={open}
       onOpenChange={() => undefined}
       dismissible={false}
-      icon={<Clock aria-hidden className="size-8" />}
+      inline={inline}
+      icon={<Timer className="size-7" />}
       title="¿Sigue ahí?"
-      description={state.phase === 'warning' ? `Su sesión se cerrará en ${secondsText(state.secondsLeft)} por inactividad.` : ''}
+      description={`Su sesión se cerrará en ${secondsText(secondsLeft)} por inactividad.`}
     >
-      <div className="flex flex-wrap justify-end gap-space-sm">
-        <Button variant="text" onClick={() => void expire()}>
-          Cerrar sesión
+      {/* Repite visualmente la cuenta atrás; el texto ya la anuncia. */}
+      <div aria-hidden className="flex flex-col items-center rounded-md bg-surface-container p-space-md text-center dark:bg-surface-container-high">
+        <span className="flex items-baseline gap-1 font-mono text-display-md font-bold text-primary tabular-nums">
+          {secondsLeft}
+          <span className="font-sans text-headline-sm font-normal">{secondsLeft === 1 ? 'segundo' : 'segundos'}</span>
+        </span>
+        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-surface-container-high dark:bg-surface-container-highest">
+          <div className="h-2 rounded-full bg-primary transition-[width]" style={{ width: `${String((secondsLeft / WARNING_SECONDS) * 100)}%` }} />
+        </div>
+      </div>
+      <div className="flex flex-col gap-space-xs">
+        <Button size="block" autoFocus={!inline} onClick={onKeepAlive}>
+          <Hand aria-hidden className="size-5" /> Mantener la sesión
         </Button>
-        <Button
-          autoFocus
-          onClick={() => {
-            clock.keepAlive(Date.now());
-            tick();
-          }}
-        >
-          Mantener la sesión
+        <Button size="block" variant="text" className="text-on-surface-variant hover:text-error" onClick={onSignOut}>
+          Cerrar sesión
         </Button>
       </div>
     </Dialog>

@@ -5,7 +5,8 @@ import { ROLES } from './permissions.ts';
 
 const uuid = z.uuid();
 /** Motivo obligatorio de toda escritura administrativa (CLAUDE.md, regla 6). */
-const reason = z.string().trim().min(1).max(500);
+export const reasonSchema = z.string().trim().min(1).max(500);
+const reason = reasonSchema;
 
 export const selectContextSchema = z.object({
   organizationId: uuid,

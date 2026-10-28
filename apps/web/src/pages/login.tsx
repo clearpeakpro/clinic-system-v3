@@ -2,14 +2,10 @@ import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ArrowRight, Copy, Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
+import { Banner, Button, Checkbox, copyText, Field, OTP_LENGTH, OtpInput, totpSecondsLeft } from '@clinic/ui';
 import { AuthCard, AuthHeader, AuthLayout } from '../components/auth-layout.tsx';
 import { BrandMark } from '../components/brand.tsx';
-import { Button } from '../components/ui/button.tsx';
-import { Banner, Field } from '../components/ui/field.tsx';
-import { OTP_LENGTH, OtpInput, totpSecondsLeft } from '../components/ui/otp-input.tsx';
-import { Checkbox } from '../components/ui/overlay.tsx';
 import { api, ApiError } from '../lib/api.ts';
-import { copyText } from '../lib/clipboard.ts';
 import { keys, queryClient } from '../lib/session.ts';
 
 // S-GEN-03 Iniciar sesión → S-GEN-06 código de MFA, o S-GEN-07 inscripción

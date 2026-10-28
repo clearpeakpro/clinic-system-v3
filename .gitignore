@@ -10,5 +10,6 @@ coverage/
 .DS_Store
 cdk.out/
 playwright-report/
+playwright-report-a11y/
 dev-dist/
 test-results/

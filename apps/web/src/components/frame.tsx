@@ -1,8 +1,8 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Check, ChevronDown, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Button, cn, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Sheet, SheetClose, Spinner } from '@clinic/ui';
 import { api, type Me } from '../lib/api.ts';
-import { cn } from '../lib/cn.ts';
 import { initials, rolesText } from '../lib/format.ts';
 import { landingPath, menuFor, pathFor, type NavItem } from '../lib/nav.ts';
 import { flatten, keys, queryClient, useLocations, useMe, type FlatLocation } from '../lib/session.ts';
@@ -11,9 +11,6 @@ import { NotFoundPage } from '../pages/not-found.tsx';
 import { Brand, BrandLogo } from './brand.tsx';
 import { IdleGuard } from './idle-guard.tsx';
 import { LogoutDialog } from './logout-dialog.tsx';
-import { Button } from './ui/button.tsx';
-import { Spinner } from './ui/field.tsx';
-import { DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Sheet, SheetClose } from './ui/overlay.tsx';
 
 /**
  * S-GEN-12 Marco. Menú lateral (> 1024 px), riel (600–1024 px) o barra
