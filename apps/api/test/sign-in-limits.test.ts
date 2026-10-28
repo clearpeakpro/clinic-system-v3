@@ -1,14 +1,16 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULTS } from '../src/config.ts';
-import { Client, createStaff, NORTE, readAudit, signIn, startApp, type Staff, type TestApp } from './support.ts';
+import { Client, createStaff, NORTE, randomTestIp, readAudit, signIn, startApp, type Staff, type TestApp } from './support.ts';
 
 // Límite de intentos de inicio de sesión (ADR 0023):
-//  - por IP: el de Better Auth, activo en todos los entornos (3 cada 10 s por
-//    IP en /sign-in*);
+//  - por IP: el de Better Auth, activo en todos los entornos (30 intentos por
+//    minuto por IP en /sign-in*: toda la clínica comparte la IP pública);
 //  - por cuenta: el nuestro (10 fallos en 15 min por defecto), desde cualquier IP.
 
 const MAX = DEFAULTS.signInAccountMaxFailures;
 const WINDOW_MS = DEFAULTS.signInAccountWindowSeconds * 1000;
+const IP_MAX = DEFAULTS.signInIpMaxAttempts;
+const IP_WINDOW_MS = DEFAULTS.signInIpWindowSeconds * 1000;
 
 describe('límite de intentos de inicio de sesión', () => {
   let app: TestApp;
@@ -27,19 +29,30 @@ describe('límite de intentos de inicio de sesión', () => {
     client.post('/api/auth/sign-in/email', { email: staff.email, password: staff.password });
 
   describe('por IP (Better Auth)', () => {
-    it('al cuarto intento en 10 s desde la misma IP responde 429, aunque la contraseña sea correcta', async () => {
+    it('8 personas distintas inician sesión desde la misma IP sin recibir 429', async () => {
+      const clinicIp = randomTestIp();
+      for (let i = 0; i < 8; i++) {
+        const staff = await createStaff(app, `lim-clinica-${String(i)}`, [{ org: NORTE, location: 0, role: 'recepcion' }]);
+        const response = await signIn(new Client(app, clinicIp), staff);
+        expect(response.statusCode, `persona ${String(i + 1)}`).toBe(200);
+      }
+    });
+
+    it(`al intento ${String(IP_MAX + 1)} en un minuto desde la misma IP responde 429, aunque la contraseña sea correcta`, async () => {
       vi.useFakeTimers({ toFake: ['Date'], now: Date.now() });
       const staff = await createStaff(app, 'lim-ip', [{ org: NORTE, location: 0, role: 'recepcion' }]);
-      const sameIp = new Client(app);
-      for (let i = 0; i < 3; i++) {
-        expect((await attempt({ ...staff, password: 'Equivocada-123' }, sameIp)).statusCode).toBe(401);
+      const clinicIp = randomTestIp();
+      // Correos distintos e inexistentes: así no salta el límite por cuenta.
+      for (let i = 0; i < IP_MAX; i++) {
+        const response = await attempt({ email: `ip.${String(i)}@example.test`, password: 'Equivocada-123' }, new Client(app, clinicIp));
+        expect(response.statusCode, `intento ${String(i + 1)}`).toBe(401);
       }
-      expect((await signIn(sameIp, staff)).statusCode).toBe(429);
+      expect((await signIn(new Client(app, clinicIp), staff)).statusCode).toBe(429);
       // Desde otra IP sí entra.
       expect((await signIn(new Client(app), staff)).statusCode).toBe(200);
       // Pasada la ventana, la misma IP vuelve a poder.
-      vi.setSystemTime(Date.now() + 11_000);
-      expect((await signIn(sameIp, staff)).statusCode).toBe(200);
+      vi.setSystemTime(Date.now() + IP_WINDOW_MS + 1_000);
+      expect((await signIn(new Client(app, clinicIp), staff)).statusCode).toBe(200);
     });
   });
 

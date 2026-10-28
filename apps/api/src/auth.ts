@@ -83,11 +83,20 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
       },
     },
     // Límite por IP (ADR 0023): el de Better Auth, activo en TODOS los
-    // entornos (por defecto solo en producción). Reglas de 1.7.7: /sign-in*,
-    // /sign-up*, /change-password: 3 intentos cada 10 s por IP y ruta;
-    // /two-factor/*: 3 cada 10 s. La IP sale de CLIENT_IP_HEADER, que pone el
-    // servidor. En memoria: vale con una instancia (entorno B).
-    rateLimit: { enabled: true, storage: 'memory' },
+    // entornos (por defecto solo en producción). Para el inicio de sesión,
+    // 30 intentos por minuto por IP (configurable): todo el personal de una
+    // clínica comparte la IP pública, y la regla de 1.7.7 (3 cada 10 s) la
+    // bloquearía. El resto conserva las reglas de 1.7.7 (/sign-up*,
+    // /change-password y /two-factor/*: 3 cada 10 s). La IP sale de
+    // CLIENT_IP_HEADER, que pone el servidor. En memoria: vale con una
+    // instancia (entorno B).
+    rateLimit: {
+      enabled: true,
+      storage: 'memory',
+      customRules: {
+        '/sign-in/*': { window: config.signInIpWindowSeconds, max: config.signInIpMaxAttempts },
+      },
+    },
     advanced: {
       database: { generateId: () => uuidv7() },
       useSecureCookies: config.secureCookies,
