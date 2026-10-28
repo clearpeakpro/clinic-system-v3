@@ -38,6 +38,20 @@ design/stitch/<módulo>/<ID>_<nombre>/
 
 Para regenerar los tokens tras cambiar `DESIGN.md`: `pnpm --filter @clinic/ui tokens:palette`. La prueba `packages/ui/test/tokens.test.ts` falla si el archivo generado no coincide con el YAML, y comprueba el contraste WCAG AA en claro y en oscuro.
 
+## Qué se toma de cada pantalla y qué no (T-004)
+
+Se copia la distribución, los tamaños, el espaciado, los colores, los iconos y las sombras. **No** se construyen datos ni funciones que el sistema no tiene.
+
+| Pantalla | Se toma | No se construye |
+| --- | --- | --- |
+| Comunes (S-GEN-03, 06, 11) | Barra con el logo, fondo con degradado suave, tarjeta sin borde con sombra, iconos en un halo claro, pie «© 2026 Clinic System · v0.1» | Selector de idioma; «HIPAA compliant», «certificado HIPAA/HITECH», «Security Shield» y versiones inventadas |
+| S-GEN-03 | Campos rellenos con icono, botón con flecha, aviso de inactividad (solo si la sesión se cerró por inactividad) | Casilla «Estación de trabajo clínica autorizada», etiquetas «Requerido» y «Protegida» |
+| S-GEN-06 | Seis casillas en dos grupos de 3 (un solo campo real: se puede pegar y autocompletar), cápsula con el correo, cuenta atrás con el reloj | «Confiar en esta estación de trabajo» (nada permite saltarse el MFA) |
+| S-GEN-11 | Cápsula de sesión, sedes agrupadas por organización, tarjetas con código, zona horaria y dirección, «Actual» | Fotos, ocupación de consultorios, médicos de guardia, ocupación de la red, sincronización EMR |
+| S-GEN-12 | Menú lateral, cabecera con el selector de sede y el avatar con iniciales, barra inferior y cajón | «En vivo» (T-009), campana y «Buscar pacientes» (fase 2), banner «Modo contingencia», foto de perfil, contenido de ejemplo del Panel |
+
+Los radios siguen la decisión de tokens (8 y 12 px), aunque `code.html` use 12 px en campos y botones.
+
 ## Pantallas sin referencia de Stitch
 
 Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29.

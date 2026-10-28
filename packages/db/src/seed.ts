@@ -1,16 +1,21 @@
+import { sql } from 'drizzle-orm';
 import pg from 'pg';
 import { locations, organizations, patients } from './schema.ts';
 import { createTenantDb } from './with-tenant.ts';
 
 // Datos ficticios. Los ids son fijos para que las pruebas puedan referirse a ellos.
+// Las direcciones son de ejemplo (calles inventadas en ciudades de Texas).
+
+/** Todas las sedes de demostración están en la hora Central (Texas). */
+export const DEMO_TIMEZONE = 'America/Chicago';
 
 export const DEMO = {
   norte: {
     id: '019a2000-0000-7000-8000-000000000001',
     name: 'Clínica Demo Norte',
     locations: [
-      { id: '019a2000-0000-7000-8000-000000000011', code: 'NOR1', name: 'Norte Centro' },
-      { id: '019a2000-0000-7000-8000-000000000012', code: 'NOR2', name: 'Norte Oeste' },
+      { id: '019a2000-0000-7000-8000-000000000011', code: 'NOR1', name: 'Norte Centro', address: '1200 Avenida Ejemplo Norte, Dallas, TX 75201' },
+      { id: '019a2000-0000-7000-8000-000000000012', code: 'NOR2', name: 'Norte Oeste', address: '450 Calle Ficticia 12, Fort Worth, TX 76102' },
     ],
     patients: [
       { id: '019a2000-0000-7000-8000-000000000101', locationId: '019a2000-0000-7000-8000-000000000011', firstName: 'Ana', lastName: 'Ficticia Uno' },
@@ -22,8 +27,8 @@ export const DEMO = {
     id: '019a2000-0000-7000-8000-000000000002',
     name: 'Clínica Demo Sur',
     locations: [
-      { id: '019a2000-0000-7000-8000-000000000021', code: 'SUR1', name: 'Sur Centro' },
-      { id: '019a2000-0000-7000-8000-000000000022', code: 'SUR2', name: 'Sur Este' },
+      { id: '019a2000-0000-7000-8000-000000000021', code: 'SUR1', name: 'Sur Centro', address: '88 Avenida Demo Sur, San Antonio, TX 78205' },
+      { id: '019a2000-0000-7000-8000-000000000022', code: 'SUR2', name: 'Sur Este', address: '2500 Calle Ejemplo Este, Houston, TX 77002' },
     ],
     patients: [
       { id: '019a2000-0000-7000-8000-000000000201', locationId: '019a2000-0000-7000-8000-000000000021', firstName: 'Diego', lastName: 'Ficticio Cuatro' },
@@ -53,10 +58,14 @@ export async function seed(migratorUrl: string): Promise<void> {
             org.locations.map((l) => ({
               ...l,
               organizationId: org.id,
-              timezone: 'America/New_York',
+              timezone: DEMO_TIMEZONE,
             })),
           )
-          .onConflictDoNothing();
+          // Al volver a sembrar se actualizan zona horaria y dirección.
+          .onConflictDoUpdate({
+            target: locations.id,
+            set: { timezone: sql`excluded.timezone`, address: sql`excluded.address` },
+          });
         await tx
           .insert(patients)
           .values(

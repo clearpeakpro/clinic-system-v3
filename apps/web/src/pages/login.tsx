@@ -1,10 +1,12 @@
 import { useNavigate } from '@tanstack/react-router';
-import { Copy, Eye, EyeOff, Lock, Mail, ShieldCheck, Smartphone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Copy, Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
-import { useEffect, useRef, useState, type SubmitEvent } from 'react';
+import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
+import { AuthCard, AuthHeader, AuthLayout } from '../components/auth-layout.tsx';
 import { BrandMark } from '../components/brand.tsx';
 import { Button } from '../components/ui/button.tsx';
-import { AuthCard, Banner, Field } from '../components/ui/field.tsx';
+import { Banner, Field } from '../components/ui/field.tsx';
+import { OTP_LENGTH, OtpInput, totpSecondsLeft } from '../components/ui/otp-input.tsx';
 import { Checkbox } from '../components/ui/overlay.tsx';
 import { api, ApiError } from '../lib/api.ts';
 import { copyText } from '../lib/clipboard.ts';
@@ -18,7 +20,7 @@ export type LoginReason = 'inactividad' | 'cerrada';
 type Step = 'credentials' | 'code' | 'enroll' | 'recovery';
 
 const REASON_TEXT: Record<LoginReason, { title: string; body: string }> = {
-  inactividad: { title: 'Su sesión se cerró por inactividad.', body: 'Por seguridad, inicie sesión de nuevo.' },
+  inactividad: { title: 'Su sesión se cerró por inactividad.', body: 'Por seguridad, vuelva a iniciar sesión.' },
   cerrada: { title: 'Su sesión terminó.', body: 'Inicie sesión de nuevo para continuar.' },
 };
 
@@ -36,6 +38,8 @@ export function LoginPage({ reason, step: initialStep }: { reason?: LoginReason 
   const [step, setStep] = useState<Step>(initialStep === 'inscripcion' ? 'enroll' : 'credentials');
   // Solo en memoria: la inscripción del MFA vuelve a pedir la contraseña.
   const password = useRef('');
+  // Correo de la cuenta para la cápsula de S-GEN-06 (en memoria; no es PHI).
+  const [email, setEmail] = useState<string | null>(null);
 
   const finish = async () => {
     await queryClient.invalidateQueries({ queryKey: keys.me });
@@ -59,33 +63,39 @@ export function LoginPage({ reason, step: initialStep }: { reason?: LoginReason 
   };
 
   return (
-    <AuthCard>
-      {step === 'credentials' ? (
-        <Credentials
-          reason={reason}
-          onSuccess={async (pw, needsCode) => {
-            password.current = pw;
-            if (needsCode) setStep('code');
-            else await afterPassword();
-          }}
-        />
-      ) : null}
-      {step === 'code' ? <MfaCode onSuccess={finish} onBack={backToLogin} /> : null}
-      {step === 'enroll' ? (
-        <MfaEnroll password={password} onEnrolled={() => { setStep('recovery'); }} onBack={backToLogin} />
-      ) : null}
-      {step === 'recovery' ? <RecoveryCodes onContinue={finish} /> : null}
-    </AuthCard>
+    <AuthLayout>
+      <AuthCard size={step === 'credentials' ? 'md' : 'lg'}>
+        {step === 'credentials' ? (
+          <Credentials
+            reason={reason}
+            onSuccess={async (address, pw, needsCode) => {
+              password.current = pw;
+              setEmail(address);
+              if (needsCode) setStep('code');
+              else await afterPassword();
+            }}
+          />
+        ) : null}
+        {step === 'code' ? <MfaCode email={email} onSuccess={finish} onBack={backToLogin} /> : null}
+        {step === 'enroll' ? (
+          <MfaEnroll password={password} onEnrolled={() => { setStep('recovery'); }} onBack={backToLogin} />
+        ) : null}
+        {step === 'recovery' ? <RecoveryCodes onContinue={finish} /> : null}
+      </AuthCard>
+    </AuthLayout>
   );
 }
 
-function Header({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
+function BackLink({ onBack }: { onBack: () => Promise<void> }) {
   return (
-    <div className="mb-space-lg flex flex-col items-center gap-space-sm text-center">
-      <div className="flex size-14 items-center justify-center rounded-lg bg-primary-container text-on-primary">{icon}</div>
-      <h1 className="text-headline-lg text-on-surface">{title}</h1>
-      <p className="text-body-md text-on-surface-variant">{subtitle}</p>
-    </div>
+    <Button
+      type="button"
+      variant="text"
+      className="self-center text-body-md text-on-surface-variant hover:text-on-surface"
+      onClick={() => void onBack()}
+    >
+      <ArrowLeft aria-hidden className="size-[18px]" /> Volver al inicio de sesión
+    </Button>
   );
 }
 
@@ -94,7 +104,7 @@ function Credentials({
   onSuccess,
 }: {
   reason: LoginReason | undefined;
-  onSuccess: (password: string, needsCode: boolean) => Promise<void>;
+  onSuccess: (email: string, password: string, needsCode: boolean) => Promise<void>;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,7 +126,7 @@ function Credentials({
     setError(null);
     try {
       const result = await api.signIn(trimmed, password);
-      await onSuccess(password, result.twoFactorRedirect === true);
+      await onSuccess(trimmed, password, result.twoFactorRedirect === true);
     } catch (e) {
       setError(signInError(e));
       setBusy(false);
@@ -125,7 +135,12 @@ function Credentials({
 
   return (
     <form onSubmit={(e) => void submit(e)} noValidate className="flex flex-col gap-space-md">
-      <Header icon={<BrandMark className="size-7" />} title="Iniciar sesión" subtitle="Inicie sesión para continuar." />
+      <AuthHeader
+        halo="brand"
+        icon={<BrandMark className="size-6" />}
+        title="Iniciar sesión"
+        subtitle="Inicie sesión para continuar con sus actividades clínicas."
+      />
       {reason ? (
         <Banner title={REASON_TEXT[reason].title}>{REASON_TEXT[reason].body}</Banner>
       ) : null}
@@ -134,6 +149,7 @@ function Credentials({
         type="email"
         autoComplete="username"
         autoFocus
+        placeholder="ejemplo@clinica.com"
         icon={<Mail className="size-5" />}
         value={email}
         disabled={busy}
@@ -162,11 +178,13 @@ function Credentials({
         }
       />
       <div aria-live="polite">{error ? <Banner tone="error" title={error} /> : null}</div>
-      <Button type="submit" size="block" loading={busy}>
-        Iniciar sesión
+      <Button type="submit" size="block" loading={busy} className="mt-space-xs">
+        Iniciar sesión {busy ? null : <ArrowRight aria-hidden className="size-5" />}
       </Button>
-      <p className="rounded-lg bg-surface-container-low p-space-md text-center text-body-md text-on-surface-variant">
-        ¿Olvidó su contraseña? Pida a un administrador un enlace de restablecimiento.
+      <p className="mt-space-sm rounded-md bg-surface-container-low/60 p-3 text-center text-caption text-on-surface-variant dark:bg-surface-container-high/60">
+        ¿Olvidó su contraseña?
+        <br />
+        <span className="font-medium text-on-surface">Pida a un administrador un enlace de restablecimiento.</span>
       </p>
     </form>
   );
@@ -183,35 +201,52 @@ function codeError(error: unknown, recovery: boolean): string {
   return 'Este intento de inicio de sesión venció. Inicie sesión de nuevo.';
 }
 
-function CodeInput({ value, onChange, onComplete, disabled }: { value: string; onChange: (v: string) => void; onComplete?: (v: string) => void; disabled: boolean }) {
+/** Cuenta atrás del código actual (30 s, con el reloj del dispositivo). */
+function TotpCountdown() {
+  const [left, setLeft] = useState(() => totpSecondsLeft());
+  useEffect(() => {
+    const timer = setInterval(() => { setLeft(totpSecondsLeft()); }, 1000);
+    return () => { clearInterval(timer); };
+  }, []);
+  const perimeter = 2 * Math.PI * 9;
   return (
-    <Field
-      label="Código de verificación"
-      hint="6 dígitos; cambia cada 30 segundos."
-      inputMode="numeric"
-      autoComplete="one-time-code"
-      autoFocus
-      maxLength={6}
-      className="font-mono text-code-md tracking-[0.3em]"
-      value={value}
-      disabled={disabled}
-      onChange={(e) => {
-        const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
-        onChange(digits);
-        if (digits.length === 6) onComplete?.(digits);
-      }}
-    />
+    <p className="flex flex-wrap items-center justify-center gap-space-sm text-caption text-on-surface-variant">
+      <svg aria-hidden viewBox="0 0 24 24" className="size-4 -rotate-90 text-primary">
+        <circle cx="12" cy="12" r="9" fill="none" strokeWidth="2.5" className="stroke-surface-container-highest" />
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeDasharray={perimeter}
+          strokeDashoffset={perimeter * (1 - left / 30)}
+        />
+      </svg>
+      <span>
+        El código se actualiza en <strong className="font-mono text-on-surface">{left}s</strong>
+      </span>
+      <span aria-hidden className="text-outline-variant">·</span>
+      <span>Cambia cada 30 segundos</span>
+    </p>
   );
 }
 
 /** S-GEN-06: código de la aplicación o código de recuperación. Envío automático al sexto dígito. */
-function MfaCode({ onSuccess, onBack }: { onSuccess: () => Promise<void>; onBack: () => Promise<void> }) {
+function MfaCode({ email, onSuccess, onBack }: { email: string | null; onSuccess: () => Promise<void>; onBack: () => Promise<void> }) {
   const [recovery, setRecovery] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const errorId = useId();
 
   const verify = async (value: string) => {
+    if (!recovery && value.length !== OTP_LENGTH) {
+      setError('Ingrese los 6 dígitos del código.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -227,11 +262,18 @@ function MfaCode({ onSuccess, onBack }: { onSuccess: () => Promise<void>; onBack
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); void verify(code); }} className="flex flex-col gap-space-md">
-      <Header
-        icon={<ShieldCheck className="size-7" />}
+      <AuthHeader
+        icon={<ShieldCheck aria-hidden className="size-9" />}
         title="Verificación en dos pasos"
         subtitle={recovery ? 'Ingrese uno de los códigos de recuperación que guardó.' : 'Ingrese el código de 6 dígitos de su aplicación de autenticación.'}
-      />
+      >
+        {email ? (
+          <p className="mt-space-lg inline-flex max-w-full items-center gap-space-xs rounded-full bg-surface-container px-space-md py-space-xs">
+            <ShieldCheck aria-hidden className="size-[18px] shrink-0 text-primary" />
+            <span className="truncate font-mono text-code-sm text-on-surface-variant">{email}</span>
+          </p>
+        ) : null}
+      </AuthHeader>
       {recovery ? (
         <Field
           label="Código de recuperación"
@@ -241,21 +283,38 @@ function MfaCode({ onSuccess, onBack }: { onSuccess: () => Promise<void>; onBack
           className="font-mono text-code-md"
           value={code}
           disabled={busy}
+          error={error}
           onChange={(e) => { setCode(e.target.value); }}
         />
       ) : (
-        <CodeInput value={code} onChange={setCode} onComplete={(v) => void verify(v)} disabled={busy} />
+        <>
+          <OtpInput
+            value={code}
+            onChange={(v) => { setCode(v); setError(null); }}
+            onComplete={(v) => void verify(v)}
+            disabled={busy}
+            invalid={error !== null}
+            describedBy={error ? errorId : undefined}
+          />
+          <TotpCountdown />
+          <div aria-live="polite" id={errorId}>{error ? <Banner tone="error" title={error} /> : null}</div>
+        </>
       )}
-      <div aria-live="polite">{error ? <Banner tone="error" title={error} /> : null}</div>
-      <Button type="submit" size="block" loading={busy}>
-        Verificar
+      <Button type="submit" size="block" loading={busy} className="mt-space-sm">
+        Verificar identidad {busy ? null : <ArrowRight aria-hidden className="size-5" />}
       </Button>
-      <Button type="button" variant="text" onClick={() => { setRecovery(!recovery); setCode(''); setError(null); }}>
-        {recovery ? 'Usar un código de la aplicación de autenticación' : 'Usar un código de recuperación'}
-      </Button>
-      <Button type="button" variant="text" onClick={() => void onBack()}>
-        Volver a iniciar sesión
-      </Button>
+      <div className="flex flex-col items-center">
+        <Button
+          type="button"
+          variant="text"
+          className="text-body-md-medium"
+          onClick={() => { setRecovery(!recovery); setCode(''); setError(null); }}
+        >
+          {recovery ? <Smartphone aria-hidden className="size-[18px]" /> : <KeyRound aria-hidden className="size-[18px]" />}
+          {recovery ? 'Usar un código de la aplicación de autenticación' : 'Usar un código de recuperación'}
+        </Button>
+        <BackLink onBack={onBack} />
+      </div>
     </form>
   );
 }
@@ -323,8 +382,8 @@ function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: stri
 
   return (
     <div className="flex flex-col gap-space-md">
-      <Header
-        icon={<Smartphone className="size-7" />}
+      <AuthHeader
+        icon={<Smartphone aria-hidden className="size-9" />}
         title="Configurar la verificación en dos pasos"
         subtitle="Esta cuenta necesita un código de una aplicación de autenticación cada vez que inicia sesión. Configurarla toma un minuto."
       />
@@ -373,16 +432,14 @@ function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: stri
             </li>
             <li>3. Ingrese el código de 6 dígitos que muestra la aplicación para confirmar.</li>
           </ol>
-          <CodeInput value={code} onChange={setCode} disabled={busy || !secret} />
+          <OtpInput value={code} onChange={setCode} disabled={busy || !secret} />
           <div aria-live="polite">{error ? <Banner tone="error" title={error} /> : null}</div>
           <Button type="submit" size="block" loading={busy} disabled={code.length !== 6}>
             Confirmar
           </Button>
         </form>
       )}
-      <Button type="button" variant="text" onClick={() => void onBack()}>
-        Volver a iniciar sesión
-      </Button>
+      <BackLink onBack={onBack} />
     </div>
   );
 }
@@ -404,8 +461,8 @@ function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> }) {
 
   return (
     <div className="flex flex-col gap-space-md">
-      <Header
-        icon={<ShieldCheck className="size-7" />}
+      <AuthHeader
+        icon={<KeyRound aria-hidden className="size-9" />}
         title="Guarde sus códigos de recuperación"
         subtitle="Si pierde su teléfono, cada código le permite iniciar sesión una vez. Guárdelos en un lugar seguro y privado: solo se muestran ahora."
       />

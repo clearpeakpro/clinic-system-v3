@@ -47,6 +47,34 @@ export function Dialog({
   );
 }
 
+/** Panel lateral derecho (cajón «Menú» del teléfono, S-GEN-12). */
+export function Sheet({
+  open,
+  onOpenChange,
+  title,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-[var(--backdrop)] backdrop-blur-[4px]" />
+        <DialogPrimitive.Content className="fixed top-0 right-0 z-50 flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto bg-surface-container-lowest p-space-md shadow-level-3 dark:bg-surface-container-low">
+          <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+export const SheetClose = DialogPrimitive.Close;
+
 export const DropdownMenu = Menu.Root;
 export const DropdownTrigger = Menu.Trigger;
 

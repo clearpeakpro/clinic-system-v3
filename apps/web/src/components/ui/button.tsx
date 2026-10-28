@@ -14,6 +14,8 @@ const button = cva(
         primary: 'bg-primary text-on-primary hover:bg-primary/90 shadow-level-1',
         tonal: 'bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary-fixed-dim',
         outline: 'border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low',
+        // Secundario de Stitch: superficie clara con sombra, sin borde.
+        elevated: 'bg-surface-container-lowest text-on-surface shadow-level-1 hover:bg-surface-container dark:bg-surface-container-high',
         text: 'text-primary hover:bg-primary/10',
         destructive: 'border border-error bg-error-container text-on-error-container hover:bg-error-container/80',
       },

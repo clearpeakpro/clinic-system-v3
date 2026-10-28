@@ -43,6 +43,8 @@ test('Recepción inicia sesión y ve el marco con su menú', async ({ page }) =>
 });
 
 test('Administrador sin MFA queda obligado a inscribirse', async ({ page }) => {
+  // Incluye esperar hasta 30 s a un código TOTP nuevo.
+  test.setTimeout(120_000);
   await signIn(page, 'admin.norte@example.test');
   await expect(page.getByRole('heading', { name: 'Configurar la verificación en dos pasos' })).toBeVisible();
   // La clave aparece cuando el servidor prepara la inscripción.
@@ -66,6 +68,24 @@ test('Administrador sin MFA queda obligado a inscribirse', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Usuarios' })).toBeVisible();
   await expect(nav(page).getByText('Administración')).toBeVisible();
   await expect(nav(page).getByRole('link', { name: 'Panel' })).toHaveCount(0);
+
+  // De vuelta: S-GEN-06 con el correo en la cápsula y la cuenta atrás. El
+  // código entra de una vez en un solo campo (como al pegarlo o autocompletarlo).
+  await page.getByRole('button', { name: 'Menú de cuenta' }).click();
+  await page.getByRole('menuitem', { name: 'Cerrar sesión', exact: true }).click();
+  await page.getByRole('button', { name: 'Cerrar sesión', exact: true }).click();
+  await signIn(page, 'admin.norte@example.test');
+  await expect(page.getByRole('heading', { name: 'Verificación en dos pasos' })).toBeVisible();
+  await expect(page.getByText('admin.norte@example.test')).toBeVisible();
+  await expect(page.getByText(/El código se actualiza en \d+s/)).toBeVisible();
+  const field = page.getByLabel('Código de verificación');
+  await expect(field).toHaveAttribute('autocomplete', 'one-time-code');
+  // Un periodo de 30 s nuevo: el código de la inscripción no se repite.
+  const period = Math.floor(Date.now() / 30_000);
+  await expect.poll(() => Math.floor(Date.now() / 30_000), { timeout: 31_000 }).toBeGreaterThan(period);
+  await field.focus();
+  await page.keyboard.insertText(await generate({ secret }));
+  await expect(page).toHaveURL(/\/admin\/usuarios$/);
 });
 
 test('usuario de dos organizaciones cambia de organización y de sede', async ({ page }) => {

@@ -26,6 +26,7 @@ export interface FlatLocation {
   code: string;
   name: string;
   timezone: string;
+  address: string | null;
 }
 
 export function flatten(choices: LocationChoice[]): FlatLocation[] {

@@ -121,6 +121,7 @@ export class MeController {
       twoFactorEnabled: principal.twoFactorEnabled,
       mfaRequired: principal.mfaRequired,
       context: principal.context,
+      roles: principal.roles,
       permissions: [...principal.permissions].sort(),
     };
   }

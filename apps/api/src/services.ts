@@ -67,7 +67,7 @@ function assertOrgWide(role: Role, locationId: string | null): void {
 export interface LocationChoice {
   organizationId: string;
   organizationName: string;
-  locations: { id: string; code: string; name: string; timezone: string }[];
+  locations: { id: string; code: string; name: string; timezone: string; address: string | null }[];
 }
 
 export class ContextService {
@@ -104,7 +104,13 @@ export class ContextService {
       const choice = await this.#tenantDb.withTenant(organizationId, async (tx) => {
         const [org] = await tx.select({ name: organizations.name }).from(organizations);
         const rows = await tx
-          .select({ id: locations.id, code: locations.code, name: locations.name, timezone: locations.timezone })
+          .select({
+            id: locations.id,
+            code: locations.code,
+            name: locations.name,
+            timezone: locations.timezone,
+            address: locations.address,
+          })
           .from(locations)
           // Con un rol de toda la organización, todas sus sedes; si no, solo
           // las de sus roles (la base de datos impide roles clínicos sin sede).

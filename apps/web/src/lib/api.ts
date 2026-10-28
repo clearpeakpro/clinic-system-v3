@@ -1,4 +1,4 @@
-import type { Permission } from '@clinic/shared';
+import type { Permission, Role } from '@clinic/shared';
 
 // Cliente de la API (mismo origen: /api). Las cookies de sesión son httpOnly:
 // la web nunca ve ni guarda tokens. Nada de lo que devuelve se persiste
@@ -38,13 +38,15 @@ export interface Me {
   twoFactorEnabled: boolean;
   mfaRequired: boolean;
   context: { organizationId: string; locationId: string } | null;
+  /** Roles en la sede activa (vacío sin contexto). */
+  roles: Role[];
   permissions: Permission[];
 }
 
 export interface LocationChoice {
   organizationId: string;
   organizationName: string;
-  locations: { id: string; code: string; name: string; timezone: string }[];
+  locations: { id: string; code: string; name: string; timezone: string; address: string | null }[];
 }
 
 export const api = {

@@ -163,7 +163,7 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | Entidad | Campos clave | Notas |
 | --- | --- | --- |
 | `organizations` | name, status | El tenant |
-| `locations` | org, code, name, timezone | `code` es único por organización y aparece en la URL |
+| `locations` | org, code, name, timezone, address (opcional) | `code` es único por organización y aparece en la URL |
 | `users` (global) / `memberships` / `membership_roles` | correo; usuario–organización; rol por sede | |
 | `patients` | código, nombre, apellidos, fecha de nacimiento, teléfono, merged_into | Pertenecen a la organización |
 | `appointments` | sede, paciente, proveedor, tipo, inicio, estado, version | |

@@ -26,9 +26,19 @@ describe('/api/me para la web', () => {
       name: 'Persona me-recepcion',
       idleTimeoutSeconds: DEFAULTS.idleTimeoutSeconds,
       context: { organizationId: NORTE.id, locationId: NORTE.locations[0].id },
+      roles: ['recepcion'],
     });
     expect(me.permissions).toContain('panel.view');
     expect(me.permissions).not.toContain('admin.access');
+  });
+
+  it('/api/me/locations incluye la zona horaria y la dirección de cada sede (S-GEN-11)', async () => {
+    const staff = await createStaff(app, 'me-sedes', [{ org: NORTE, location: 0, role: 'recepcion' }]);
+    const client = await signedInWithContext(app, staff, NORTE);
+    const choices = (await client.get('/api/me/locations')).json<{ locations: { code: string; timezone: string; address: string | null }[] }[]>();
+    expect(choices[0]?.locations).toEqual([
+      expect.objectContaining({ code: 'NOR1', timezone: 'America/Chicago', address: expect.stringContaining('TX') as unknown }),
+    ]);
   });
 
   it('POST /api/me/idle-logout registra el cierre por inactividad', async () => {
