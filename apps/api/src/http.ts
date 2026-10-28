@@ -2,7 +2,11 @@ import {
   acceptInvitationSchema,
   changeRolesSchema,
   createInvitationSchema,
+  credentialResetSchema,
   deactivateMembershipSchema,
+  reactivateMembershipSchema,
+  renameMemberSchema,
+  revokeInvitationSchema,
   selectContextSchema,
   type Permission,
 } from '@clinic/shared';
@@ -17,6 +21,7 @@ import {
   Param,
   Post,
   Req,
+  Res,
   SetMetadata,
   type ArgumentsHost,
   type CanActivate,
@@ -28,7 +33,9 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AuditService } from './audit.ts';
 import type { Principal } from './principal.ts';
-import { ContextService, HttpError, InvitationService, MembershipService, type RequestMeta } from './services.ts';
+import { InvitationService } from './invitations.ts';
+import { ContextService, HttpError, type RequestMeta } from './services.ts';
+import { MembershipService } from './users.ts';
 
 export const USER_EMAIL_LOOKUP = Symbol('USER_EMAIL_LOOKUP');
 export const IDLE_TIMEOUT_SECONDS = Symbol('IDLE_TIMEOUT_SECONDS');
@@ -164,6 +171,8 @@ export class ContextController {
   }
 }
 
+const id = (value: string) => parse(z.uuid(), value);
+
 @Controller('invitations')
 export class InvitationsController {
   readonly #invitations: InvitationService;
@@ -176,15 +185,24 @@ export class InvitationsController {
     this.#emailOf = emailOf;
   }
 
+  /** S-ADM-03. Devuelve el enlace una sola vez (S-ADM-04); el servidor solo guarda su hash. */
   @Post()
   @RequirePermission('members.invite')
   create(@Req() request: FastifyRequest, @Body() body: unknown) {
     return this.#invitations.create(principalOf(request), parse(createInvitationSchema, body), metaOf(request));
   }
 
+  @Post(':id/revoke')
+  @HttpCode(204)
+  @RequirePermission('members.invite')
+  async revoke(@Req() request: FastifyRequest, @Param('id') invitationId: string, @Body() body: unknown) {
+    const { reason } = parse(revokeInvitationSchema, body);
+    await this.#invitations.revoke(principalOf(request), id(invitationId), reason, metaOf(request));
+  }
+
   @Post('accept')
   @Public()
-  async accept(@Req() request: FastifyRequest, @Body() body: unknown) {
+  async accept(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply, @Body() body: unknown) {
     const input = parse(acceptInvitationSchema, body);
     const principal = request.principal;
     let signedIn: { principal: Principal; email: string } | null = null;
@@ -193,7 +211,24 @@ export class InvitationsController {
       if (!email) throw new HttpError(401, 'unauthenticated');
       signedIn = { principal, email };
     }
-    return this.#invitations.accept(input, signedIn, metaOf(request));
+    const { setCookies, ...result } = await this.#invitations.accept(input, signedIn, metaOf(request));
+    for (const cookie of setCookies) void reply.header('set-cookie', cookie);
+    return result;
+  }
+}
+
+/** Administración › Usuarios (S-ADM-02). */
+@Controller('users')
+export class UsersController {
+  readonly #memberships: MembershipService;
+  constructor(@Inject(MembershipService) memberships: MembershipService) {
+    this.#memberships = memberships;
+  }
+
+  @Get()
+  @RequirePermission('members.manage')
+  list(@Req() request: FastifyRequest) {
+    return this.#memberships.list(principalOf(request));
   }
 }
 
@@ -204,24 +239,53 @@ export class MembershipsController {
     this.#memberships = memberships;
   }
 
-  @Post(':id/deactivate')
+  @Post(':id/name')
   @HttpCode(204)
   @RequirePermission('members.manage')
-  async deactivate(@Req() request: FastifyRequest, @Param('id') id: string, @Body() body: unknown) {
-    const { reason } = parse(deactivateMembershipSchema, body);
-    await this.#memberships.deactivate(principalOf(request), parse(z.uuid(), id), reason, metaOf(request));
+  async rename(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    await this.#memberships.rename(principalOf(request), id(membershipId), parse(renameMemberSchema, body), metaOf(request));
   }
 
   @Post(':id/roles')
   @HttpCode(204)
   @RequirePermission('members.manage')
-  async changeRoles(@Req() request: FastifyRequest, @Param('id') id: string, @Body() body: unknown) {
-    await this.#memberships.changeRoles(
-      principalOf(request),
-      parse(z.uuid(), id),
-      parse(changeRolesSchema, body),
-      metaOf(request),
-    );
+  async changeRoles(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    await this.#memberships.changeRoles(principalOf(request), id(membershipId), parse(changeRolesSchema, body), metaOf(request));
+  }
+
+  @Post(':id/deactivate')
+  @HttpCode(204)
+  @RequirePermission('members.manage')
+  async deactivate(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    await this.#memberships.deactivate(principalOf(request), id(membershipId), parse(deactivateMembershipSchema, body), metaOf(request));
+  }
+
+  @Post(':id/reactivate')
+  @HttpCode(204)
+  @RequirePermission('members.manage')
+  async reactivate(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    await this.#memberships.reactivate(principalOf(request), id(membershipId), parse(reactivateMembershipSchema, body), metaOf(request));
+  }
+
+  @Get(':id/mfa')
+  @RequirePermission('members.manage')
+  mfaStatus(@Req() request: FastifyRequest, @Param('id') membershipId: string) {
+    return this.#memberships.mfaStatus(principalOf(request), id(membershipId));
+  }
+
+  /** S-ADM-08. Devuelve el enlace de restablecimiento una sola vez (null si la membresía está deshabilitada). */
+  @Post(':id/mfa-reset')
+  @RequirePermission('members.manage')
+  async resetMfa(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    const { reason } = parse(credentialResetSchema, body);
+    return { reset: await this.#memberships.resetMfa(principalOf(request), id(membershipId), reason, metaOf(request)) };
+  }
+
+  @Post(':id/password-reset')
+  @RequirePermission('members.manage')
+  passwordReset(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    const { reason } = parse(credentialResetSchema, body);
+    return this.#memberships.createPasswordReset(principalOf(request), id(membershipId), reason, metaOf(request));
   }
 }
 
@@ -236,7 +300,7 @@ export interface ApiProviders {
 
 export function createApiModule(providers: ApiProviders) {
   @Module({
-    controllers: [MeController, ContextController, InvitationsController, MembershipsController],
+    controllers: [MeController, ContextController, InvitationsController, UsersController, MembershipsController],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
       { provide: InvitationService, useValue: providers.invitations },

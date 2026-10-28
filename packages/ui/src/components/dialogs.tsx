@@ -1,8 +1,8 @@
 import { reasonSchema } from '@clinic/shared';
 import { TriangleAlert } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
-import { cn } from '../cn.ts';
+import { useState, type ReactNode } from 'react';
 import { Button } from './button.tsx';
+import { TextAreaField } from './forms.tsx';
 import { Dialog } from './overlay.tsx';
 
 export interface ConfirmDialogProps {
@@ -16,8 +16,13 @@ export interface ConfirmDialogProps {
   /** Acción destructiva: botón rojo e icono de advertencia; la acción segura es la secundaria. */
   destructive?: boolean;
   icon?: ReactNode;
-  /** Pide un motivo obligatorio (regla 6 de CLAUDE.md), con su etiqueta. */
-  reason?: { label: string };
+  /** Pide un motivo obligatorio (regla 6 de CLAUDE.md), con su etiqueta y una ayuda opcional. */
+  reason?: { label: string; hint?: string; placeholder?: string };
+  /** Contenido extra entre el texto y el motivo. */
+  children?: ReactNode;
+  /** false: no se cierra tocando fuera ni con Esc (formularios con motivo de S-ADM-09). */
+  dismissible?: boolean;
+  fullScreenOnPhone?: boolean;
   /** Recibe el motivo ya recortado. Si lanza, el diálogo sigue abierto. */
   onConfirm: (reason: string | undefined) => Promise<void> | void;
   /** Solo para /dev/ui. */
@@ -39,13 +44,15 @@ export function ConfirmDialog({
   destructive = false,
   icon,
   reason,
+  children,
+  dismissible = true,
+  fullScreenOnPhone = false,
   onConfirm,
   inline = false,
 }: ConfirmDialogProps) {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const fieldId = useId();
 
   const close = (next: boolean) => {
     if (!next) {
@@ -83,9 +90,11 @@ export function ConfirmDialog({
       icon={icon ?? (destructive ? <TriangleAlert className="size-7" /> : undefined)}
       tone={destructive ? 'danger' : 'primary'}
       inline={inline}
+      dismissible={dismissible && !busy}
+      fullScreenOnPhone={fullScreenOnPhone}
       footer={
         <>
-          <Button variant="tonal" className="text-on-surface" onClick={() => { close(false); }}>
+          <Button variant="tonal" className="text-on-surface" disabled={busy} onClick={() => { close(false); }}>
             {cancelLabel}
           </Button>
           <Button variant={destructive ? 'destructive' : 'primary'} loading={busy} onClick={() => void confirm()}>
@@ -94,39 +103,22 @@ export function ConfirmDialog({
         </>
       }
     >
+      {children}
       {reason ? (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor={fieldId} className="flex items-center gap-1 text-body-md-medium text-on-surface">
-            {reason.label}
-            <span aria-hidden className="font-bold text-error">
-              *
-            </span>
-          </label>
-          <textarea
-            id={fieldId}
-            required
-            aria-required
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? `${fieldId}-error` : undefined}
-            maxLength={500}
-            rows={3}
-            value={text}
-            disabled={busy}
-            onChange={(e) => {
-              setText(e.target.value);
-              if (error) setError(null);
-            }}
-            className={cn(
-              'min-h-24 w-full resize-y rounded-md bg-surface-container-low px-3.5 py-3 text-body-lg text-on-surface outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary dark:bg-surface-container-high',
-              error && 'ring-2 ring-error focus:ring-error',
-            )}
-          />
-          {error ? (
-            <p id={`${fieldId}-error`} className="text-caption text-error">
-              {error}
-            </p>
-          ) : null}
-        </div>
+        <TextAreaField
+          label={reason.label}
+          hint={reason.hint}
+          {...(reason.placeholder ? { placeholder: reason.placeholder } : {})}
+          required
+          maxLength={500}
+          value={text}
+          disabled={busy}
+          error={error}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (error) setError(null);
+          }}
+        />
       ) : null}
     </Dialog>
   );

@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   Client,
   createStaff,
+  deactivateVia,
   enrollTotp,
   membershipIdOf,
   NORTE,
@@ -43,7 +44,7 @@ describe('condición 4 del ADR 0023: configuración de Better Auth', () => {
       const client = await signedInWithContext(app, staff, NORTE);
       expect((await client.get('/api/me')).statusCode).toBe(200);
       const membershipId = await membershipIdOf(app, NORTE, staff.userId);
-      await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Prueba de configuración' });
+      await deactivateVia(admin, app, NORTE, membershipId, 'Prueba de configuración');
       expect((await client.get('/api/me')).statusCode).toBe(401);
     });
   });

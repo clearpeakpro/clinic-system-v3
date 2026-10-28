@@ -21,6 +21,9 @@ export const user = authSchema.table('user', {
   twoFactorEnabled: boolean('two_factor_enabled').default(false),
   // Campo nuestro (user.additionalFields): desactivación por la organización.
   disabledAt: ts('disabled_at'),
+  // Campo nuestro: un administrador restableció el MFA (S-ADM-08) y la persona
+  // aún no fijó una contraseña nueva. Se borra al restablecer la contraseña.
+  mfaResetAt: ts('mfa_reset_at'),
 });
 
 export const session = authSchema.table(

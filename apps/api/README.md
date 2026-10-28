@@ -51,10 +51,24 @@ Pruebas: `test/role-assignment.test.ts` y `packages/shared/test/permissions.test
 | `GET /api/me` | sesión | Usuario, estado del MFA, contexto activo y permisos efectivos |
 | `GET /api/me/locations` | sesión | Organizaciones y sedes que puede elegir |
 | `POST /api/context` | sesión | Elegir organización y sede (validado contra `memberships`) |
-| `POST /api/invitations` | `members.invite` | Invitar (correo con enlace de un solo uso, vence a las 48 h) |
-| `POST /api/invitations/accept` | pública | Aceptar: crea la cuenta o usa la sesión; membresía y auditoría en una transacción |
-| `POST /api/memberships/:id/deactivate` | `members.manage` | Quitar la membresía, con motivo; borra sus sesiones en esa organización |
-| `POST /api/memberships/:id/roles` | `members.manage` | Reemplazar roles, con motivo |
+| `GET /api/users` | `members.manage` | S-ADM-02: personas e invitaciones pendientes de la organización activa, con lo que quien consulta puede hacer en cada fila |
+| `POST /api/invitations` | `members.invite` | S-ADM-03: invitar con roles y sedes. Envía el correo y devuelve el enlace `/invitacion/<token>` una sola vez (S-ADM-04); vence a las 48 h. Reinvitar a alguien aún «Invitado» anula el enlace anterior. |
+| `POST /api/invitations/:id/revoke` | `members.invite` | Revocar una invitación pendiente, con motivo |
+| `POST /api/invitations/accept` | pública | S-GEN-09: crea la cuenta y abre su sesión, o usa la sesión existente; membresía, roles y auditoría en una transacción |
+| `POST /api/memberships/:id/name` | `members.manage` | S-ADM-05: nombre para mostrar (cuenta global), con versión |
+| `POST /api/memberships/:id/roles` | `members.manage` | S-ADM-06: reemplazar roles y sedes, con motivo y versión |
+| `POST /api/memberships/:id/deactivate` | `members.manage` | Deshabilitar en esta organización, con motivo y versión; borra sus sesiones en ella |
+| `POST /api/memberships/:id/reactivate` | `members.manage` | S-ADM-09: reactivar, con motivo y versión (la contraseña no cambia) |
+| `GET /api/memberships/:id/mfa` | `members.manage` | S-ADM-08: estado del MFA (activo, bloqueo, códigos que quedan, restablecimiento pendiente) |
+| `POST /api/memberships/:id/mfa-reset` | `members.manage` | S-ADM-08: quita el factor, invalida la contraseña y cierra las sesiones, con motivo; devuelve un enlace `/restablecer/<token>` si la membresía está activa |
+| `POST /api/memberships/:id/password-reset` | `members.manage` | Restablecimiento de contraseña, con motivo: enlace de un solo uso (anula los anteriores). Solo se entrega en el diálogo, nunca por correo. |
+
+**Administración de usuarios (T-006a):**
+- Nadie actúa sobre sí mismo ni sobre alguien de rango igual o mayor (403 `cannot_modify_self` / `member_not_manageable`).
+- Versión vieja → 409 `version_conflict` (regla 7).
+- Editar el nombre, restablecer el MFA o la contraseña tocan la cuenta **global**: si la persona tiene una membresía activa en otra organización, 409 `account_shared` (lo resuelve el operador de la plataforma, T-007). Se comprueba con la función `app.has_active_membership_elsewhere`, que solo responde sí o no.
+- `/api/auth/request-password-reset` está cerrado (403): el restablecimiento solo lo emite un administrador. El token se guarda con hash en `auth.verification`.
+- Tras restablecer el MFA, solo los roles que lo exigen (Propietario, Administrador) deben inscribirse de nuevo al entrar.
 
 **Reglas comunes:**
 - Un Propietario o Administrador sin MFA recibe 403 `mfa_enrollment_required` en todo salvo la inscripción.

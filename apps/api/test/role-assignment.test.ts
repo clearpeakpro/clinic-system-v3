@@ -8,6 +8,7 @@ import {
   signedInWithContext,
   startApp,
   SUR,
+  versionOf,
   type Client,
   type Staff,
   type TestApp,
@@ -67,7 +68,12 @@ describe('regla escalonada de roles', () => {
 
   describe('invitar', () => {
     const invite = (client: Client, role: string, locationId: string | null = location0) =>
-      client.post('/api/invitations', { email: `inv.${role}.${String(Date.now())}@example.test`, role, locationId });
+      client.post('/api/invitations', {
+        email: `inv.${role}.${String(Date.now())}@example.test`,
+        name: 'Persona Invitada',
+        roles: [role],
+        locationIds: locationId ? [locationId] : [],
+      });
 
     it('el Administrador invita roles clínicos', async () => {
       for (const role of ['recepcion', 'enfermeria', 'proveedor']) {
@@ -93,16 +99,22 @@ describe('regla escalonada de roles', () => {
       expect((await invite(reception, 'recepcion')).statusCode).toBe(403);
     });
 
-    it('un rol clínico no se puede asignar a toda la organización', async () => {
+    it('un rol clínico necesita al menos una sede; uno administrativo no lleva sedes', async () => {
       const response = await invite(admin, 'recepcion', null);
       expect(response.statusCode).toBe(400);
       expect(response.json()).toEqual({ code: 'location_required' });
+      const withLocation = await invite(owner, 'administrador', location0);
+      expect(withLocation.statusCode).toBe(400);
+      expect(withLocation.json()).toEqual({ code: 'location_not_applicable' });
     });
   });
 
   describe('quitar o desactivar membresías', () => {
-    const deactivate = (client: Client, membershipId: string) =>
-      client.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Prueba de la regla escalonada' });
+    const deactivate = async (client: Client, membershipId: string, expectedVersion?: number) =>
+      client.post(`/api/memberships/${membershipId}/deactivate`, {
+        reason: 'Prueba de la regla escalonada',
+        expectedVersion: expectedVersion ?? (await versionOf(app, NORTE, membershipId)),
+      });
 
     it('el Administrador no puede desactivar a un Propietario', async () => {
       const target = await member('reg-objetivo-prop', 'propietario');
@@ -143,13 +155,17 @@ describe('regla escalonada de roles', () => {
     it('una membresía de otra organización no existe para quien actúa', async () => {
       const sur = await createStaff(app, 'reg-sur', [{ org: SUR, location: 0, role: 'recepcion' }]);
       const surMembership = await membershipIdOf(app, SUR, sur.userId);
-      expect((await deactivate(admin, surMembership)).statusCode).toBe(404);
+      expect((await deactivate(admin, surMembership, 1)).statusCode).toBe(404);
     });
   });
 
   describe('cambiar roles', () => {
-    const change = (client: Client, membershipId: string, roles: { role: string; locationId: string | null }[]) =>
-      client.post(`/api/memberships/${membershipId}/roles`, { roles, reason: 'Prueba de la regla escalonada' });
+    const change = async (client: Client, membershipId: string, roles: { role: string; locationId: string | null }[]) =>
+      client.post(`/api/memberships/${membershipId}/roles`, {
+        roles,
+        reason: 'Prueba de la regla escalonada',
+        expectedVersion: await versionOf(app, NORTE, membershipId),
+      });
 
     it('el Administrador cambia un rol clínico por otro', async () => {
       const target = await member('reg-cambio-ok', 'recepcion');
@@ -190,6 +206,7 @@ describe('regla escalonada de roles', () => {
       const target = await member('reg-sin-motivo', 'recepcion');
       const response = await admin.post(`/api/memberships/${target.membershipId}/roles`, {
         roles: [{ role: 'enfermeria', locationId: location0 }],
+        expectedVersion: await versionOf(app, NORTE, target.membershipId),
       });
       expect(response.statusCode).toBe(400);
     });
@@ -200,8 +217,9 @@ describe('regla escalonada de roles', () => {
       for (const client of [owner, admin]) {
         const response = await client.post('/api/invitations', {
           email: 'otro.propietario@example.test',
-          role: 'propietario',
-          locationId: null,
+          name: 'Otra Persona',
+          roles: ['propietario'],
+          locationIds: [],
         });
         expect(response.statusCode).toBe(403);
       }

@@ -319,7 +319,7 @@ function MfaCode({ email, onSuccess, onBack }: { email: string | null; onSuccess
 let pendingRecoveryCodes: string[] = [];
 
 /** S-GEN-07: inscripción obligatoria (QR, clave en grupos de 4, confirmar con un código). */
-function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: string }; onEnrolled: () => void; onBack: () => Promise<void> }) {
+export function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: string }; onEnrolled: () => void; onBack: () => Promise<void> }) {
   // Con la contraseña en memoria (recién iniciada la sesión) la inscripción
   // arranca sola; si se recargó la página, se vuelve a pedir.
   const [initialPassword] = useState(password.current);
@@ -441,7 +441,7 @@ function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: stri
 }
 
 /** S-GEN-08: los códigos solo se muestran ahora; «Continuar» exige marcar «Guardé estos códigos». */
-function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> }) {
+export function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> }) {
   const [codes] = useState(() => pendingRecoveryCodes);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);

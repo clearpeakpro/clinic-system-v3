@@ -1,7 +1,7 @@
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
-import { Check } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '../cn.ts';
 
@@ -20,6 +20,13 @@ export interface DialogProps {
   tone?: 'primary' | 'danger';
   /** Solo para /dev/ui: se dibuja en la página, sin capa ni foco atrapado. */
   inline?: boolean;
+  /** 560 px en lugar de 512 (formularios de S-ADM-03). */
+  wide?: boolean;
+  /**
+   * En el teléfono ocupa toda la pantalla, con «Cerrar» (X) arriba a la
+   * izquierda (formularios de administración, S-ADM-03 y S-ADM-09).
+   */
+  fullScreenOnPhone?: boolean;
 }
 
 /**
@@ -27,7 +34,20 @@ export interface DialogProps {
  * texto al lado; pie con línea superior. Elevación de nivel 3 y fondo con
  * desenfoque (DESIGN.md).
  */
-export function Dialog({ open, onOpenChange, title, description, children, footer, dismissible = true, icon, tone = 'primary', inline = false }: DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  footer,
+  dismissible = true,
+  icon,
+  tone = 'primary',
+  inline = false,
+  wide = false,
+  fullScreenOnPhone = false,
+}: DialogProps) {
   const content = (
     <DialogPrimitive.Content
       className={cn(
@@ -35,11 +55,23 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         inline
           ? 'relative w-full max-w-lg'
           : 'fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto',
+        wide && 'max-w-[560px]',
+        fullScreenOnPhone &&
+          !inline &&
+          'max-tab:inset-0 max-tab:h-dvh max-tab:max-h-none max-tab:w-full max-tab:max-w-none max-tab:translate-x-0 max-tab:translate-y-0 max-tab:rounded-none max-tab:border-0',
       )}
       {...(inline ? { onOpenAutoFocus: (e: Event) => { e.preventDefault(); } } : {})}
       {...(dismissible ? {} : { onPointerDownOutside: (e: Event) => { e.preventDefault(); }, onEscapeKeyDown: (e: Event) => { e.preventDefault(); } })}
     >
       <div className="flex items-start gap-space-sm">
+        {fullScreenOnPhone && !inline ? (
+          <DialogPrimitive.Close
+            aria-label="Cerrar"
+            className="-ml-2 flex size-12 shrink-0 items-center justify-center rounded-md text-on-surface hover:bg-surface-container tab:hidden"
+          >
+            <X aria-hidden className="size-6" />
+          </DialogPrimitive.Close>
+        ) : null}
         {icon ? (
           <div
             aria-hidden
@@ -62,7 +94,12 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
       </div>
       {children}
       {footer ? (
-        <div className="flex flex-col-reverse gap-space-sm border-t border-surface-container-high pt-space-md tab:flex-row tab:justify-end [&>*]:w-full tab:[&>*]:w-auto">
+        <div
+          className={cn(
+            'flex flex-col-reverse gap-space-sm border-t border-surface-container-high pt-space-md tab:flex-row tab:justify-end [&>*]:w-full tab:[&>*]:w-auto',
+            fullScreenOnPhone && 'max-tab:mt-auto',
+          )}
+        >
           {footer}
         </div>
       ) : null}
@@ -134,7 +171,7 @@ export function DropdownItem({ className, ...props }: ComponentProps<typeof Menu
   return (
     <Menu.Item
       className={cn(
-        'flex min-h-touch cursor-pointer items-center gap-space-sm rounded-md px-space-sm text-body-md text-on-surface outline-none data-[highlighted]:bg-surface-container',
+        'flex min-h-touch cursor-pointer items-center gap-space-sm rounded-md px-space-sm text-body-md text-on-surface outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-container',
         className,
       )}
       {...props}

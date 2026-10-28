@@ -19,6 +19,8 @@ export interface AppConfig {
   /** Expiración absoluta desde el inicio de sesión, en segundos (nuestro guard). */
   absoluteTimeoutSeconds: number;
   invitationTtlSeconds: number;
+  /** Vigencia del enlace de restablecimiento de contraseña que emite un administrador (S-ADM-04). */
+  passwordResetTtlSeconds: number;
   /**
    * Límite por cuenta (ADR 0023): con este número de inicios de sesión
    * fallidos dentro de la ventana, la cuenta responde 429 hasta que los fallos
@@ -48,6 +50,7 @@ export const DEFAULTS = {
   idleTimeoutSeconds: 15 * 60,
   absoluteTimeoutSeconds: 12 * 60 * 60,
   invitationTtlSeconds: 48 * 60 * 60,
+  passwordResetTtlSeconds: 48 * 60 * 60,
   signInAccountMaxFailures: 10,
   signInAccountWindowSeconds: 15 * 60,
   signInIpMaxAttempts: 30,
@@ -67,6 +70,7 @@ const envSchema = z.object({
   IDLE_TIMEOUT_SECONDS: seconds.default(DEFAULTS.idleTimeoutSeconds),
   ABSOLUTE_TIMEOUT_SECONDS: seconds.default(DEFAULTS.absoluteTimeoutSeconds),
   INVITATION_TTL_SECONDS: seconds.default(DEFAULTS.invitationTtlSeconds),
+  PASSWORD_RESET_TTL_SECONDS: seconds.default(DEFAULTS.passwordResetTtlSeconds),
   SIGN_IN_ACCOUNT_MAX_FAILURES: seconds.default(DEFAULTS.signInAccountMaxFailures),
   SIGN_IN_ACCOUNT_WINDOW_SECONDS: seconds.default(DEFAULTS.signInAccountWindowSeconds),
   SIGN_IN_IP_MAX_ATTEMPTS: seconds.default(DEFAULTS.signInIpMaxAttempts),
@@ -97,6 +101,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     idleTimeoutSeconds: e.IDLE_TIMEOUT_SECONDS,
     absoluteTimeoutSeconds: e.ABSOLUTE_TIMEOUT_SECONDS,
     invitationTtlSeconds: e.INVITATION_TTL_SECONDS,
+    passwordResetTtlSeconds: e.PASSWORD_RESET_TTL_SECONDS,
     signInAccountMaxFailures: e.SIGN_IN_ACCOUNT_MAX_FAILURES,
     signInAccountWindowSeconds: e.SIGN_IN_ACCOUNT_WINDOW_SECONDS,
     signInIpMaxAttempts: e.SIGN_IN_IP_MAX_ATTEMPTS,

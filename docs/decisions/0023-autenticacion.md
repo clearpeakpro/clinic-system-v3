@@ -41,6 +41,8 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
    - Fijada sin `^` en `apps/api/package.json`.
 2. **Contexto RLS solo por sus funciones.** Añadir a la CI una comprobación que falle si se fija `app.org_id` o `app.user_id` fuera de `withTenant` o `withUser`.
 3. **Contraseña y MFA.** En la fase 1, pruebas y permisos mínimos de `clinic_app` para cambiar la contraseña y para desactivar el MFA.
+   - **T-006a (2026-10-28):** `clinic_app` recibe solo `UPDATE` en `auth.account` y `DELETE` en `auth.two_factor` (migración `0009`, comprobado en `packages/db/test/roles.test.ts`). Los usan el restablecimiento de contraseña y el del MFA por un administrador, con sus pruebas (`apps/api/test/users-admin.test.ts`).
+   - **Pendiente para T-006b:** el cambio de contraseña y la desactivación del MFA desde el Perfil, con sus pruebas.
 4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
 5. **Operador de la plataforma.** El rol de base de datos del operador (el único que lee los eventos de auditoría sin organización) es una tarea de la fase 1. Queda como pendiente P-11.
 

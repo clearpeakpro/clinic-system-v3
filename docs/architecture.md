@@ -101,6 +101,8 @@ Cada una de esas salidas tiene su control propio.
 - `users` es **global**: una cuenta por correo, con solo datos de acceso. No está bajo RLS de organización y solo la lee el módulo `identity`.
 - `memberships (user_id, organization_id, status)` está bajo RLS.
 - `membership_roles (membership_id, location_id, role)` asigna roles por sede. `location_id` nulo significa toda la organización y solo se permite para Propietario y Administrador.
+- `invitations` + `invitation_roles` (T-006a): una invitación lleva varios roles y sedes, que pasan tal cual a `membership_roles` al aceptarla. El enlace `/invitacion/<token>` lleva la organización y un secreto; solo se guarda el sha256 del secreto.
+- **Deshabilitar** a alguien cambia su membresía en **esa** organización. Lo que toca la cuenta global (nombre, MFA, contraseña) solo lo hace una organización si la cuenta no tiene membresías activas en otra; si no, lo hace el operador de la plataforma. Para saberlo sin leer otras organizaciones, la función `app.has_active_membership_elsewhere(user, org)` (SECURITY DEFINER de `clinic_owner`, con una política de solo lectura para ese rol) devuelve solo un sí o un no.
 
 ### Permisos
 

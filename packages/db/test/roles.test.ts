@@ -12,6 +12,8 @@ const TABLES = [
   'membership_roles',
   'invitations',
   'audit_log',
+  // T-006a
+  'invitation_roles',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {
@@ -112,7 +114,7 @@ describe('configuración de roles y tablas', () => {
     }
   });
 
-  it('permisos exactos de clinic_app en el esquema auth (medidos en T-002)', async () => {
+  it('permisos exactos de clinic_app en el esquema auth (medidos en T-002; T-006a añade UPDATE en account y DELETE en two_factor)', async () => {
     const { rows } = await client.query<{ table_name: string; privileges: string }>(
       `select table_name, string_agg(privilege_type, ',' order by privilege_type) as privileges
          from information_schema.role_table_grants
@@ -120,10 +122,10 @@ describe('configuración de roles y tablas', () => {
         group by table_name order by table_name`,
     );
     expect(rows).toEqual([
-      { table_name: 'account', privileges: 'INSERT,SELECT' },
+      { table_name: 'account', privileges: 'INSERT,SELECT,UPDATE' },
       { table_name: 'session', privileges: 'DELETE,INSERT,SELECT,UPDATE' },
       { table_name: 'sign_in_failures', privileges: 'DELETE,INSERT,SELECT' },
-      { table_name: 'two_factor', privileges: 'INSERT,SELECT,UPDATE' },
+      { table_name: 'two_factor', privileges: 'DELETE,INSERT,SELECT,UPDATE' },
       { table_name: 'user', privileges: 'INSERT,SELECT,UPDATE' },
       { table_name: 'verification', privileges: 'DELETE,INSERT,SELECT' },
     ]);

@@ -50,3 +50,12 @@ export async function endSession(kind: 'voluntary' | 'everywhere' | 'idle'): Pro
     queryClient.clear();
   }
 }
+
+/** Sede activa (la del contexto de la sesión), para su zona horaria. */
+export function useActiveLocation(): FlatLocation | undefined {
+  const me = useMe();
+  const locations = useLocations();
+  const context = me.data?.context;
+  if (!context || !locations.data) return undefined;
+  return flatten(locations.data).find((l) => l.organizationId === context.organizationId && l.id === context.locationId);
+}

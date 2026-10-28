@@ -63,10 +63,27 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
       autoSignIn: false,
       minPasswordLength: PASSWORD_MIN_LENGTH,
       maxPasswordLength: PASSWORD_MAX_LENGTH,
+      // Restablecimiento (S-GEN-10, T-006a): el token lo emite solo un
+      // administrador (users.ts); /request-password-reset queda cerrado (no
+      // hay sendResetPassword y el hook de abajo lo rechaza). Al fijar la
+      // contraseña nueva se cierran todas las sesiones y se borra la marca de
+      // restablecimiento del MFA.
+      resetPasswordTokenExpiresIn: config.passwordResetTtlSeconds,
+      revokeSessionsOnPasswordReset: true,
+      onPasswordReset: async ({ user: resetUser }) => {
+        await pool.query('update auth."user" set mfa_reset_at = null where id = $1', [resetUser.id]);
+        await audit.platform({ action: 'auth.password_reset.completed', actorType: 'user', actorId: resetUser.id, ip: null });
+      },
+    },
+    // Los tokens de restablecimiento se guardan con hash (SHA-256), como el
+    // secreto de las invitaciones: la tabla verification no los tiene en claro.
+    verification: {
+      storeIdentifier: { default: 'plain', overrides: { 'reset-password:': 'hashed' } },
     },
     user: {
       additionalFields: {
         disabledAt: { type: 'date', required: false, input: false },
+        mfaResetAt: { type: 'date', required: false, input: false },
       },
     },
     session: {
@@ -161,6 +178,11 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
           ctx.path === '/sign-up/email' ? body?.password : ['/change-password', '/reset-password'].includes(ctx.path) ? body?.newPassword : undefined;
         if (typeof newPassword === 'string' && checkPassword(newPassword) === 'password_too_common') {
           throw new APIError('BAD_REQUEST', { message: 'Contraseña demasiado común', code: 'password_too_common' });
+        }
+        // Sin «¿olvidó su contraseña?» público: el restablecimiento lo emite un
+        // administrador (S-ADM-02).
+        if (ctx.path === '/request-password-reset' || ctx.path.startsWith('/reset-password/')) {
+          throw new APIError('FORBIDDEN', { message: 'Restablecimiento solo por un administrador', code: 'password_reset_by_admin_only' });
         }
         // Registro público cerrado: solo el servidor crea usuarios, al aceptar
         // una invitación. Las llamadas de auth.api no traen `request`.

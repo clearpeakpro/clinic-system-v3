@@ -86,26 +86,49 @@ export const invitations = appSchema.table(
     id: id(),
     organizationId: organizationId(),
     email: text('email').notNull(),
-    role: text('role').notNull(),
-    locationId: uuid('location_id'),
+    /** Nombre para mostrar que escribió el administrador (S-ADM-03); se ve en la lista mientras está «Invitado». */
+    name: text('name').notNull(),
     // sha256 del secreto del enlace, en hexadecimal. El secreto no se guarda.
     tokenHash: text('token_hash').notNull().unique(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     acceptedByUserId: uuid('accepted_by_user_id'),
+    /** Revocada por un administrador (S-ADM-07) o reemplazada al volver a invitar el mismo correo. */
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
     createdByUserId: uuid('created_by_user_id').notNull(),
     createdAt: createdAt(),
   },
+  (t) => [unique('invitations_organization_id_id_key').on(t.organizationId, t.id)],
+);
+
+/** Roles por sede de una invitación (T-006): pasan tal cual a membership_roles al aceptarla. */
+export const invitationRoles = appSchema.table(
+  'invitation_roles',
+  {
+    id: id(),
+    organizationId: organizationId(),
+    invitationId: uuid('invitation_id').notNull(),
+    // Nulo = toda la organización; solo para roles administrativos.
+    locationId: uuid('location_id'),
+    role: text('role').notNull(),
+    createdAt: createdAt(),
+  },
   (t) => [
-    unique('invitations_organization_id_id_key').on(t.organizationId, t.id),
+    unique('invitation_roles_organization_id_id_key').on(t.organizationId, t.id),
+    unique('invitation_roles_assignment_key').on(t.invitationId, t.locationId, t.role).nullsNotDistinct(),
     foreignKey({
-      name: 'invitations_location_fk',
+      name: 'invitation_roles_invitation_fk',
+      columns: [t.organizationId, t.invitationId],
+      foreignColumns: [invitations.organizationId, invitations.id],
+    }),
+    foreignKey({
+      name: 'invitation_roles_location_fk',
       columns: [t.organizationId, t.locationId],
       foreignColumns: [locations.organizationId, locations.id],
     }),
-    check('invitations_role_check', ROLE_CHECK),
+    check('invitation_roles_role_check', ROLE_CHECK),
     check(
-      'invitations_org_wide_check',
+      'invitation_roles_org_wide_check',
       sql`${t.locationId} is not null or ${t.role} in ('propietario', 'administrador')`,
     ),
   ],

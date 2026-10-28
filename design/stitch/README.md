@@ -89,9 +89,21 @@ La hoja contradice al DESIGN.md en varios puntos. Se decidió así:
 
 **No se construye:** el encabezado «SYS-COMP-01», «HIPAA / FDA Class I» y «v2.4.0 Estable»; los códigos R-01 a R-04, las descripciones y los «tiempos estimados» de las rutas; «Ver diagnóstico»; «Estado expediente: Verificado»; «Descargar especificación JSON»; «Servidor Clínico Activo». El menú lateral de la hoja (fondo menta) no cambia el marco, que sigue a S-GEN-12.
 
+## Usuarios (T-006a)
+
+`admin/S-ADM-02_usuarios/` es la única pantalla de la tarea con captura.
+
+| Se toma | No se construye |
+| --- | --- |
+| Encabezado con título, subtítulo y «Invitar usuario» con icono; tarjeta de filtros (búsqueda, rol, sede y estado); tabla con avatar de iniciales, correo en monoespaciado, «Roles por sede» en cápsulas con icono («Proveedor · NOR1, NOR2», «Organización completa»), verificación en dos pasos y estado con icono; la nota «Sin acceso clínico» para quien solo tiene roles administrativos | Tarjetas de totales («Activos en línea 77.8 %»…), «Registro de actividad», «Exportar», «Reenviar», especialidades (MD, RN…), «Sincronización LDAP», «Cifrado HIPAA», el aviso de HIPAA/HITECH, «Manual de políticas», la etiqueta «Seguridad & Acceso REF», el filtro por estado del MFA y la paginación |
+
+- **Chips de estado:** los tonos del manual (Invitado información, Activo éxito, Deshabilitado advertencia); Stitch pone Deshabilitado en gris.
+- **Filtro de estado:** botones segmentados desde 600 px y desplegable en el teléfono (manual). La selección va en menta con el texto en primary: la paleta `secondary` de Material es azul y no aparece en Stitch.
+- **Diálogos** (S-ADM-03 a 09) y **páginas públicas** (S-GEN-09, S-GEN-10): sin captura. Diálogos de la hoja S-GEN-30; páginas con el aspecto de S-GEN-03.
+
 ## Pantallas sin referencia de Stitch
 
-Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29.
+Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29; en T-006a, S-ADM-03 a 09, S-GEN-09 y S-GEN-10.
 
 ## Antes de generar más pantallas
 
