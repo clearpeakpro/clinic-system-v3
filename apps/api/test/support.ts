@@ -39,13 +39,22 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
   return { ...app, mailer, logs, config };
 }
 
+export function randomTestIp(): string {
+  const byte = () => String(Math.floor(Math.random() * 254) + 1);
+  return `198.${String(18 + Math.floor(Math.random() * 2))}.${byte()}.${byte()}`;
+}
+
 /** Cliente HTTP con cookies, sobre fastify.inject (sin red). */
 export class Client {
   readonly cookies = new Map<string, string>();
   readonly #app: TestApp;
   readonly ip: string;
 
-  constructor(app: TestApp, ip = '203.0.113.10') {
+  /**
+   * Cada cliente tiene su propia IP (198.18.0.0/15, reservada para pruebas):
+   * el límite por IP de Better Auth está activo en todos los entornos.
+   */
+  constructor(app: TestApp, ip = randomTestIp()) {
     this.#app = app;
     this.ip = ip;
   }

@@ -1,0 +1,9 @@
+# Finales de línea LF en el repositorio y en las copias de trabajo, en
+# cualquier sistema (incluido Windows con core.autocrlf=true).
+* text=auto eol=lf
+
+# Binarios: sin conversión ni diff de texto.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary

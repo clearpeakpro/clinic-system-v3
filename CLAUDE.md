@@ -1,5 +1,7 @@
 # CLAUDE.md — Clinic System v3
 
+**Responde siempre en español.**
+
 Sistema SaaS multi-tenant de flujo de pacientes para clínicas (recepción, kiosco, enfermería, proveedor, órdenes, caja, reportes, administración). Una sola instalación en AWS sirve a todas las clínicas cliente.
 
 ## Fuentes de verdad (leer antes de programar)

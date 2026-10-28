@@ -15,6 +15,19 @@ export interface AppConfig {
   /** Expiración absoluta desde el inicio de sesión, en segundos (nuestro guard). */
   absoluteTimeoutSeconds: number;
   invitationTtlSeconds: number;
+  /**
+   * Límite por cuenta (ADR 0023): con este número de inicios de sesión
+   * fallidos dentro de la ventana, la cuenta responde 429 hasta que los fallos
+   * salen de la ventana. El límite por IP lo pone Better Auth.
+   */
+  signInAccountMaxFailures: number;
+  signInAccountWindowSeconds: number;
+  /**
+   * Límite por IP del inicio de sesión (Better Auth). Holgado porque todo el
+   * personal de una clínica sale por la misma IP pública.
+   */
+  signInIpMaxAttempts: number;
+  signInIpWindowSeconds: number;
   /** Fuerza Secure y el prefijo __Secure- en las cookies. Siempre en producción. */
   secureCookies: boolean;
   /** Detrás de Caddy: confiar en X-Forwarded-For para la IP del cliente. */
@@ -28,6 +41,10 @@ export const DEFAULTS = {
   idleTimeoutSeconds: 30 * 60,
   absoluteTimeoutSeconds: 12 * 60 * 60,
   invitationTtlSeconds: 48 * 60 * 60,
+  signInAccountMaxFailures: 10,
+  signInAccountWindowSeconds: 15 * 60,
+  signInIpMaxAttempts: 30,
+  signInIpWindowSeconds: 60,
 } as const;
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
@@ -43,6 +60,10 @@ const envSchema = z.object({
   IDLE_TIMEOUT_SECONDS: seconds.default(DEFAULTS.idleTimeoutSeconds),
   ABSOLUTE_TIMEOUT_SECONDS: seconds.default(DEFAULTS.absoluteTimeoutSeconds),
   INVITATION_TTL_SECONDS: seconds.default(DEFAULTS.invitationTtlSeconds),
+  SIGN_IN_ACCOUNT_MAX_FAILURES: seconds.default(DEFAULTS.signInAccountMaxFailures),
+  SIGN_IN_ACCOUNT_WINDOW_SECONDS: seconds.default(DEFAULTS.signInAccountWindowSeconds),
+  SIGN_IN_IP_MAX_ATTEMPTS: seconds.default(DEFAULTS.signInIpMaxAttempts),
+  SIGN_IN_IP_WINDOW_SECONDS: seconds.default(DEFAULTS.signInIpWindowSeconds),
   TRUST_PROXY: bool.default(false),
   SMTP_URL: z.url().default('smtp://127.0.0.1:1025'),
   MAIL_FROM: z.string().default('Clinic System <no-reply@example.test>'),
@@ -69,6 +90,10 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     idleTimeoutSeconds: e.IDLE_TIMEOUT_SECONDS,
     absoluteTimeoutSeconds: e.ABSOLUTE_TIMEOUT_SECONDS,
     invitationTtlSeconds: e.INVITATION_TTL_SECONDS,
+    signInAccountMaxFailures: e.SIGN_IN_ACCOUNT_MAX_FAILURES,
+    signInAccountWindowSeconds: e.SIGN_IN_ACCOUNT_WINDOW_SECONDS,
+    signInIpMaxAttempts: e.SIGN_IN_IP_MAX_ATTEMPTS,
+    signInIpWindowSeconds: e.SIGN_IN_IP_WINDOW_SECONDS,
     secureCookies: e.NODE_ENV === 'production',
     trustProxy: e.TRUST_PROXY,
     smtpUrl: e.SMTP_URL,
