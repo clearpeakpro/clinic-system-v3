@@ -71,7 +71,7 @@ Detalle en el ADR 0023.
   - se rechazan las de la lista local `data/common-passwords.txt`;
   - sin caducidad periódica.
 - **Inicio de sesión:**
-  - límite **por IP** de Better Auth (3 intentos cada 10 s), activo en todos los entornos;
+  - límite **por IP** de Better Auth, activo en todos los entornos: **30 intentos por minuto** en el inicio de sesión, porque toda la clínica comparte la IP pública (configurable con `SIGN_IN_IP_MAX_ATTEMPTS` y `SIGN_IN_IP_WINDOW_SECONDS`);
   - límite **por cuenta**: 10 fallos en 15 min → `429 too_many_attempts`.
   - Las pruebas dan a cada cliente su propia IP (`support.ts`).
 
