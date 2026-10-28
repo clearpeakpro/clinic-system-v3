@@ -61,8 +61,9 @@ async function newPage(browser: Browser) {
 
 const row = (page: Page, email: string) => page.getByRole('row').filter({ hasText: email });
 
-// El Propietario se inscribe en el MFA una sola vez: las dos pruebas comparten su página.
-test.describe.configure({ mode: 'serial' });
+// El Propietario se inscribe en el MFA una sola vez: las dos pruebas comparten
+// su página. Sin reintentos: al repetir, el Propietario ya estaría inscrito.
+test.describe.configure({ mode: 'serial', retries: 0 });
 let page: Page;
 
 test.beforeAll(async ({ browser }) => {
@@ -139,6 +140,9 @@ test('un Administrador invitado se inscribe en el MFA al aceptar y no puede invi
   test.setTimeout(120_000);
   const path = await invite(page, 'nuevo.admin@example.test', 'Persona Administradora Ficticia', ['Administrador'], []);
 
+  // Better Auth limita /two-factor/* a 3 peticiones cada 10 s por IP, y en E2E
+  // todo sale de 127.0.0.1: se deja pasar la ventana de la inscripción del Propietario.
+  await new Promise((resolve) => setTimeout(resolve, 10_500));
   const admin = await newPage(browser);
   await admin.goto(path);
   await admin.getByLabel('Nombre para mostrar').fill('Persona Administradora Ficticia');
