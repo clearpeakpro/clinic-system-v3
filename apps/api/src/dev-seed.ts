@@ -4,10 +4,12 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { ClinicApp } from './app.ts';
 
-// Usuarios ficticios de desarrollo (T-003, T-004). La semilla es la ÚNICA vía
-// para crear un Propietario en la fase 1: ningún endpoint lo hace (regla
-// escalonada de packages/shared/src/permissions.ts). En producción lo hará el
-// operador con `pnpm org:create` (T-007). T-010 completará la semilla.
+// Usuarios ficticios de desarrollo (T-003, T-004; completos en T-010): los
+// cinco roles en cada organización y una persona de las dos. Ninguno con MFA:
+// Propietarios y Administradores lo inscriben al entrar (S-GEN-07). La semilla
+// es la ÚNICA vía para crear un Propietario en desarrollo: ningún endpoint lo
+// hace (regla escalonada de packages/shared/src/permissions.ts). En producción
+// lo hace el operador con `pnpm org:create` (T-007).
 
 type Org = typeof DEMO.norte | typeof DEMO.sur;
 
@@ -26,10 +28,17 @@ export const DEV_OWNERS = [
 export const DEV_USERS: readonly DevUser[] = [
   ...DEV_OWNERS.map((o) => ({ email: o.email, name: o.name, roles: [{ org: o.org, location: null, role: 'propietario' as const }] })),
   // Sin MFA al crearse: al entrar queda obligado a inscribirse (S-GEN-07).
+  // Clínica Demo Norte
   { email: 'admin.norte@example.test', name: 'Adriana Admin (ficticia)', roles: [{ org: DEMO.norte, location: null, role: 'administrador' }] },
   { email: 'recepcion.norte@example.test', name: 'Rosa Recepción (ficticia)', roles: [{ org: DEMO.norte, location: 0, role: 'recepcion' }] },
+  { email: 'enfermeria.norte@example.test', name: 'Nora Enfermería (ficticia)', roles: [{ org: DEMO.norte, location: 0, role: 'enfermeria' }] },
   { email: 'proveedor.norte@example.test', name: 'Pablo Proveedor (ficticio)', roles: [{ org: DEMO.norte, location: 1, role: 'proveedor' }] },
+  // Clínica Demo Sur
+  { email: 'admin.sur@example.test', name: 'Sergio Admin (ficticio)', roles: [{ org: DEMO.sur, location: null, role: 'administrador' }] },
+  { email: 'recepcion.sur@example.test', name: 'Raúl Recepción (ficticio)', roles: [{ org: DEMO.sur, location: 0, role: 'recepcion' }] },
   { email: 'enfermeria.sur@example.test', name: 'Elena Enfermería (ficticia)', roles: [{ org: DEMO.sur, location: 1, role: 'enfermeria' }] },
+  { email: 'proveedor.sur@example.test', name: 'Sofía Proveedora (ficticia)', roles: [{ org: DEMO.sur, location: 1, role: 'proveedor' }] },
+  // De las dos organizaciones.
   {
     email: 'multi@example.test',
     name: 'Mario Dos Clínicas (ficticio)',
