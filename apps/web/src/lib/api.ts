@@ -98,6 +98,8 @@ export interface InvitationRow {
   expiresAt: string;
   expired: boolean;
   manageable: boolean;
+  /** Estado de su correo en el outbox (T-008). «failed»: «Correo no entregado». */
+  mailStatus: 'pending' | 'sent' | 'failed' | null;
 }
 
 export type UserRow = MemberRow | InvitationRow;
@@ -166,9 +168,9 @@ export const api = {
   // Administración › Usuarios
   users: () => request<UsersList>('GET', '/api/users'),
   invite: (input: { email: string; name: string; roles: Role[]; locationIds: string[] }) =>
-    request<OneTimeLink & { invitationId: string; mailSent: boolean }>('POST', '/api/invitations', input),
+    request<OneTimeLink & { invitationId: string }>('POST', '/api/invitations', input),
   resendInvitation: (invitationId: string) =>
-    request<OneTimeLink & { invitationId: string; mailSent: boolean }>('POST', `/api/invitations/${invitationId}/resend`, {}),
+    request<OneTimeLink & { invitationId: string }>('POST', `/api/invitations/${invitationId}/resend`, {}),
   revokeInvitation: (invitationId: string, reason: string) =>
     request<null>('POST', `/api/invitations/${invitationId}/revoke`, { reason }),
   renameMember: (membershipId: string, name: string, expectedVersion: number) =>

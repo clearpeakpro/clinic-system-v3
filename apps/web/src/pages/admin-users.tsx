@@ -34,6 +34,7 @@ import {
   LockKeyhole,
   type LucideIcon,
   MailPlus,
+  MailX,
   MapPin,
   MoreVertical,
   Pencil,
@@ -566,6 +567,10 @@ function StatusCell({ row, timeZone, onResend }: { row: UserRow; timeZone: strin
           >
             Reenviar
           </Button>
+        ) : null}
+        {row.kind === 'invitation' && row.mailStatus === 'failed' ? (
+          // El worker agotó los intentos de entrega (T-008): se audita como mail.failed.
+          <StatusChip tone="danger" icon={MailX} label="Correo no entregado" className="whitespace-nowrap" />
         ) : null}
       </span>
       {row.kind === 'invitation' ? (
