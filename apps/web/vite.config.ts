@@ -35,12 +35,12 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: { '/api': { target: API, changeOrigin: false } },
+    proxy: { '/api': { target: API, changeOrigin: false, ws: true } },
   },
   preview: {
     port: 4173,
     strictPort: true,
-    proxy: { '/api': { target: API, changeOrigin: false } },
+    proxy: { '/api': { target: API, changeOrigin: false, ws: true } },
   },
   build: { sourcemap: true },
 });

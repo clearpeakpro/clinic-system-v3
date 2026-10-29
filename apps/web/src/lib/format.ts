@@ -45,3 +45,16 @@ export function initials(name: string): string {
     .map((w) => w.charAt(0).toLocaleUpperCase('es'))
     .join('');
 }
+
+/**
+ * Antigüedad de un aviso (S-GEN-15): «Ahora mismo», «hace {N} min»,
+ * «hace {N} h» y, con el historial de 30 días, «hace {N} d».
+ */
+export function notificationAge(createdAt: string, now: number): string {
+  const minutes = Math.floor(Math.max(0, now - new Date(createdAt).getTime()) / 60_000);
+  if (minutes < 1) return 'Ahora mismo';
+  if (minutes < 60) return `hace ${String(minutes)} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${String(hours)} h`;
+  return `hace ${String(Math.floor(hours / 24))} d`;
+}

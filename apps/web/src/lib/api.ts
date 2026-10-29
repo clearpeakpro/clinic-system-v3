@@ -1,4 +1,4 @@
-import type { Permission, Role } from '@clinic/shared';
+import type { NotificationKind, Permission, Role } from '@clinic/shared';
 
 // Cliente de la API (mismo origen: /api). Las cookies de sesión son httpOnly:
 // la web nunca ve ni guarda tokens. Nada de lo que devuelve se persiste
@@ -145,6 +145,24 @@ export interface OwnMfaStatus {
   backupCodesLeft: number | null;
 }
 
+/** Centro de notificaciones (S-GEN-15). Tipos de apps/api/src/notifications.ts. */
+export interface NotificationItem {
+  id: string;
+  kind: NotificationKind;
+  /** Código humano de la entidad («NOR1-V-000123»); nunca nombres. */
+  code: string | null;
+  locationId: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface NotificationsList {
+  rows: NotificationItem[];
+  unread: number;
+}
+
 /** Enlace de un solo uso (S-ADM-04). */
 export interface OneTimeLink {
   link: string;
@@ -194,6 +212,12 @@ export const api = {
     request<null>('POST', `/api/locations/${locationId}`, { ...input, expectedVersion }),
   setLocationActive: (locationId: string, active: boolean, expectedVersion: number) =>
     request<null>('POST', `/api/locations/${locationId}/${active ? 'activate' : 'deactivate'}`, { expectedVersion }),
+
+  // Centro de notificaciones (S-GEN-15)
+  notifications: () => request<NotificationsList>('GET', '/api/notifications'),
+  readNotification: (id: string) => request<null>('POST', `/api/notifications/${id}/read`, {}),
+  readAllNotifications: () => request<null>('POST', '/api/notifications/read-all', {}),
+  clearNotifications: () => request<null>('POST', '/api/notifications/clear', {}),
 
   // Páginas públicas
   acceptInvitation: (input: { token: string; name?: string; password?: string }) =>

@@ -5,12 +5,13 @@ import { Button, cn, DropdownContent, DropdownItem, DropdownMenu, DropdownSepara
 import { api, type Me } from '../lib/api.ts';
 import { initials, rolesText } from '../lib/format.ts';
 import { landingPath, menuFor, pathFor, type NavItem } from '../lib/nav.ts';
-import { flatten, keys, queryClient, useLocations, useMe, type FlatLocation } from '../lib/session.ts';
+import { flatten, keys, queryClient, realtime, useLocations, useMe, type FlatLocation } from '../lib/session.ts';
 import { applyTheme, prefs, type ThemePreference } from '../lib/storage.ts';
 import { NotFoundPage } from '../pages/not-found.tsx';
 import { Brand, BrandLogo } from './brand.tsx';
 import { IdleGuard } from './idle-guard.tsx';
 import { LogoutDialog } from './logout-dialog.tsx';
+import { DegradedBanner, LiveIndicator, NotificationCenter } from './realtime.tsx';
 
 /**
  * S-GEN-12 Marco. Menú lateral (> 1024 px), riel (600–1024 px) o barra
@@ -55,6 +56,13 @@ export function Frame({ area, sede }: { area: 'clinic' | 'admin'; sede?: string 
     if (area === 'admin' && me.data && !me.data.context) void navigate({ to: '/seleccionar-sede', replace: true });
   }, [area, me.data, navigate]);
 
+  // Conexión en vivo con la sede activa (T-009); se cambia con la sede y se
+  // cierra al cerrar sesión (endSession) o si el servidor la da por terminada.
+  const contextKey = me.data?.context ? `${me.data.context.organizationId}:${me.data.context.locationId}` : null;
+  useEffect(() => {
+    if (contextKey) realtime.start(contextKey);
+  }, [contextKey]);
+
   if (me.isPending || locations.isPending) return <Centered />;
   if (!me.data) return <Centered />;
   if (area === 'clinic' && !fromUrl) return <NotFoundPage />;
@@ -70,6 +78,7 @@ export function Frame({ area, sede }: { area: 'clinic' | 'admin'; sede?: string 
       <SideNav me={me.data} code={active.code} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header me={me.data} locations={all} active={active} />
+        <DegradedBanner />
         <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-24 tab:p-6 desk:p-8">
           <Outlet />
         </main>
@@ -92,8 +101,11 @@ function Header({ me, locations, active }: { me: Me; locations: FlatLocation[]; 
     <header className="relative z-10 flex h-16 shrink-0 items-center gap-space-md bg-surface-container-lowest px-4 shadow-level-1 tab:px-space-lg dark:bg-surface-container-low">
       <LocationSelector locations={locations} active={active} />
       <div className="flex-1" />
-      {/* Espacio reservado: «En vivo» (T-009), notificaciones y «Buscar pacientes» (fase 2). */}
-      <div data-slot="header-actions" className="flex items-center gap-space-md" />
+      {/* «Buscar pacientes» llega con la fase 2. */}
+      <div data-slot="header-actions" className="flex items-center gap-space-sm tab:gap-space-md">
+        <LiveIndicator />
+        <NotificationCenter organizationId={active.organizationId} />
+      </div>
       <AccountMenu me={me} code={active.code} />
     </header>
   );

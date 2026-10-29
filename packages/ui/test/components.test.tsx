@@ -7,6 +7,7 @@ import { RouteBadge, VISIT_STATUS_STYLE, VisitStatusChip } from '../src/componen
 import { MoneyField, MoneyText } from '../src/components/data.tsx';
 import { ConfirmDialog } from '../src/components/dialogs.tsx';
 import { AsyncView } from '../src/components/states.tsx';
+import { FloatingPanel } from '../src/components/overlay.tsx';
 
 describe('chips de estado de la visita', () => {
   it('los 11 estados tienen icono, texto y el tono del DESIGN.md', () => {
@@ -156,5 +157,32 @@ describe('AsyncView (S-GEN-28)', () => {
     rerender(<AsyncView source={{ ...base, data: ['a'], isFetching: true }}>{(d) => d.join()}</AsyncView>);
     expect(screen.getByRole('status')).toHaveTextContent('Actualizando…');
     expect(screen.getByText('a')).toBeInTheDocument();
+  });
+});
+
+describe('panel flotante (S-GEN-15)', () => {
+  it('se abre y se cierra con su botón, con título y acciones', async () => {
+    const user = userEvent.setup();
+    function Demo() {
+      const [open, setOpen] = useState(false);
+      return (
+        <FloatingPanel
+          open={open}
+          onOpenChange={setOpen}
+          title="Notificaciones"
+          trigger={<button type="button">Campana</button>}
+          actions={<button type="button">Borrar</button>}
+        >
+          <p>Contenido</p>
+        </FloatingPanel>
+      );
+    }
+    render(<Demo />);
+    expect(screen.queryByText('Contenido')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Campana' }));
+    expect(screen.getByRole('dialog', { name: 'Notificaciones' })).toHaveTextContent('Contenido');
+    expect(screen.getByRole('button', { name: 'Borrar' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Campana' }));
+    expect(screen.queryByText('Contenido')).toBeNull();
   });
 });

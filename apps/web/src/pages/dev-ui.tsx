@@ -11,6 +11,7 @@ import {
   EmptyState,
   ErrorState,
   FilterChip,
+  FloatingPanel,
   MoneyField,
   MoneyText,
   RefreshBar,
@@ -28,6 +29,8 @@ import {
   type Column,
 } from '@clinic/ui';
 import type { VisitRoute, VisitStatus } from '@clinic/shared';
+import { BellButton, DegradedBannerView, LiveIndicatorView, NotificationList } from '../components/realtime.tsx';
+import type { NotificationItem } from '../lib/api.ts';
 import { Check, Coffee, IdCard, MailPlus, RefreshCw, Trash2, UserRoundX } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IdleWarningDialog } from '../components/idle-guard.tsx';
@@ -195,6 +198,10 @@ export function DevUiPage() {
         <Section n={8} title="Formularios, totales y avisos (T-006a)">
           <Forms />
         </Section>
+
+        <Section n={9} title="Tiempo real y notificaciones (T-009)">
+          <Live />
+        </Section>
       </div>
     </main>
   );
@@ -346,6 +353,44 @@ function Forms() {
         </Button>
       </Sub>
     </div>
+  );
+}
+
+// Avisos ficticios para la hoja: solo códigos, nunca nombres.
+const SAMPLE_NOW = Date.parse('2026-10-29T15:00:00Z');
+const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
+  { id: 'n1', kind: 'encounter.provider_assigned', code: 'NOR1-V-000123', locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T14:59:40Z', read: false },
+  { id: 'n2', kind: 'order.created', code: 'NOR1-O-000045', locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T14:48:00Z', read: false },
+  { id: 'n3', kind: 'appointment.changed', code: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T11:00:00Z', read: true },
+  { id: 'n4', kind: 'security.alert', code: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-26T15:00:00Z', read: true },
+];
+
+function Live() {
+  return (
+    <>
+      <Sub title="Indicador de actualizaciones en vivo (S-GEN-14)">
+        <div className="flex flex-wrap gap-space-sm">
+          <LiveIndicatorView status="connected" />
+          <LiveIndicatorView status="connecting" />
+          <LiveIndicatorView status="disconnected" />
+        </div>
+      </Sub>
+      <Sub title="Banner de modo degradado (S-GEN-19)">
+        <DegradedBannerView onHide={noop} />
+      </Sub>
+      <Sub title="Campana y centro de notificaciones (S-GEN-15)">
+        <div className="flex gap-space-sm">
+          <BellButton unread={0} />
+          <BellButton unread={2} />
+        </div>
+        <FloatingPanel inline open onOpenChange={noop} title="Notificaciones">
+          <NotificationList rows={SAMPLE_NOTIFICATIONS} now={SAMPLE_NOW} onOpen={noop} />
+        </FloatingPanel>
+        <FloatingPanel inline open onOpenChange={noop} title="Notificaciones">
+          <NotificationList rows={[]} now={SAMPLE_NOW} onOpen={noop} />
+        </FloatingPanel>
+      </Sub>
+    </>
   );
 }
 

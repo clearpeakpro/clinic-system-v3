@@ -1,5 +1,7 @@
 import { QueryClient, useQuery } from '@tanstack/react-query';
-import { api, ApiError, type LocationChoice, type Me } from './api.ts';
+import { useSyncExternalStore } from 'react';
+import { api, ApiError, type LocationChoice, type Me, type NotificationsList } from './api.ts';
+import { RealtimeClient, type LiveState } from './realtime.ts';
 
 // Estado de sesión en memoria (TanStack Query). Sin persistencia: al cerrar
 // sesión se borra todo (S-GEN-17, S-GEN-20).
@@ -14,10 +16,28 @@ export const queryClient = new QueryClient({
   },
 });
 
-export const keys = { me: ['me'] as const, locations: ['locations'] as const };
+export const keys = {
+  me: ['me'] as const,
+  locations: ['locations'] as const,
+  /** Por organización: la bandeja es de la organización activa. */
+  notifications: (organizationId: string) => ['notifications', organizationId] as const,
+};
 
 export const useMe = () => useQuery<Me, ApiError>({ queryKey: keys.me, queryFn: api.me });
 export const useLocations = () => useQuery<LocationChoice[], ApiError>({ queryKey: keys.locations, queryFn: api.locations });
+export const useNotifications = (organizationId: string) =>
+  useQuery<NotificationsList, ApiError>({ queryKey: keys.notifications(organizationId), queryFn: api.notifications });
+
+/** Conexión en vivo de la pestaña (T-009). */
+export const realtime = new RealtimeClient({
+  resync: () => void queryClient.invalidateQueries({ refetchType: 'active' }),
+  sessionChanged: () => void queryClient.invalidateQueries({ queryKey: keys.me }),
+  notifications: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+});
+
+export function useLiveState(): LiveState {
+  return useSyncExternalStore(realtime.subscribe, realtime.getState);
+}
 
 export interface FlatLocation {
   organizationId: string;
@@ -37,6 +57,7 @@ export function flatten(choices: LocationChoice[]): FlatLocation[] {
 
 /** Cierre de sesión: el servidor primero; después se borra todo lo que hay en memoria. */
 export async function endSession(kind: 'voluntary' | 'everywhere' | 'idle'): Promise<void> {
+  realtime.stop();
   try {
     if (kind === 'idle') {
       // Registro del motivo (máx. 5 s, S-GEN-20); el cierre sigue aunque falle.

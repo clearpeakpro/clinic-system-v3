@@ -31,6 +31,7 @@ export {
   DropdownMenu,
   DropdownSeparator,
   DropdownTrigger,
+  FloatingPanel,
   Sheet,
   SheetClose,
   type DialogProps,
