@@ -15,6 +15,7 @@ export const E2E = {
 
 const apiDir = fileURLToPath(new URL('../../api/', import.meta.url));
 const webDir = fileURLToPath(new URL('../', import.meta.url));
+const workerDir = fileURLToPath(new URL('../../worker/', import.meta.url));
 
 function urlFor(base: string, user: string, password: string): string {
   const url = new URL(base);
@@ -84,6 +85,7 @@ export default async function globalSetup() {
   await seed(migratorUrl);
 
   const webOrigin = `http://127.0.0.1:${String(E2E.webPort)}`;
+  const outboxKey = randomBytes(32).toString('hex');
   const apiEnv = {
     NODE_ENV: 'test',
     DATABASE_APP_URL: urlFor(superuserUrl, 'clinic_app', appPassword),
@@ -91,13 +93,22 @@ export default async function globalSetup() {
     TRUSTED_ORIGINS: webOrigin,
     BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
     AUDIT_HMAC_KEY: randomBytes(32).toString('hex'),
-    SMTP_URL: 'smtp://127.0.0.1:1',
+    OUTBOX_KEY: outboxKey,
     PORT: String(E2E.apiPort),
     DEV_SEED_PASSWORD: E2E.password,
   };
   await finished(run('pnpm', ['exec', 'tsx', 'scripts/seed-dev-users.ts'], apiDir, apiEnv));
 
   const api = run('pnpm', ['exec', 'tsx', 'src/main.ts'], apiDir, apiEnv);
+  // T-008: el worker entrega el outbox. Sin servidor de correo (puerto 1) y con
+  // un solo intento, un correo de invitación queda enseguida como no entregado.
+  const worker = run('pnpm', ['exec', 'tsx', 'src/main.ts'], workerDir, {
+    DATABASE_APP_URL: apiEnv.DATABASE_APP_URL,
+    OUTBOX_KEY: outboxKey,
+    SMTP_URL: 'smtp://127.0.0.1:1',
+    OUTBOX_MAX_ATTEMPTS: '1',
+    OUTBOX_SWEEP_SECONDS: '2',
+  });
   const web = run('pnpm', ['exec', 'vite', 'preview', '--host', '127.0.0.1'], webDir, {
     API_ORIGIN: `http://127.0.0.1:${String(E2E.apiPort)}`,
   });
@@ -108,11 +119,12 @@ export default async function globalSetup() {
   // verdad, como el operador (clinic_operator) de esta base desechable.
   process.env.E2E_OPERATOR_URL = urlFor(superuserUrl, 'clinic_operator', operatorPassword);
   process.env.E2E_BASE_URL = webOrigin;
+  process.env.E2E_OUTBOX_KEY = outboxKey;
 
-  // Orden: web, API y por último la base de datos (si no, la API registra
+  // Orden: web, worker, API y por último la base de datos (si no, se registra
   // «terminating connection»). Se espera a que cada proceso termine.
   return async () => {
-    for (const child of [web, api]) await stop(child);
+    for (const child of [web, worker, api]) await stop(child);
     await container.stop();
   };
 }
