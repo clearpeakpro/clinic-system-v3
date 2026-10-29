@@ -1,6 +1,6 @@
 # 0023. Autenticación con Better Auth
 
-- **Estado:** Aceptada con condiciones
+- **Estado:** Aceptada (las 5 condiciones se cumplieron en la fase 1; revisado en T-010, 2026-10-29)
 - **Fecha:** 2026-10-27
 - **Reemplaza en parte:** ADR 0002 (contexto `app.user_id` de solo lectura; eventos de auditoría sin organización)
 - **Evidencia:** [`docs/spikes/T-002-better-auth.md`](../spikes/T-002-better-auth.md)
@@ -40,6 +40,7 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
    - Las 54 pruebas de la rama `spike/t-002-better-auth` pasan con 1.7.7, con las mismas operaciones sobre `auth.*` que con 1.7.14.
    - Fijada sin `^` en `apps/api/package.json`.
 2. **Contexto RLS solo por sus funciones.** Añadir a la CI una comprobación que falle si se fija `app.org_id` o `app.user_id` fuera de `withTenant` o `withUser`.
+   - **Cumplida en T-003 (2026-10-27):** `packages/db/scripts/check-rls-context.ts`, en un paso propio de la CI y dentro de `pnpm lint`.
 3. **Contraseña y MFA.** En la fase 1, pruebas y permisos mínimos de `clinic_app` para cambiar la contraseña y para desactivar el MFA.
    - **T-006a (2026-10-28):** `clinic_app` recibe solo `UPDATE` en `auth.account` y `DELETE` en `auth.two_factor` (migración `0009`, comprobado en `packages/db/test/roles.test.ts`). Los usan el restablecimiento de contraseña y el del MFA por un administrador, con sus pruebas (`apps/api/test/users-admin.test.ts`).
    - **Cumplida en T-006b (2026-10-29):** el cambio de contraseña y la desactivación del MFA desde el Perfil usan esos mismos permisos, sin GRANT nuevos. Pruebas en `apps/api/test/profile.test.ts`.
@@ -48,8 +49,23 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
      - Desactivar el MFA o regenerar los códigos exige un código actual de la aplicación (S-GEN-24). Desactivar se rechaza con `403 mfa_required_for_role` si un rol de la persona lo exige.
      - **Hallazgo:** en 1.7.7, `verify-totp` con la sesión abierta no aplica el bloqueo por cuenta (solo lo hace al iniciar sesión). El Perfil aplica el mismo bloqueo sobre las columnas de Better Auth (`failed_verification_count`, `locked_until`): 10 códigos incorrectos bloquean el factor 15 minutos, también para el inicio de sesión.
 4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
+   - **Cumplida en T-003 (2026-10-27):** `apps/api/test/config.test.ts`, en `pnpm test` y en la CI.
 5. **Operador de la plataforma.** El rol de base de datos del operador (el único que lee los eventos de auditoría sin organización) es una tarea de la fase 1. Queda como pendiente P-11.
    - **Cumplida en T-007 (2026-10-29):** rol `clinic_operator` y lectura auditada con `app.read_platform_audit` ([ADR 0024](0024-operador-plataforma.md)).
+
+### Revisión de cierre de la fase 1 (T-010, 2026-10-29)
+
+Las cinco condiciones están cumplidas y cada una tiene pruebas que corren en la CI:
+
+| Condición | Cumplida en | Pruebas que la vigilan |
+| --- | --- | --- |
+| 1. Versión fijada | T-003 | [`apps/api/test/better-auth-version.test.ts`](../../apps/api/test/better-auth-version.test.ts): falla si `better-auth` deja de estar fijado en `1.7.7` o si la instalada es otra. Las 54 pruebas de T-002 se repitieron con 1.7.7 en la rama de la prueba. |
+| 2. Contexto RLS solo por sus funciones | T-003 | Paso `pnpm check:rls-context` de la CI y [`packages/db/test/check-rls-context.test.ts`](../../packages/db/test/check-rls-context.test.ts) |
+| 3. Contraseña y MFA con permisos mínimos | T-006a y T-006b | [`packages/db/test/roles.test.ts`](../../packages/db/test/roles.test.ts) (permisos exactos de `clinic_app` en `auth`), [`apps/api/test/users-admin.test.ts`](../../apps/api/test/users-admin.test.ts) y [`apps/api/test/profile.test.ts`](../../apps/api/test/profile.test.ts) |
+| 4. Configuración vigilada | T-003 | [`apps/api/test/config.test.ts`](../../apps/api/test/config.test.ts) (`cookieCache`, códigos cifrados, registro cerrado, telemetría y `trustDevice`) y [`apps/api/test/c5-revocation.test.ts`](../../apps/api/test/c5-revocation.test.ts) |
+| 5. Operador de la plataforma | T-007 | [`packages/db/test/operator.test.ts`](../../packages/db/test/operator.test.ts) y [`apps/api/test/platform.test.ts`](../../apps/api/test/platform.test.ts) |
+
+Con esto, el estado pasa de «Aceptada con condiciones» a «Aceptada». Las reglas siguen valiendo: cada actualización de Better Auth repite estas pruebas y la suite de T-002.
 
 ## Política de contraseñas y límite de intentos (T-003b, 2026-10-27)
 

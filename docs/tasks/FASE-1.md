@@ -29,3 +29,27 @@
 | [T-008 — Worker, outbox y auditoría completa](T-008-worker-outbox-auditoria.md) | 3 días | T-003 |
 | [T-009 — Tiempo real y notificaciones (base)](T-009-tiempo-real-notificaciones.md) | 2 días | T-004 y T-008 |
 | [T-010 — Cierre de la fase 1: demo y semilla](T-010-cierre-fase-1.md) | 1–2 días | T-003 a T-009 |
+
+## Cierre de la fase 1 (T-010, 2026-10-29)
+
+**Revisión del ADR 0023:** las cinco condiciones están cumplidas, cada una con sus pruebas en la CI (tabla en el [ADR 0023](../decisions/0023-autenticacion.md), «Revisión de cierre de la fase 1»). Su estado pasa a «Aceptada».
+
+**Decisión tomada para empezar la fase 2:** P-01, cifrado de campos frente a búsqueda ([ADR 0026](../decisions/0026-cifrado-campos-busqueda.md)). Ya no hay ninguna decisión pendiente que bloquee la fase 2.
+
+**Lo que pasa a fases siguientes:**
+
+| Qué | Origen | Fase |
+| --- | --- | --- |
+| Generar los avisos «Cita actualizada» y sus enlaces al tocarlos | T-009 | 2 |
+| Botón «Buscar pacientes» de la cabecera (S-GEN-12) | T-004 | 2 |
+| Generar los avisos «Paciente asignado a usted» y «Orden asignada…» | T-009 | 3 |
+| `Idempotency-Key` en llegada, kiosco, pagos y anulaciones (ya existe `IdempotencyService`) | T-008 | 3 |
+| P-13: anclaje de la cadena de auditoría en S3 con Object Lock | T-008 | 4 |
+| P-12: el operador desactiva cuentas globales y resuelve los `409 account_shared` | T-007 | 4 (antes del piloto) |
+| Avisos «Configuración incompleta», «Actualización requerida» y «Alerta de seguridad», e insignia de «Seguridad» | T-009 | 5 |
+
+**Límites conocidos, documentados en sus ADR:**
+
+- El correo de invitación se entrega «al menos una vez»: si el worker se cae justo después de enviarlo, puede llegar dos veces, con el mismo `Message-ID` ([ADR 0019](../decisions/0019-operaciones-criticas.md)).
+- `auth.password_reset.completed` se audita después de fijar la contraseña: si la auditoría falla, la respuesta es 503, pero la contraseña ya cambió ([ADR 0023](../decisions/0023-autenticacion.md)).
+- El límite de intentos por IP vive en memoria: vale con una instancia de la API (entorno B); con varias (entorno C) pasa a la base de datos ([ADR 0023](../decisions/0023-autenticacion.md)).

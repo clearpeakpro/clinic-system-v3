@@ -22,10 +22,11 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0016. Alcance de V1](0016-alcance-v1.md) | Aceptada |
 | [0017. Entornos A/B/C y presupuesto de US$25](0017-entornos-presupuesto.md) | Aceptada |
 | [0018. Auditoría](0018-auditoria.md) | Aceptada |
-| [0019. Códigos, transacciones, idempotencia y outbox](0019-operaciones-criticas.md) | Aceptada (excepto cifrado de campos, pendiente) |
+| [0019. Códigos, transacciones, idempotencia y outbox](0019-operaciones-criticas.md) | Aceptada (cifrado de campos en el [ADR 0026](0026-cifrado-campos-busqueda.md)) |
 | [0020. El worker es un proceso separado](0020-worker-separado.md) | Aceptada |
 | [0021. Autenticación condicionada a una prueba técnica](0021-autenticacion-prueba.md) | Aceptada |
 | [0022. Plan: dos organizaciones, catálogo antes de Caja, restauración antes del piloto](0022-plan-puertas.md) | Aceptada |
-| [0023. Autenticación con Better Auth](0023-autenticacion.md) | Aceptada con condiciones |
+| [0023. Autenticación con Better Auth](0023-autenticacion.md) | Aceptada |
 | [0024. Operador de la plataforma](0024-operador-plataforma.md) | Aceptada |
 | [0025. Sin rol de contabilidad en V1](0025-contabilidad-fuera-v1.md) | Aceptada |
+| [0026. Cifrado de campos frente a búsqueda de pacientes](0026-cifrado-campos-busqueda.md) | Aceptada |
