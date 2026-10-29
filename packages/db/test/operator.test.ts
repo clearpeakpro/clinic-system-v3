@@ -96,6 +96,7 @@ describe('operador de la plataforma (clinic_operator)', () => {
       'app.locations:SELECT',
       'app.organizations:INSERT',
       'app.organizations:SELECT',
+      'app.outbox:INSERT',
     ]);
     await expectPgError(operator.query('select * from app.patients'), SQLSTATE.insufficientPrivilege);
     await expectPgError(operator.query('select * from app.audit_log'), SQLSTATE.insufficientPrivilege);

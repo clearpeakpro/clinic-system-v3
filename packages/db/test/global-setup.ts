@@ -11,6 +11,8 @@ declare module 'vitest' {
     migratorUrl: string;
     /** Operador de la plataforma (ADR 0024). */
     operatorUrl: string;
+    /** Superusuario de la base desechable: solo para simular una alteración de la auditoría (T-008). */
+    superuserUrl: string;
   }
 }
 
@@ -38,6 +40,7 @@ export async function setup(project: TestProject): Promise<void> {
   project.provide('appUrl', urlFor(superuserUrl, 'clinic_app', appPassword));
   project.provide('migratorUrl', migratorUrl);
   project.provide('operatorUrl', urlFor(superuserUrl, 'clinic_operator', operatorPassword));
+  project.provide('superuserUrl', superuserUrl);
 }
 
 export async function teardown(): Promise<void> {

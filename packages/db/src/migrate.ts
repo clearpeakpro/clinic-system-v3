@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate as drizzleMigrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { setupJobQueues } from './jobs.ts';
 
 const migrationsFolder = fileURLToPath(new URL('../migrations', import.meta.url));
 
@@ -18,4 +19,6 @@ export async function migrate(migratorUrl: string): Promise<void> {
   } finally {
     await client.end();
   }
+  // Colas del worker (pg-boss), también como clinic_owner.
+  await setupJobQueues(migratorUrl);
 }
