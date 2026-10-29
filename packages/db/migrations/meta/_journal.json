@@ -71,6 +71,13 @@
       "when": 1793224776942,
       "tag": "0009_users_admin_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793235767888,
+      "tag": "0010_users_last_sign_in",
+      "breakpoints": true
     }
   ]
 }

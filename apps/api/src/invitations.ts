@@ -141,19 +141,84 @@ export class InvitationService {
     });
 
     const link = `${this.#config.baseURL}/invitacion/${encodeInvitationToken(ctx.organizationId, secret)}`;
-    // Después del commit. Si el correo falla, la invitación sigue valiendo:
-    // el administrador entrega el enlace del diálogo (S-ADM-04).
-    let mailSent = true;
+    return { invitationId, link, expiresAt: expiresAt.toISOString(), mailSent: await this.#deliver(email, link) };
+  }
+
+  /**
+   * S-ADM-02 «Reenviar»: emite un enlace nuevo para una invitación pendiente
+   * (vencida o no), con los mismos roles y sedes, y anula el anterior. Misma
+   * regla escalonada que al revocar.
+   */
+  async resend(actor: Principal, invitationId: string, meta: RequestMeta): Promise<CreatedInvitation> {
+    const ctx = requireContext(actor);
+    const actorRoles = rolesInOrganization(actor.assignments, ctx.organizationId);
+    const secret = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + this.#config.invitationTtlSeconds * 1000);
+
+    const created = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const [previous] = await tx
+        .select({ email: invitations.email, name: invitations.name, acceptedAt: invitations.acceptedAt, revokedAt: invitations.revokedAt })
+        .from(invitations)
+        .where(eq(invitations.id, invitationId))
+        .for('update');
+      if (!previous) throw new HttpError(404, 'invitation_not_found');
+      if (previous.acceptedAt || previous.revokedAt) throw new HttpError(409, 'invitation_not_pending');
+      const roles = await tx
+        .select({ role: invitationRoles.role, locationId: invitationRoles.locationId })
+        .from(invitationRoles)
+        .where(eq(invitationRoles.invitationId, invitationId));
+      if (roles.length === 0 || !roles.every((r) => isRole(r.role) && canAssignRole(actorRoles, r.role))) {
+        throw new HttpError(403, 'member_not_manageable');
+      }
+
+      await tx.update(invitations).set({ revokedAt: new Date() }).where(eq(invitations.id, invitationId));
+      const [row] = await tx
+        .insert(invitations)
+        .values({
+          organizationId: ctx.organizationId,
+          email: previous.email,
+          name: previous.name,
+          tokenHash: sha256Hex(secret),
+          expiresAt,
+          createdByUserId: actor.userId,
+        })
+        .returning({ id: invitations.id });
+      if (!row) throw new Error('No se creó la invitación');
+      await tx.insert(invitationRoles).values(
+        roles.map((r) => ({ organizationId: ctx.organizationId, invitationId: row.id, locationId: r.locationId, role: r.role })),
+      );
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'invitation.resent',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: ctx.locationId,
+        entityType: 'invitation',
+        entityId: row.id,
+        ...meta,
+        metadata: { previousInvitationId: invitationId },
+      });
+      return { id: row.id, email: previous.email };
+    });
+
+    const link = `${this.#config.baseURL}/invitacion/${encodeInvitationToken(ctx.organizationId, secret)}`;
+    return { invitationId: created.id, link, expiresAt: expiresAt.toISOString(), mailSent: await this.#deliver(created.email, link) };
+  }
+
+  /**
+   * Después del commit. Si el correo falla, la invitación sigue valiendo: el
+   * administrador entrega el enlace del diálogo (S-ADM-04).
+   */
+  async #deliver(email: string, link: string): Promise<boolean> {
     try {
       await this.#mailer.send({
         to: email,
         subject: 'Invitación a Clinic System',
         text: `Le invitaron a Clinic System. Abra este enlace para aceptar la invitación:\n\n${link}\n\nEl enlace sirve una sola vez y vence en ${String(Math.round(this.#config.invitationTtlSeconds / 3600))} horas.`,
       });
+      return true;
     } catch {
-      mailSent = false;
+      return false;
     }
-    return { invitationId, link, expiresAt: expiresAt.toISOString(), mailSent };
   }
 
   /** S-ADM-07 «Revocar invitación»: el enlace deja de funcionar. */

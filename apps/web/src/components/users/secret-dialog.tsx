@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 // mismo toque (la web solo deja escribir el portapapeles tras un gesto) y
 // cierra: el enlace no se puede volver a ver.
 
-export type SecretKind = 'invitation' | 'password' | 'mfa' | 'new-token';
+export type SecretKind = 'invitation' | 'resent' | 'password' | 'mfa' | 'new-token';
 
 export interface Secret {
   kind: SecretKind;
@@ -26,6 +26,7 @@ export interface Secret {
 
 const TITLES: Record<SecretKind, string> = {
   invitation: 'Invitación creada',
+  resent: 'Invitación reenviada',
   password: 'Restablecimiento de contraseña creado',
   mfa: 'Verificación en dos pasos restablecida',
   'new-token': 'Nuevo enlace de restablecimiento de contraseña',
@@ -71,7 +72,7 @@ export function SecretDialog({ secret, timeZone, onClose }: { secret: Secret | n
       onOpenChange={(open) => { if (!open) close(); }}
       dismissible={false}
       title={TITLES[secret.kind]}
-      icon={secret.kind === 'invitation' ? <Mail className="size-7" /> : secret.kind === 'mfa' ? <ShieldAlert className="size-7" /> : <KeyRound className="size-7" />}
+      icon={secret.kind === 'invitation' || secret.kind === 'resent' ? <Mail className="size-7" /> : secret.kind === 'mfa' ? <ShieldAlert className="size-7" /> : <KeyRound className="size-7" />}
       description={<Explanation secret={secret} expires={expires} />}
       footer={<Button onClick={close}>Cerrar</Button>}
     >
@@ -80,7 +81,7 @@ export function SecretDialog({ secret, timeZone, onClose }: { secret: Secret | n
           La verificación estaba bloqueada: regístrelo como incidente de seguridad y revise la actividad reciente de la cuenta.
         </p>
       ) : null}
-      {secret.kind === 'invitation' && secret.email ? (
+      {(secret.kind === 'invitation' || secret.kind === 'resent') && secret.email ? (
         <p className="text-body-md text-on-surface-variant">
           {secret.mailSent ? (
             <>
@@ -97,7 +98,7 @@ export function SecretDialog({ secret, timeZone, onClose }: { secret: Secret | n
       <div className="flex flex-col gap-space-xs rounded-md bg-surface-container-low p-space-sm dark:bg-surface-container">
         <span className="flex items-center gap-space-xs text-caption text-on-surface-variant">
           <LinkIcon aria-hidden className="size-4 text-primary" />
-          {secret.kind === 'invitation' ? 'Enlace de invitación' : 'Enlace de restablecimiento'}
+          {secret.kind === 'invitation' || secret.kind === 'resent' ? 'Enlace de invitación' : 'Enlace de restablecimiento'}
         </span>
         <code data-testid="one-time-link" className="font-mono text-code-sm break-all text-on-surface select-all">
           {secret.link}
@@ -119,6 +120,8 @@ function Explanation({ secret, expires }: { secret: Secret; expires: string }) {
   switch (secret.kind) {
     case 'invitation':
       return `Compártalo con ${secret.name}. Se muestra una sola vez y vence el ${expires}.`;
+    case 'resent':
+      return `El enlace anterior ya no funciona. Comparta este con ${secret.name}: se muestra una sola vez y vence el ${expires}.`;
     case 'password':
       return `Comparta este enlace con ${secret.name}. Se muestra una sola vez y vence el ${expires}.`;
     case 'mfa':

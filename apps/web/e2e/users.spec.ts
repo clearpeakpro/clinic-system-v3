@@ -93,9 +93,36 @@ test('el Propietario invita, la persona acepta y entra; al deshabilitarla, su se
   expect((await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map((v) => v.id)).toEqual([]);
   await page.getByRole('dialog', { name: 'Invitar usuario' }).getByRole('button', { name: 'Cancelar' }).click();
 
-  const path = await invite(page, 'nuevo.proveedor@example.test', 'Persona Proveedora Ficticia', ['Proveedor'], ['NOR1']);
+  // Totales con los conteos reales de la semilla (antes de invitar).
+  const totals = async () => ({
+    total: await page.getByText('Total registrados').locator('..').locator('dd').innerText(),
+    invited: await page.getByText('Invitaciones pendientes').locator('..').locator('dd').innerText(),
+  });
+  const before = await totals();
+
+  const firstPath = await invite(page, 'nuevo.proveedor@example.test', 'Persona Proveedora Ficticia', ['Proveedor'], ['NOR1']);
   await expect(row(page, 'nuevo.proveedor@example.test')).toContainText('Invitado');
   await expect(row(page, 'nuevo.proveedor@example.test')).toContainText('Proveedor · NOR1');
+  await expect(row(page, 'nuevo.proveedor@example.test')).toContainText('—');
+  await expect.poll(totals).toEqual({ total: String(Number(before.total) + 1), invited: String(Number(before.invited) + 1) });
+  // El Propietario aparece resaltado y con su etiqueta; nunca entró en esta prueba salvo ahora: «Hoy».
+  await expect(row(page, 'propietario.norte@example.test')).toContainText('Propietario');
+  await expect(row(page, 'propietario.norte@example.test')).toContainText('Sin acceso clínico');
+  await expect(row(page, 'propietario.norte@example.test')).toContainText(/Hoy, \d{1,2}:\d{2} [ap]\. m\./);
+
+  // Filtros en una fila: el estado es un desplegable.
+  await page.getByLabel('Estado', { exact: true }).selectOption({ label: 'Invitado' });
+  await expect(page.getByRole('row')).toHaveCount(2);
+  await page.getByLabel('Estado', { exact: true }).selectOption({ label: 'Todos los estados' });
+
+  // «Reenviar»: enlace nuevo; el anterior deja de servir.
+  await row(page, 'nuevo.proveedor@example.test').getByRole('button', { name: 'Reenviar la invitación a Persona Proveedora Ficticia' }).click();
+  const resent = page.getByRole('dialog', { name: 'Invitación reenviada' });
+  await expect(resent).toContainText('El enlace anterior ya no funciona');
+  const path = new URL(await resent.getByTestId('one-time-link').innerText()).pathname;
+  expect(path).not.toBe(firstPath);
+  await resent.getByRole('button', { name: 'Cerrar' }).click();
+  await expect.poll(totals).toEqual({ total: String(Number(before.total) + 1), invited: String(Number(before.invited) + 1) });
 
   // La persona invitada, en otro navegador: crea su contraseña y entra.
   const guest = await newPage(browser);
@@ -108,19 +135,22 @@ test('el Propietario invita, la persona acepta y entra; al deshabilitarla, su se
   await expect(guest).toHaveURL(/\/app\/NOR1\/panel$/);
   await expect(nav(guest).getByRole('link', { name: 'Cola de proveedor' })).toBeVisible();
 
-  // El mismo enlace ya no sirve.
-  const other = await newPage(browser);
-  await other.goto(path);
-  await other.getByLabel('Nombre para mostrar').fill('Otra');
-  await other.getByLabel('Contraseña', { exact: true }).fill('otra frase larga y ficticia');
-  await other.getByLabel('Confirmar contraseña').fill('otra frase larga y ficticia');
-  await other.getByRole('button', { name: 'Aceptar invitación' }).click();
-  await expect(other.getByRole('heading', { name: 'Invitación no válida' })).toBeVisible();
+  // Ni el mismo enlace ni el anterior al reenvío sirven ya.
+  for (const used of [path, firstPath]) {
+    const other = await newPage(browser);
+    await other.goto(used);
+    await other.getByLabel('Nombre para mostrar').fill('Otra');
+    await other.getByLabel('Contraseña', { exact: true }).fill('otra frase larga y ficticia');
+    await other.getByLabel('Confirmar contraseña').fill('otra frase larga y ficticia');
+    await other.getByRole('button', { name: 'Aceptar invitación' }).click();
+    await expect(other.getByRole('heading', { name: 'Invitación no válida' })).toBeVisible();
+  }
 
   // El Propietario actualiza la lista y la deshabilita con motivo.
   await page.getByRole('button', { name: 'Actualizar' }).click();
   const target = row(page, 'nuevo.proveedor@example.test');
   await expect(target).toContainText('Activo');
+  await expect(target).toContainText(/Hoy, /);
   await target.getByRole('button', { name: /Más acciones/ }).click();
   await page.getByRole('menuitem', { name: 'Deshabilitar' }).click();
   const confirm = page.getByRole('dialog', { name: '¿Deshabilitar a Persona Proveedora Ficticia?' });
@@ -140,9 +170,6 @@ test('un Administrador invitado se inscribe en el MFA al aceptar y no puede invi
   test.setTimeout(120_000);
   const path = await invite(page, 'nuevo.admin@example.test', 'Persona Administradora Ficticia', ['Administrador'], []);
 
-  // Better Auth limita /two-factor/* a 3 peticiones cada 10 s por IP, y en E2E
-  // todo sale de 127.0.0.1: se deja pasar la ventana de la inscripción del Propietario.
-  await new Promise((resolve) => setTimeout(resolve, 10_500));
   const admin = await newPage(browser);
   await admin.goto(path);
   await admin.getByLabel('Nombre para mostrar').fill('Persona Administradora Ficticia');

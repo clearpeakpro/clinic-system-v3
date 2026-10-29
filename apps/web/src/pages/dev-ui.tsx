@@ -17,6 +17,7 @@ import {
   RouteBadge,
   SegmentedControl,
   SelectField,
+  StatCard,
   SemanticChip,
   SkeletonRows,
   Spinner,
@@ -27,7 +28,7 @@ import {
   type Column,
 } from '@clinic/ui';
 import type { VisitRoute, VisitStatus } from '@clinic/shared';
-import { Check, Coffee, IdCard, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, Coffee, IdCard, MailPlus, RefreshCw, Trash2, UserRoundX } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IdleWarningDialog } from '../components/idle-guard.tsx';
 
@@ -191,7 +192,7 @@ export function DevUiPage() {
           <Fields />
         </Section>
 
-        <Section n={8} title="Formularios y avisos (T-006a)">
+        <Section n={8} title="Formularios, totales y avisos (T-006a)">
           <Forms />
         </Section>
       </div>
@@ -295,6 +296,13 @@ function Forms() {
   const [reason, setReason] = useState('');
   return (
     <div className="flex flex-col gap-space-lg">
+      <Sub title="Tarjetas de totales">
+        <div className="grid grid-cols-2 gap-space-sm">
+          <StatCard label="Total registrados" value={9} icon={IdCard} />
+          <StatCard label="Invitaciones pendientes" value={2} icon={MailPlus} tone="info" />
+          <StatCard label="Deshabilitados" value={1} icon={UserRoundX} tone="neutral" />
+        </div>
+      </Sub>
       <Sub title="Botones segmentados">
         <SegmentedControl
           label="Estado"

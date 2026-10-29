@@ -60,17 +60,18 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
 
 - **Por IP (Better Auth):** el límite propio de Better Auth, que en 1.7.7 solo existe por IP y solo se activa por defecto en producción. Aquí se activa **en todos los entornos** (`rateLimit.enabled: true`, en memoria).
   - **Inicio de sesión (`/sign-in/*`): 30 intentos por minuto por IP**, configurable (`SIGN_IN_IP_MAX_ATTEMPTS`, `SIGN_IN_IP_WINDOW_SECONDS`). La regla de 1.7.7 (3 cada 10 s) era demasiado estricta, porque todo el personal de una clínica comparte la misma IP pública: con ella, la cuarta persona que entraba en 10 s recibía 429.
-  - El resto conserva las reglas de 1.7.7: `/sign-up*` y `/change-password`, 3 cada 10 s por IP y ruta; `/two-factor/*`, 3 cada 10 s.
+  - **Verificación en dos pasos (`/two-factor/*`): 20 peticiones por minuto por IP**, configurable (`TWO_FACTOR_IP_MAX_ATTEMPTS`, `TWO_FACTOR_IP_WINDOW_SECONDS`). Cambiado en T-006a (2026-10-28), por la misma razón: con la regla de 1.7.7 (3 cada 10 s), varias personas que configuraban o usaban el MFA a la vez desde la clínica recibían «Demasiados intentos».
+  - El resto conserva las reglas de 1.7.7: `/sign-up*` y `/change-password`, 3 cada 10 s por IP y ruta.
   - La IP la pone el servidor (`x-clinic-client-ip`).
 - **Por cuenta (nuestro):** Better Auth no lo tiene.
   - Con **10 fallos en 15 minutos** sobre el mismo correo, desde cualquier IP, el inicio de sesión responde `429 too_many_attempts` hasta que los fallos salen de la ventana. Es configurable (`SIGN_IN_ACCOUNT_MAX_FAILURES`, `SIGN_IN_ACCOUNT_WINDOW_SECONDS`).
   - Un inicio correcto borra los fallos.
   - Se cuenta por el HMAC del correo (`auth.sign_in_failures`), exista o no la cuenta, así la respuesta no revela si el correo está registrado.
   - Cada bloqueo se audita (`auth.sign_in.throttled`).
-- **MFA:** además, el plugin `twoFactor` bloquea la cuenta tras varios códigos fallidos (`failedVerificationCount` / `lockedUntil`).
+- **MFA por cuenta:** el plugin `twoFactor` bloquea la cuenta tras **10 códigos incorrectos seguidos**, desde cualquier IP, durante **15 minutos** (`failedVerificationCount` / `lockedUntil`, respuesta `429 ACCOUNT_TEMPORARILY_LOCKED`). Es el valor por defecto de 1.7.7, fijado en la configuración (`accountLockout`) para que una actualización no lo cambie; configurable con `TWO_FACTOR_MAX_FAILURES` y `TWO_FACTOR_LOCK_SECONDS`. Además, Better Auth anula cada desafío de inicio de sesión tras 5 códigos incorrectos.
 - **Límite conocido:** el límite por IP vive en memoria. Vale con una instancia (entorno B); con varias (entorno C), pasar a `storage: 'database'`.
 
-Pruebas: `apps/api/test/password-policy.test.ts` y `apps/api/test/sign-in-limits.test.ts`. Esta última incluye 8 personas distintas que inician sesión desde la misma IP sin recibir 429; con la regla anterior, la cuarta fallaba.
+Pruebas: `apps/api/test/password-policy.test.ts` y `apps/api/test/sign-in-limits.test.ts`. Esta última incluye 8 personas distintas que inician sesión desde la misma IP sin recibir 429; con la regla anterior, la cuarta fallaba. `apps/api/test/two-factor-limits.test.ts` (T-006a): 6 personas configuran y usan el MFA a la vez desde la misma IP sin recibir 429, la petición 21 en un minuto sí lo recibe, y una cuenta se bloquea tras 10 códigos incorrectos aunque luego llegue el código correcto desde otra IP.
 
 ## Consecuencias
 

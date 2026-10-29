@@ -102,18 +102,19 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
       },
     },
     // Límite por IP (ADR 0023): el de Better Auth, activo en TODOS los
-    // entornos (por defecto solo en producción). Para el inicio de sesión,
-    // 30 intentos por minuto por IP (configurable): todo el personal de una
+    // entornos (por defecto solo en producción). Todo el personal de una
     // clínica comparte la IP pública, y la regla de 1.7.7 (3 cada 10 s) la
-    // bloquearía. El resto conserva las reglas de 1.7.7 (/sign-up*,
-    // /change-password y /two-factor/*: 3 cada 10 s). La IP sale de
-    // CLIENT_IP_HEADER, que pone el servidor. En memoria: vale con una
+    // bloquearía, así que el inicio de sesión (30 por minuto) y /two-factor/*
+    // (20 por minuto) tienen la suya, configurable. El resto conserva las
+    // reglas de 1.7.7 (/sign-up* y /change-password: 3 cada 10 s). La IP sale
+    // de CLIENT_IP_HEADER, que pone el servidor. En memoria: vale con una
     // instancia (entorno B).
     rateLimit: {
       enabled: true,
       storage: 'memory',
       customRules: {
         '/sign-in/*': { window: config.signInIpWindowSeconds, max: config.signInIpMaxAttempts },
+        '/two-factor/*': { window: config.twoFactorIpWindowSeconds, max: config.twoFactorIpMaxAttempts },
       },
     },
     advanced: {
@@ -134,6 +135,15 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
         // Condición 4: por defecto los códigos de recuperación se guardan en
         // JSON sin cifrar.
         backupCodeOptions: { storeBackupCodes: 'encrypted' },
+        // Bloqueo por cuenta (ADR 0023): tras N códigos incorrectos seguidos,
+        // desde cualquier IP, la verificación queda bloqueada un tiempo.
+        // Es el valor por defecto de 1.7.7, fijado aquí para que no cambie
+        // con una actualización.
+        accountLockout: {
+          enabled: true,
+          maxFailedAttempts: config.twoFactorMaxFailures,
+          durationSeconds: config.twoFactorLockSeconds,
+        },
       }),
     ],
     databaseHooks: {

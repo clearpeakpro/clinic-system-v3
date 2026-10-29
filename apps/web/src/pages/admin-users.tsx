@@ -1,4 +1,4 @@
-import type { Role } from '@clinic/shared';
+import { ORG_WIDE_ROLES, type Role } from '@clinic/shared';
 import {
   AsyncView,
   Button,
@@ -13,29 +13,33 @@ import {
   DropdownTrigger,
   EmptyState,
   Field,
-  SegmentedControl,
   SelectField,
   SemanticChip,
+  StatCard,
   StatusChip,
   useSnackbar,
   type Column,
 } from '@clinic/ui';
 import { useQuery } from '@tanstack/react-query';
 import {
+  Award,
   Ban,
   Building2,
   Clock,
+  IdCard,
   ConciergeBell,
   HeartPulse,
   KeyRound,
   Lock,
   LockKeyhole,
   type LucideIcon,
+  MailPlus,
   MapPin,
   MoreVertical,
   Pencil,
   RefreshCw,
   Search,
+  Send,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
@@ -43,6 +47,7 @@ import {
   UserCheck,
   UserCog,
   UserPlus,
+  UserRoundCheck,
   UserRoundX,
   Users,
 } from 'lucide-react';
@@ -57,32 +62,39 @@ import { useActiveLocation } from '../lib/session.ts';
 import {
   assignmentLines,
   isVersionConflict,
+  lastAccessLabel,
+  roleSummary,
   STATUS_LABELS,
   statusOf,
   userActionMessage,
+  userCounts,
   withoutClinicalAccess,
   type UserStatus,
 } from '../lib/users.ts';
 
 // S-ADM-02 Usuarios (Stitch: design/stitch/admin/S-ADM-02_usuarios). Se toma
-// la distribución: encabezado con «Invitar usuario», tarjeta de filtros y
-// tabla con avatar, correo, roles por sede, verificación en dos pasos y
-// estado. No se construye lo que el sistema no tiene (totales, «Activos en
-// línea», «Registro de actividad», «Exportar», especialidades, LDAP, avisos
-// de HIPAA, paginación). Las acciones de cada fila dependen del estado y de
-// la regla escalonada que calcula el servidor (`manageable`).
+// la distribución: encabezado con «Invitar usuario», tarjetas de totales
+// (conteos reales de la lista), una fila de filtros sin etiquetas visibles y
+// la tabla con avatar, roles bajo el nombre, correo, roles por sede,
+// verificación en dos pasos, estado («Reenviar» en las invitaciones) y
+// último acceso. La fila del Propietario va resaltada y las deshabilitadas,
+// atenuadas. No se construye lo que el sistema no tiene («Activos en línea»
+// y porcentajes, «Registro de actividad», «Exportar», búsqueda por cédula,
+// filtro de 2FA, títulos y especialidades, LDAP, cifrado, IPs, paginación,
+// avisos de HIPAA). Las acciones de cada fila dependen del estado y de la
+// regla escalonada que calcula el servidor (`manageable`).
 
 const USERS_KEY = ['users'] as const;
 
 type StatusFilter = 'all' | UserStatus;
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
+  { value: 'all', label: 'Todos los estados' },
   { value: 'invited', label: 'Invitado' },
   { value: 'active', label: 'Activo' },
   { value: 'disabled', label: 'Deshabilitado' },
 ];
 
-const STATUS_TONE = { invited: 'info', active: 'success', disabled: 'warning' } as const;
+const STATUS_TONE = { invited: 'info', active: 'success' } as const;
 
 const ROLE_ICONS: Record<Role, LucideIcon> = {
   propietario: Building2,
@@ -127,6 +139,16 @@ export function AdminUsersPage() {
     if (isVersionConflict(error)) conflict();
     else snackbar({ message: userActionMessage(error) });
   };
+  const resend = async (row: InvitationRow) => {
+    try {
+      const created = await api.resendInvitation(row.invitationId);
+      reload();
+      setSecret({ kind: 'resent', name: row.name, email: row.email, ...created });
+    } catch (error) {
+      reload();
+      failed(error);
+    }
+  };
 
   return (
     <section aria-labelledby="page-title" className="mx-auto flex w-full max-w-7xl flex-col gap-space-lg">
@@ -151,10 +173,12 @@ export function AdminUsersPage() {
         {(list) => (
           <UsersContent
             list={list}
+            loadedAt={users.dataUpdatedAt}
             filters={{ status, role, location, search }}
             setFilters={{ setStatus, setRole, setLocation, setSearch }}
             timeZone={timeZone}
             onAction={setDialog}
+            onResend={resend}
           />
         )}
       </AsyncView>
@@ -290,12 +314,16 @@ interface Filters {
 
 function UsersContent({
   list,
+  loadedAt,
   filters,
   setFilters,
   timeZone,
   onAction,
+  onResend,
 }: {
   list: UsersList;
+  /** Cuándo se cargó la lista: referencia de «Hoy» y «Ayer» en «Último acceso». */
+  loadedAt: number;
   filters: Filters;
   setFilters: {
     setStatus: (v: StatusFilter) => void;
@@ -305,6 +333,7 @@ function UsersContent({
   };
   timeZone: string;
   onAction: (dialog: Dialogs) => void;
+  onResend: (row: InvitationRow) => Promise<void>;
 }) {
   const rows = useMemo(() => {
     const needle = filters.search.trim().toLocaleLowerCase('es');
@@ -316,6 +345,7 @@ function UsersContent({
         (needle === '' || row.name.toLocaleLowerCase('es').includes(needle) || row.email.includes(needle)),
     );
   }, [list.rows, filters]);
+  const counts = userCounts(list.rows);
   const filtered = rows.length !== list.rows.length;
 
   const columns: Column<UserRow>[] = [
@@ -323,26 +353,55 @@ function UsersContent({
     {
       key: 'email',
       header: 'Correo electrónico',
-      cell: (row) => <span className="font-mono text-code-sm whitespace-nowrap">{row.email}</span>,
+      // Entre 1025 y 1279 px no cabe: el correo va bajo el nombre (UserCell).
+      className: 'hidden min-[80rem]:table-cell',
+      cell: (row) => (
+        <span className={`font-mono text-code-sm whitespace-nowrap ${statusOf(row) === 'disabled' ? 'text-on-surface-variant' : ''}`}>{row.email}</span>
+      ),
     },
     { key: 'roles', header: 'Roles por sede', cell: (row) => <RolesCell row={row} list={list} /> },
-    { key: 'mfa', header: 'Verificación en dos pasos', cell: (row) => <MfaChip row={row} /> },
-    { key: 'status', header: 'Estado', cell: (row) => <StatusCell row={row} timeZone={timeZone} /> },
-    { key: 'actions', header: 'Acciones', align: 'end', cell: (row) => <RowActions row={row} onAction={onAction} /> },
+    { key: 'mfa', header: 'Verificación 2FA', cell: (row) => <MfaChip row={row} /> },
+    { key: 'status', header: 'Estado de cuenta', cell: (row) => <StatusCell row={row} timeZone={timeZone} onResend={onResend} /> },
+    {
+      key: 'last',
+      header: 'Último acceso',
+      cell: (row) =>
+        row.kind === 'member' ? (
+          <span className="text-body-md whitespace-nowrap text-on-surface-variant">{lastAccessLabel(row.lastSignInAt, loadedAt, timeZone)}</span>
+        ) : (
+          <span className="text-on-surface-variant">
+            <span aria-hidden>—</span>
+            <span className="sr-only">Sin cuenta todavía</span>
+          </span>
+        ),
+    },
+    { key: 'actions', header: 'Acciones', hideHeader: true, align: 'end', cell: (row) => <RowActions row={row} onAction={onAction} onResend={onResend} /> },
   ];
 
   return (
     <div className="flex flex-col gap-space-md">
-      <div className="grid gap-space-sm rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 tab:grid-cols-2 desk:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))] dark:bg-surface-container-low">
+      <div className="grid grid-cols-2 gap-space-sm desk:grid-cols-4 desk:gap-space-md">
+        <StatCard label="Total registrados" value={counts.total} icon={IdCard} />
+        <StatCard label="Activos" value={counts.active} icon={UserRoundCheck} />
+        <StatCard label="Invitaciones pendientes" value={counts.invited} icon={MailPlus} tone="info" />
+        <StatCard label="Deshabilitados" value={counts.disabled} icon={UserRoundX} tone="neutral" />
+      </div>
+
+      <div
+        role="search"
+        aria-label="Filtrar usuarios"
+        className="grid gap-space-sm rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 tab:grid-cols-2 desk:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] dark:bg-surface-container-low"
+      >
         <Field
           label="Buscar"
+          hideLabel
           type="search"
           placeholder="Buscar por nombre o correo"
           icon={<Search className="size-5" />}
           value={filters.search}
           onChange={(e) => { setFilters.setSearch(e.target.value); }}
         />
-        <SelectField label="Rol" value={filters.role} onChange={(e) => { setFilters.setRole(e.target.value as Role | 'all'); }}>
+        <SelectField label="Rol" hideLabel value={filters.role} onChange={(e) => { setFilters.setRole(e.target.value as Role | 'all'); }}>
           <option value="all">Todos los roles</option>
           {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
             <option key={r} value={r}>
@@ -350,7 +409,7 @@ function UsersContent({
             </option>
           ))}
         </SelectField>
-        <SelectField label="Sede" value={filters.location} onChange={(e) => { setFilters.setLocation(e.target.value); }}>
+        <SelectField label="Sede" hideLabel value={filters.location} onChange={(e) => { setFilters.setLocation(e.target.value); }}>
           <option value="all">Todas las sedes</option>
           {list.locations.map((l) => (
             <option key={l.id} value={l.id}>
@@ -358,26 +417,15 @@ function UsersContent({
             </option>
           ))}
         </SelectField>
-        <div className="flex flex-col gap-1.5 tab:col-span-2 desk:col-span-3">
-          <span className="text-body-md-medium text-on-surface max-tab:sr-only">Estado</span>
-          <SegmentedControl
-            label="Estado"
-            className="hidden self-start tab:inline-flex"
-            options={STATUS_FILTERS}
-            value={filters.status}
-            onChange={setFilters.setStatus}
-          />
-          <div className="tab:hidden">
-            <SelectField label="Estado" hideLabel value={filters.status} onChange={(e) => { setFilters.setStatus(e.target.value as StatusFilter); }}>
-              {STATUS_FILTERS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-        </div>
+        <SelectField label="Estado" hideLabel value={filters.status} onChange={(e) => { setFilters.setStatus(e.target.value as StatusFilter); }}>
+          {STATUS_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </SelectField>
       </div>
+
       <p className="flex items-center gap-space-xs text-body-md text-on-surface-variant" aria-live="polite">
         <Users aria-hidden className="size-[18px] text-primary" />
         {filtered ? `Mostrando ${String(rows.length)} de ${String(list.rows.length)} usuarios` : `${String(list.rows.length)} usuarios`}
@@ -385,31 +433,63 @@ function UsersContent({
       {rows.length === 0 ? (
         <EmptyState icon={Users} title="Sin resultados" description="Ningún usuario coincide con este filtro." />
       ) : (
-        <DataTable caption="Usuarios" columns={columns} rows={rows} rowKey={(row) => (row.kind === 'member' ? row.membershipId : row.invitationId)} />
+        <DataTable
+          caption="Usuarios"
+          columns={columns}
+          rows={rows}
+          rowKey={(row) => (row.kind === 'member' ? row.membershipId : row.invitationId)}
+          density="compact"
+          cardsBelow="desk"
+          rowClassName={(row) =>
+            isOwner(row)
+              ? 'bg-status-checkout-container/60 hover:bg-status-checkout-container dark:bg-status-checkout-container/30 dark:hover:bg-status-checkout-container/50'
+              : statusOf(row) === 'disabled'
+                ? 'bg-surface-container-low/60 dark:bg-surface-container/40'
+                : undefined
+          }
+        />
       )}
     </div>
   );
 }
 
+function isOwner(row: UserRow): boolean {
+  return row.kind === 'member' && row.assignments.some((a) => a.role === 'propietario');
+}
+
 function UserCell({ row }: { row: UserRow }) {
   const muted = statusOf(row) === 'disabled';
+  const owner = isOwner(row);
+  // El Propietario ya lleva su etiqueta junto al nombre.
+  const subtitle = roleSummary(owner ? row.assignments.filter((a) => a.role !== 'propietario') : row.assignments);
   return (
-    <span className="flex min-w-0 items-center gap-space-sm">
+    <span className="flex min-w-0 items-center gap-space-sm tab:min-w-44">
       <span
         aria-hidden
         className={
           muted
             ? 'flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-body-md-medium text-on-surface-variant'
-            : 'flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-body-md-medium text-primary dark:bg-surface-container-high'
+            : owner
+              ? 'flex size-10 shrink-0 items-center justify-center rounded-full bg-status-checkout-border text-body-md-medium text-on-surface'
+              : 'flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-body-md-medium text-primary dark:bg-surface-container-high'
         }
       >
         {initials(row.name)}
       </span>
       <span className="flex min-w-0 flex-col">
-        <span className="text-body-lg-medium text-on-surface">
-          {row.name}
-          {row.kind === 'member' && row.self ? <span className="text-body-md text-on-surface-variant"> (usted)</span> : null}
+        <span className="flex flex-wrap items-center gap-x-space-xs">
+          <span className={muted ? 'text-body-lg-medium text-on-surface-variant' : 'text-body-lg-medium text-on-surface'}>
+            {row.name}
+            {row.kind === 'member' && row.self ? <span className="text-body-md text-on-surface-variant"> (usted)</span> : null}
+          </span>
+          {owner ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-status-checkout-border bg-status-checkout-container px-2 py-0.5 text-caption font-semibold tracking-wider text-status-checkout uppercase">
+              <Award aria-hidden className="size-3.5" /> Propietario
+            </span>
+          ) : null}
         </span>
+        <span className="hidden font-mono text-code-sm break-all text-on-surface-variant desk:block min-[80rem]:hidden">{row.email}</span>
+        {subtitle ? <span className="text-caption text-on-surface-variant">{subtitle}</span> : null}
         {withoutClinicalAccess(row.assignments) ? (
           <span className="flex items-center gap-1 text-caption text-on-surface-variant">
             <LockKeyhole aria-hidden className="size-3.5" /> Sin acceso clínico
@@ -422,17 +502,31 @@ function UserCell({ row }: { row: UserRow }) {
 
 function RolesCell({ row, list }: { row: UserRow; list: UsersList }) {
   const lines = assignmentLines(row.assignments, list.locations);
+  const muted = statusOf(row) === 'disabled';
   if (lines.length === 0) return <span className="text-on-surface-variant">Sin roles</span>;
   return (
     <ul className="flex flex-col items-start gap-1">
       {lines.map((line) => {
         const Icon = ROLE_ICONS[line.role];
         return (
-          <li key={line.role} className="inline-flex items-center gap-1.5 rounded-full bg-surface-container px-space-sm py-1 text-caption text-on-surface dark:bg-surface-container-high">
-            <Icon aria-hidden className="size-4 shrink-0 text-primary" />
-            <span>
-              {line.label} · {line.where}
-            </span>
+          <li
+            key={line.role}
+            className={`inline-flex items-center gap-1.5 rounded-full px-space-sm py-1 text-caption whitespace-nowrap ${
+              muted ? 'bg-surface-container-high text-on-surface-variant' : 'bg-surface-container text-on-surface dark:bg-surface-container-high'
+            }`}
+          >
+            <Icon aria-hidden className={`size-4 shrink-0 ${muted ? '' : 'text-primary'}`} />
+            {ORG_WIDE_ROLES.includes(line.role) ? (
+              // Como en Stitch: el rol ya va bajo el nombre; el chip dice el alcance.
+              <span>
+                <span className="sr-only">{line.label} · </span>
+                {line.where}
+              </span>
+            ) : (
+              <span>
+                {line.label} · {line.where}
+              </span>
+            )}
           </li>
         );
       })}
@@ -441,20 +535,40 @@ function RolesCell({ row, list }: { row: UserRow; list: UsersList }) {
 }
 
 function MfaChip({ row }: { row: UserRow }) {
-  if (row.kind === 'invitation') return <StatusChip tone="registered" icon={Clock} label="Pendiente" />;
-  if (row.mfaResetPending) return <StatusChip tone="waiting" icon={ShieldAlert} label="Restablecida" />;
-  if (row.mfa === 'locked') return <StatusChip tone="danger" icon={Lock} label="Bloqueada" />;
-  if (row.mfa === 'enabled') return <StatusChip tone="completed" icon={ShieldCheck} label="Activa" />;
-  return <StatusChip tone="departed" icon={ShieldOff} label="Desactivada" />;
+  if (row.kind === 'invitation') return <StatusChip tone="registered" icon={Clock} label="Pendiente" className="whitespace-nowrap" />;
+  if (row.mfaResetPending) return <StatusChip tone="waiting" icon={ShieldAlert} label="Restablecida" className="whitespace-nowrap" />;
+  if (row.mfa === 'locked') return <StatusChip tone="danger" icon={Lock} label="Bloqueada" className="whitespace-nowrap" />;
+  if (row.mfa === 'enabled' && row.status === 'active') return <StatusChip tone="completed" icon={ShieldCheck} label="Activa" className="whitespace-nowrap" />;
+  if (row.mfa === 'enabled') return <StatusChip tone="departed" icon={ShieldCheck} label="Activa" className="whitespace-nowrap" />;
+  return <StatusChip tone="departed" icon={ShieldOff} label="Desactivada" className="whitespace-nowrap" />;
 }
 
-function StatusCell({ row, timeZone }: { row: UserRow; timeZone: string }) {
+function StatusCell({ row, timeZone, onResend }: { row: UserRow; timeZone: string; onResend: (row: InvitationRow) => Promise<void> }) {
   const status = statusOf(row);
+  const [busy, setBusy] = useState(false);
+  if (status === 'disabled') return <StatusChip tone="departed" icon={Ban} label={STATUS_LABELS.disabled} className="whitespace-nowrap" />;
   return (
     <span className="flex flex-col items-start gap-1">
-      <SemanticChip tone={STATUS_TONE[status]} label={STATUS_LABELS[status]} />
+      <span className="flex flex-wrap items-center gap-space-xs">
+        <SemanticChip tone={STATUS_TONE[status]} label={STATUS_LABELS[status]} className="whitespace-nowrap" />
+        {row.kind === 'invitation' && row.manageable ? (
+          <Button
+            variant="tonal"
+            className="px-3 text-body-md-medium"
+            aria-label={`Reenviar la invitación a ${row.name}`}
+            loading={busy}
+            loadingText="Reenviando…"
+            onClick={() => {
+              setBusy(true);
+              void onResend(row).finally(() => { setBusy(false); });
+            }}
+          >
+            Reenviar
+          </Button>
+        ) : null}
+      </span>
       {row.kind === 'invitation' ? (
-        <span className="text-caption text-on-surface-variant">
+        <span className="text-caption whitespace-nowrap text-on-surface-variant">
           {row.expired ? 'Venció el ' : 'Vence el '}
           <DateTimeText value={row.expiresAt} timeZone={timeZone} format="date" />
         </span>
@@ -470,7 +584,7 @@ function unavailableReason(row: UserRow): string | null {
   return null;
 }
 
-function RowActions({ row, onAction }: { row: UserRow; onAction: (dialog: Dialogs) => void }) {
+function RowActions({ row, onAction, onResend }: { row: UserRow; onAction: (dialog: Dialogs) => void; onResend: (row: InvitationRow) => Promise<void> }) {
   const reason = unavailableReason(row);
   const label = `Más acciones para ${row.name}`;
   if (reason) {
@@ -500,9 +614,15 @@ function RowActions({ row, onAction }: { row: UserRow; onAction: (dialog: Dialog
       </DropdownTrigger>
       <DropdownContent>
         {row.kind === 'invitation' ? (
-          <DropdownItem className="text-error" onSelect={() => { onAction({ kind: 'revoke', row }); }}>
-            <Ban aria-hidden className="size-5" /> Revocar invitación
-          </DropdownItem>
+          <>
+            <DropdownItem onSelect={() => { void onResend(row); }}>
+              <Send aria-hidden className="size-5" /> Reenviar invitación
+            </DropdownItem>
+            <DropdownSeparator />
+            <DropdownItem className="text-error" onSelect={() => { onAction({ kind: 'revoke', row }); }}>
+              <Ban aria-hidden className="size-5" /> Revocar invitación
+            </DropdownItem>
+          </>
         ) : (
           <MemberActions row={row} onAction={onAction} />
         )}

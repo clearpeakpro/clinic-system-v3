@@ -5,10 +5,12 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { invitationRoles, invitations, memberships } from '../src/identity-schema.ts';
 import { DEMO } from '../src/seed.ts';
 import { createTenantDb, type TenantDb } from '../src/with-tenant.ts';
+import { sql } from 'drizzle-orm';
 import { expectPgError, SQLSTATE } from './helpers.ts';
 
-// T-006a: invitation_roles (aislamiento con el rol real y un pool) y la
-// función has_active_membership_elsewhere (solo responde sí o no).
+// T-006a: invitation_roles (aislamiento con el rol real y un pool), la
+// función has_active_membership_elsewhere (solo responde sí o no) y la función
+// last_sign_ins (último acceso de las personas de la organización del contexto).
 
 const NORTE = DEMO.norte;
 const SUR = DEMO.sur;
@@ -137,5 +139,78 @@ describe('has_active_membership_elsewhere', () => {
         where n.nspname = 'app' and p.proname = 'has_active_membership_elsewhere'`,
     );
     expect(rows).toEqual([{ owner: 'clinic_owner', definer: true, config: ['search_path=""'] }]);
+  });
+});
+
+describe('last_sign_ins', () => {
+  let pool: pg.Pool;
+  let db: TenantDb;
+  const norteUser = randomUUID();
+  const surUser = randomUUID();
+  const neverUser = randomUUID();
+
+  const signInEvent = (userId: string, action: string, at: string) =>
+    pool.query(
+      `insert into app.audit_log (id, organization_id, actor_type, actor_id, action, ip, created_at)
+       values ($4, null, 'user', $1, $2, '203.0.113.9', $3)`,
+      [userId, action, at, randomUUID()],
+    );
+
+  beforeAll(async () => {
+    pool = new pg.Pool({ connectionString: inject('appUrl'), max: 4 });
+    db = createTenantDb(pool);
+    for (const userId of [norteUser, surUser, neverUser]) {
+      await pool.query(
+        `insert into auth."user" (id, name, email, email_verified, created_at, updated_at)
+         values ($1, 'Persona Ficticia', $2, true, now(), now())`,
+        [userId, `u.${userId}@example.test`],
+      );
+    }
+    await db.withTenant(NORTE.id, (tx) => tx.insert(memberships).values([{ organizationId: NORTE.id, userId: norteUser }, { organizationId: NORTE.id, userId: neverUser }]));
+    await db.withTenant(SUR.id, (tx) => tx.insert(memberships).values({ organizationId: SUR.id, userId: surUser }));
+    await signInEvent(norteUser, 'auth.sign_in.success', '2026-10-20T13:00:00Z');
+    await signInEvent(norteUser, 'auth.mfa.success', '2026-10-27T12:45:00Z');
+    // Otros eventos no cuentan como acceso.
+    await signInEvent(norteUser, 'auth.sign_out', '2026-10-28T09:00:00Z');
+    await signInEvent(norteUser, 'auth.sign_in.mfa_required', '2026-10-28T09:30:00Z');
+    await signInEvent(surUser, 'auth.sign_in.success', '2026-10-26T15:00:00Z');
+  });
+
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  const lastIn = (orgId: string) =>
+    db.withTenant(orgId, async (tx) => {
+      const { rows } = await tx.execute<{ user_id: string; last_sign_in_at: Date }>(sql`select user_id, last_sign_in_at from app.last_sign_ins()`);
+      return new Map(rows.map((r) => [r.user_id, new Date(r.last_sign_in_at).toISOString()]));
+    });
+
+  it('devuelve el último acceso solo de las personas de la organización del contexto', async () => {
+    const norte = await lastIn(NORTE.id);
+    expect(norte.get(norteUser)).toBe('2026-10-27T12:45:00.000Z');
+    expect(norte.has(surUser)).toBe(false);
+    expect(norte.has(neverUser)).toBe(false);
+    const sur = await lastIn(SUR.id);
+    expect(sur.get(surUser)).toBe('2026-10-26T15:00:00.000Z');
+    expect(sur.has(norteUser)).toBe(false);
+  });
+
+  it('sin contexto no devuelve nada, y clinic_app sigue sin leer audit_log', async () => {
+    const { rows } = await pool.query('select * from app.last_sign_ins()');
+    expect(rows).toEqual([]);
+    await expectPgError(pool.query('select * from app.audit_log'), SQLSTATE.insufficientPrivilege);
+  });
+
+  it('solo devuelve usuario y hora (sin IP), con search_path vacío y como SECURITY DEFINER de clinic_owner', async () => {
+    const { rows } = await pool.query<{ owner: string; definer: boolean; config: string[]; result: string }>(
+      `select pg_get_userbyid(p.proowner) as owner, p.prosecdef as definer, p.proconfig as config,
+              pg_get_function_result(p.oid) as result
+         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'app' and p.proname = 'last_sign_ins'`,
+    );
+    expect(rows).toEqual([
+      { owner: 'clinic_owner', definer: true, config: ['search_path=""'], result: 'TABLE(user_id uuid, last_sign_in_at timestamp with time zone)' },
+    ]);
   });
 });

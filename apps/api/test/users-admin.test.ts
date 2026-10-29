@@ -34,6 +34,7 @@ interface Row {
   self?: boolean;
   manageable: boolean;
   sharedAccount?: boolean;
+  lastSignInAt?: string | null;
 }
 
 const sessionsOf = async (app: TestApp, userId: string) =>
@@ -107,6 +108,38 @@ describe('Administración › Usuarios', () => {
       const ownerList = (await owner.get('/api/users')).json<{ rows: Row[]; assignableRoles: string[] }>();
       expect(ownerList.assignableRoles).toEqual(['administrador', 'recepcion', 'enfermeria', 'proveedor']);
       expect(ownerList.rows.find((r) => r.email === adminStaff.email)).toMatchObject({ manageable: true });
+    });
+
+    it('«Último acceso» sale de la auditoría de inicio de sesión: con MFA, cuenta el código', async () => {
+      const never = await clinical('usr-nunca');
+      const clinicalSignedIn = await clinical('usr-entro');
+      const before = Date.now();
+      await signIn(new Client(app), clinicalSignedIn.staff);
+      const rows = (await owner.get('/api/users')).json<{ rows: Row[] }>().rows;
+      const byEmail = (email: string) => rows.find((r) => r.email === email);
+      expect(byEmail(never.staff.email)?.lastSignInAt).toBeNull();
+      expect(Date.parse(byEmail(clinicalSignedIn.staff.email)?.lastSignInAt ?? '')).toBeGreaterThanOrEqual(before - 1000);
+      // El Administrador entró con su código (auth.mfa.success).
+      expect(byEmail(adminStaff.email)?.lastSignInAt).toEqual(expect.any(String));
+      // Solo la hora: ni IP ni otros datos de la auditoría.
+      expect(JSON.stringify(rows)).not.toMatch(/198\.1[89]\./);
+    });
+
+    it('reenviar sigue la regla escalonada: el Administrador no reenvía una invitación de Administrador', async () => {
+      const created = await owner.post('/api/invitations', { email: 'usr.admin.pend@example.test', name: 'Admin Pendiente', roles: ['administrador'], locationIds: [] });
+      expect(created.statusCode).toBe(201);
+      const { invitationId } = created.json<{ invitationId: string }>();
+      expect((await admin.get('/api/users')).json<{ rows: Row[] }>().rows.find((r) => r.email === 'usr.admin.pend@example.test')).toMatchObject({
+        manageable: false,
+      });
+      const denied = await admin.post(`/api/invitations/${invitationId}/resend`, {});
+      expect(denied.statusCode).toBe(403);
+      expect(denied.json()).toEqual({ code: 'member_not_manageable' });
+      expect((await owner.post(`/api/invitations/${invitationId}/resend`, {})).statusCode).toBe(201);
+      // Recepción no tiene members.invite.
+      const { staff } = await clinical('usr-reenvio-recep');
+      const recep = await signedInWithContext(app, staff, NORTE);
+      expect((await recep.post(`/api/invitations/${invitationId}/resend`, {})).statusCode).toBe(403);
     });
 
     it('marca las cuentas con membresía activa en otra organización', async () => {

@@ -51,9 +51,10 @@ Pruebas: `test/role-assignment.test.ts` y `packages/shared/test/permissions.test
 | `GET /api/me` | sesión | Usuario, estado del MFA, contexto activo y permisos efectivos |
 | `GET /api/me/locations` | sesión | Organizaciones y sedes que puede elegir |
 | `POST /api/context` | sesión | Elegir organización y sede (validado contra `memberships`) |
-| `GET /api/users` | `members.manage` | S-ADM-02: personas e invitaciones pendientes de la organización activa, con lo que quien consulta puede hacer en cada fila |
+| `GET /api/users` | `members.manage` | S-ADM-02: personas e invitaciones pendientes de la organización activa, con lo que quien consulta puede hacer en cada fila y su último acceso (de la auditoría de inicio de sesión, sin IP; función `app.last_sign_ins`, migración 0010) |
 | `POST /api/invitations` | `members.invite` | S-ADM-03: invitar con roles y sedes. Envía el correo y devuelve el enlace `/invitacion/<token>` una sola vez (S-ADM-04); vence a las 48 h. Reinvitar a alguien aún «Invitado» anula el enlace anterior. |
 | `POST /api/invitations/:id/revoke` | `members.invite` | Revocar una invitación pendiente, con motivo |
+| `POST /api/invitations/:id/resend` | `members.invite` | S-ADM-02 «Reenviar»: enlace nuevo con los mismos roles y sedes (también si venció); anula el anterior, envía el correo y devuelve el enlace una sola vez. Regla escalonada como al revocar. |
 | `POST /api/invitations/accept` | pública | S-GEN-09: crea la cuenta y abre su sesión, o usa la sesión existente; membresía, roles y auditoría en una transacción |
 | `POST /api/memberships/:id/name` | `members.manage` | S-ADM-05: nombre para mostrar (cuenta global), con versión |
 | `POST /api/memberships/:id/roles` | `members.manage` | S-ADM-06: reemplazar roles y sedes, con motivo y versión |
@@ -87,6 +88,9 @@ Detalle en el ADR 0023.
 - **Inicio de sesión:**
   - límite **por IP** de Better Auth, activo en todos los entornos: **30 intentos por minuto** en el inicio de sesión, porque toda la clínica comparte la IP pública (configurable con `SIGN_IN_IP_MAX_ATTEMPTS` y `SIGN_IN_IP_WINDOW_SECONDS`);
   - límite **por cuenta**: 10 fallos en 15 min → `429 too_many_attempts`.
+- **Verificación en dos pasos:**
+  - límite **por IP** de Better Auth en `/two-factor/*`: **20 peticiones por minuto** (configurable con `TWO_FACTOR_IP_MAX_ATTEMPTS` y `TWO_FACTOR_IP_WINDOW_SECONDS`);
+  - bloqueo **por cuenta** del plugin: 10 códigos incorrectos seguidos → 15 min `429 ACCOUNT_TEMPORARILY_LOCKED` (`TWO_FACTOR_MAX_FAILURES`, `TWO_FACTOR_LOCK_SECONDS`).
   - Las pruebas dan a cada cliente su propia IP (`support.ts`).
 
 ## Sesiones

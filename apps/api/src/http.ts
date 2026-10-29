@@ -200,6 +200,13 @@ export class InvitationsController {
     await this.#invitations.revoke(principalOf(request), id(invitationId), reason, metaOf(request));
   }
 
+  /** S-ADM-02 «Reenviar»: enlace nuevo; el anterior deja de funcionar. */
+  @Post(':id/resend')
+  @RequirePermission('members.invite')
+  resend(@Req() request: FastifyRequest, @Param('id') invitationId: string) {
+    return this.#invitations.resend(principalOf(request), id(invitationId), metaOf(request));
+  }
+
   @Post('accept')
   @Public()
   async accept(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply, @Body() body: unknown) {

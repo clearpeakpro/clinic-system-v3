@@ -245,6 +245,55 @@ describe('criterio 1: invitaciones', () => {
     expect(events).toMatchObject([{ organization_id: NORTE.id, reason: 'Se equivocó de correo' }]);
   });
 
+  it('reenviar (S-ADM-02) emite un enlace nuevo con los mismos roles, anula el anterior y se audita', async () => {
+    const first = await invite('reenviada@example.test', ['recepcion', 'enfermeria'], [0, 1]);
+    const response = await admin.post(`/api/invitations/${first.invitationId}/resend`, {});
+    expect(response.statusCode).toBe(201);
+    const second = response.json<Created>();
+    expect(second.invitationId).not.toBe(first.invitationId);
+    expect(second.mailSent).toBe(true);
+    expect(lastInvitationLink(app, 'reenviada@example.test').toString()).toBe(second.link);
+
+    // El enlace anterior ya no sirve; el nuevo sí, con los mismos roles y sedes.
+    const old = await new Client(app).post('/api/invitations/accept', { token: first.token, name: 'X', password: 'Ficticia-clave-123' });
+    expect(old.json()).toEqual({ code: 'invitation_revoked' });
+    const guest = new Client(app);
+    const accepted = await guest.post('/api/invitations/accept', { token: tokenOf(second.link), name: 'Reenviada', password: 'Ficticia-clave-123' });
+    expect(accepted.statusCode).toBe(201);
+    const me = (await guest.get('/api/me')).json<{ userId: string }>();
+    expect((await membershipOf(me.userId)).map((r) => `${r.role}@${String(r.locationId)}`)).toEqual(
+      [
+        `enfermeria@${NORTE.locations[0].id}`,
+        `enfermeria@${NORTE.locations[1].id}`,
+        `recepcion@${NORTE.locations[0].id}`,
+        `recepcion@${NORTE.locations[1].id}`,
+      ].sort(),
+    );
+
+    const [event] = await readAudit("action = 'invitation.resent' and entity_id = $1", [second.invitationId]);
+    expect(event).toMatchObject({ organization_id: NORTE.id, metadata: { previousInvitationId: first.invitationId } });
+    // Una invitación ya aceptada o anulada no se reenvía.
+    expect((await admin.post(`/api/invitations/${second.invitationId}/resend`, {})).statusCode).toBe(409);
+    expect((await admin.post(`/api/invitations/${first.invitationId}/resend`, {})).statusCode).toBe(409);
+  });
+
+  it('una invitación vencida se puede reenviar', async () => {
+    const created = await invite('vencida.reenvio@example.test');
+    await createTenantDb(app.pool).withTenant(NORTE.id, (tx) =>
+      tx.update(invitations).set({ expiresAt: new Date(Date.now() - 60_000) }).where(eq(invitations.id, created.invitationId)),
+    );
+    const expired = await new Client(app).post('/api/invitations/accept', { token: created.token, name: 'Vencida', password: 'Ficticia-clave-123' });
+    expect(expired.statusCode).toBe(410);
+    const response = await admin.post(`/api/invitations/${created.invitationId}/resend`, {});
+    expect(response.statusCode).toBe(201);
+    const accepted = await new Client(app).post('/api/invitations/accept', {
+      token: tokenOf(response.json<Created>().link),
+      name: 'Vencida',
+      password: 'Ficticia-clave-123',
+    });
+    expect(accepted.statusCode).toBe(201);
+  });
+
   it('si el correo falla, la invitación vale igual y la respuesta lo dice', async () => {
     vi.spyOn(app.mailer, 'send').mockRejectedValueOnce(new Error('SMTP caído'));
     const response = await admin.post('/api/invitations', {

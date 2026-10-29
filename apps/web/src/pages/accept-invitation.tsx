@@ -6,6 +6,7 @@ import { ArrowRight, Eye, EyeOff, Link2Off, Lock, Moon, Sun, UserPlus, UserRound
 import { useRef, useState, type SubmitEvent } from 'react';
 import { AuthCard, AuthHeader, AuthLayout } from '../components/auth-layout.tsx';
 import { api, ApiError } from '../lib/api.ts';
+import { failureMessage } from '../lib/errors.ts';
 import { keys, queryClient } from '../lib/session.ts';
 import { applyTheme, prefs, type ThemePreference } from '../lib/storage.ts';
 import { MfaEnroll, RecoveryCodes } from './login.tsx';
@@ -34,13 +35,8 @@ function acceptError(error: unknown): string {
       case 'invitation_email_mismatch':
         return 'Esta invitación es para otro correo. Cierre la sesión y vuelva a abrir el enlace.';
     }
-    if (error.status === 429) {
-      return error.retryAfterSeconds
-        ? `Demasiados intentos. Intente de nuevo en ${String(error.retryAfterSeconds)} segundos.`
-        : 'Demasiados intentos. Intente de nuevo en unos segundos.';
-    }
   }
-  return 'No se pudo aceptar la invitación. Revise su conexión e inténtelo de nuevo.';
+  return failureMessage(error, 'aceptar la invitación');
 }
 
 export function AcceptInvitationPage({ token }: { token: string }) {

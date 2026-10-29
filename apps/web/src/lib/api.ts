@@ -25,7 +25,13 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const text = await response.text();
-  const data: unknown = text ? JSON.parse(text) : null;
+  // Un 5xx del proxy (API caída) puede traer texto plano o nada.
+  let data: unknown = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    if (response.ok) throw new ApiError(502, 'invalid_response');
+  }
   if (!response.ok) {
     const code = (data as { code?: unknown } | null)?.code;
     const retryAfter = Number(response.headers.get('retry-after'));
@@ -77,6 +83,8 @@ export interface MemberRow {
   self: boolean;
   manageable: boolean;
   sharedAccount: boolean;
+  /** Último inicio de sesión (auditoría, sin IP). null: nunca. */
+  lastSignInAt: string | null;
 }
 
 export interface InvitationRow {
@@ -122,6 +130,8 @@ export const api = {
   users: () => request<UsersList>('GET', '/api/users'),
   invite: (input: { email: string; name: string; roles: Role[]; locationIds: string[] }) =>
     request<OneTimeLink & { invitationId: string; mailSent: boolean }>('POST', '/api/invitations', input),
+  resendInvitation: (invitationId: string) =>
+    request<OneTimeLink & { invitationId: string; mailSent: boolean }>('POST', `/api/invitations/${invitationId}/resend`, {}),
   revokeInvitation: (invitationId: string, reason: string) =>
     request<null>('POST', `/api/invitations/${invitationId}/revoke`, { reason }),
   renameMember: (membershipId: string, name: string, expectedVersion: number) =>

@@ -17,7 +17,7 @@ export {
   VisitStatusChip,
   type StatusTone,
 } from './components/chips.tsx';
-export { CodeField, CodeText, DateTimeText, MoneyField, MoneyText } from './components/data.tsx';
+export { CodeField, CodeText, DateTimeText, MoneyField, MoneyText, StatCard } from './components/data.tsx';
 export { ConfirmDialog, DiscardChangesDialog, type ConfirmDialogProps } from './components/dialogs.tsx';
 export { Banner, Field } from './components/field.tsx';
 export { ChipGroup, FilterChip, SegmentedControl, SelectField, TextAreaField, type SegmentOption } from './components/forms.tsx';

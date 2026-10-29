@@ -5,6 +5,7 @@ import { CircleCheck, Eye, EyeOff, KeyRound, Link2Off, Lock } from 'lucide-react
 import { useState, type SubmitEvent } from 'react';
 import { AuthCard, AuthHeader, AuthLayout } from '../components/auth-layout.tsx';
 import { api, ApiError } from '../lib/api.ts';
+import { failureMessage } from '../lib/errors.ts';
 
 // S-GEN-10 Restablecer contraseña (/restablecer/<token>). El enlace lo emite un
 // administrador (S-ADM-04). No inicia sesión: al terminar, «Ir a iniciar
@@ -17,9 +18,8 @@ function resetError(error: unknown): string {
     if (error.code === 'password_too_common') return 'Esa contraseña es demasiado común. Elija otra.';
     if (error.code === 'PASSWORD_TOO_SHORT') return `La contraseña debe tener al menos ${String(PASSWORD_MIN_LENGTH)} caracteres.`;
     if (error.code === 'PASSWORD_TOO_LONG') return `La contraseña puede tener como máximo ${String(PASSWORD_MAX_LENGTH)} caracteres.`;
-    if (error.status === 429) return 'Demasiados intentos. Intente de nuevo en unos segundos.';
   }
-  return 'No se pudo cambiar la contraseña. Revise su conexión e inténtelo de nuevo.';
+  return failureMessage(error, 'cambiar la contraseña');
 }
 
 export function ResetPasswordPage({ token }: { token: string }) {

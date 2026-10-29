@@ -68,6 +68,11 @@ export interface MemberRow {
   manageable: boolean;
   /** La cuenta tiene membresías activas en otra organización. */
   sharedAccount: boolean;
+  /**
+   * Último inicio de sesión completo (con el MFA, si lo tiene), de la
+   * auditoría de inicio de sesión. Sin IP. null: nunca.
+   */
+  lastSignInAt: string | null;
 }
 
 export interface InvitationRow {
@@ -101,6 +106,11 @@ export interface MfaStatus {
 export interface OneTimeLink {
   link: string;
   expiresAt: string;
+}
+
+function lastSignIn(rows: { user_id: string; last_sign_in_at: Date | string }[], userId: string): string | null {
+  const row = rows.find((r) => r.user_id === userId);
+  return row ? new Date(row.last_sign_in_at).toISOString() : null;
 }
 
 function toAssignments(rows: { role: string; locationId: string | null }[]): Assignment[] {
@@ -147,7 +157,11 @@ export class MembershipService {
         .select({ id: locations.id, code: locations.code, name: locations.name })
         .from(locations)
         .orderBy(locations.code);
-      return { members, roles, pending, pendingRoles, sites };
+      // Solo de las personas de esta organización (migración 0010).
+      const { rows: lastSignIns } = await tx.execute<{ user_id: string; last_sign_in_at: Date | string }>(
+        sql`select user_id, last_sign_in_at from app.last_sign_ins()`,
+      );
+      return { members, roles, pending, pendingRoles, sites, lastSignIns };
     });
 
     const userIds = data.members.map((m) => m.userId);
@@ -192,6 +206,7 @@ export class MembershipService {
         self: m.userId === actor.userId,
         manageable: m.userId !== actor.userId && canManageMember(actorRoles, assignments.map((a) => a.role)),
         sharedAccount: shared.has(m.userId),
+        lastSignInAt: lastSignIn(data.lastSignIns, m.userId),
       });
     }
     for (const inv of data.pending) {
