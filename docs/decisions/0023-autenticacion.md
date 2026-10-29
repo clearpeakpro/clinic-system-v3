@@ -82,5 +82,13 @@ Pruebas: `apps/api/test/password-policy.test.ts` y `apps/api/test/sign-in-limits
 
 - Se evita escribir hash de contraseñas, sesiones, cookies y TOTP propios. A cambio, se depende de un proyecto que publica con mucha frecuencia (dos versiones en dos días), y la suite de T-002 se vuelve una prueba de regresión obligatoria.
 - **El orden de los hooks** (los de la configuración corren antes que los del plugin) es una trampa documentada. La auditoría de inicios de sesión no puede fiarse de `newSession`.
+- **Eventos de autenticación garantizados (T-008, 2026-10-29).** Better Auth 1.7.7 no abre transacción al iniciar sesión, así que el evento no puede ir en la misma transacción que la sesión. Se hacen fail-closed:
+  - el éxito (`auth.sign_in.success`, `auth.sign_in.mfa_required`, `auth.mfa.success`) se escribe en `databaseHooks.session.create.before`, antes de crear la sesión: si no se puede escribir, la sesión no se crea;
+  - el cierre de sesión se escribe antes de borrarla;
+  - los fallos y bloqueos se escriben de forma síncrona;
+  - si una escritura falla, la respuesta es `503 audit_unavailable`.
+  - En 1.7.7, un error en un hook «after» cambia el cuerpo pero no el estado de la respuesta. Por eso el montaje de Fastify comprueba si la petición tuvo un fallo de auditoría y responde 503.
+  - `auth.password_reset.completed` corre después de fijar la contraseña: si falla, la respuesta es 503, pero la contraseña ya cambió.
+  - Pruebas: `apps/api/test/t008.test.ts`.
 - **Con varias instancias de la API:** la revocación necesita `LISTEN/NOTIFY`.
 - **Esfuerzo estimado para producción:** unos 7 días (ver el informe).

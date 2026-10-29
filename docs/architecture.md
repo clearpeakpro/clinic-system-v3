@@ -70,7 +70,7 @@ El diagrama muestra C. En B todo corre en un solo EC2 (ver «Entornos y presupue
 
 **Interfaz compartida:** `packages/ui` tiene los tokens (`tokens.css`) y los componentes de React que usan todas las pantallas: botones, chips de estado y ruta, diálogos (S-GEN-26/27), estados de carga, vacío y error (S-GEN-28), dinero, códigos, fechas en la zona de la sede y tablas (S-GEN-30). React es una dependencia de pares y Tailwind de `apps/web` lee las clases del paquete (`@source`). Los catálogos de estados y rutas de la visita están en `packages/shared`. La página `/dev/ui`, solo en desarrollo, los muestra todos en claro y oscuro.
 
-**Worker:** es un proceso separado (`apps/worker`) que comparte paquetes con la API. En local es un servicio de docker compose; en B, un contenedor aparte en el mismo EC2 con su propio límite de memoria; en C, un servicio de ECS Fargate. Nunca corre dentro del proceso de la API.
+**Worker:** es un proceso separado (`apps/worker`) que comparte paquetes con la API. En local arranca con `pnpm dev` (`tsx watch`); en B, un contenedor aparte en el mismo EC2 con su propio límite de memoria; en C, un servicio de ECS Fargate. Nunca corre dentro del proceso de la API. Usa pg-boss (esquema `pgboss`, instalado por las migraciones) para entregar el outbox y para los trabajos diarios (verificación de la cadena de auditoría y purga de las claves de idempotencia).
 
 | Módulo | Pantallas | Responsabilidad |
 | --- | --- | --- |
@@ -237,7 +237,7 @@ Ningún dato real entra al sistema sin tres cosas: **el BAA de AWS firmado**, **
 | Cambios administrativos y financieros | Antes/después de los campos no clínicos (importe, estado, rol, sede, precio) |
 | Lecturas auditadas | Perfil del paciente, documentos, impresión, exportación, búsqueda (el criterio se guarda en hash) y acceso de emergencia |
 | Permisos | `clinic_app` solo puede hacer INSERT. Leen el Propietario y el Administrador de la organización. Nadie puede editar ni borrar. |
-| Integridad | Cadena de hash por organización. Verificación diaria y último hash guardado en S3 con Object Lock (modo gobernanza). |
+| Integridad | Cadena de hash por organización y una de plataforma, calculada por un trigger de la base de datos (T-008). Verificación diaria en el worker (`audit.chain_verified` / `audit.chain_broken`). Último hash en S3 con Object Lock (modo gobernanza) desde la fase 4 (P-13). |
 | Retención | Configurable por organización y **definida por cada clínica con su asesor**. El valor inicial propuesto es 6 años (el plazo de HIPAA para documentación de políticas). **No es una obligación universal**: los expedientes clínicos pueden tener otros plazos estatales. |
 
 **Logs técnicos** (CloudWatch): errores, tiempos y request ids, **sin datos de pacientes**. Se conservan 30 días, solo los ven los operadores y no reemplazan la auditoría.
@@ -263,14 +263,14 @@ Ningún dato real entra al sistema sin tres cosas: **el BAA de AWS firmado**, **
    - Las anulaciones son filas inversas.
    - Importes en centavos con `CHECK (amount_cents >= 0)`.
 4. **Idempotencia:**
-   - `Idempotency-Key` obligatorio en llegada, kiosco, pagos y anulaciones. `idempotency_keys` guarda organización, clave, hash de la petición y respuesta durante 24 h. Misma clave → misma respuesta; misma clave con otro contenido → 409.
+   - `Idempotency-Key` obligatorio en llegada, kiosco, pagos y anulaciones. `idempotency_keys` guarda organización, clave, hash de la petición, **código de estado e ids del recurso creado** (nunca la respuesta) durante 24 h. Misma clave → se vuelve a leer el recurso con los permisos de quien llama; misma clave con otro contenido → 409 (ADR 0019).
    - Restricciones únicas en la base de datos (por ejemplo, una visita abierta por cita).
    - pg-boss usa `singletonKey` y sus trabajos son idempotentes.
-5. **Outbox:** los eventos que deben entregarse (correo, notificaciones guardadas, PDF, alertas) se escriben en `outbox` en la misma transacción. El worker los publica al menos una vez y los consumidores eliminan duplicados por id de evento. Los WebSockets de pantalla pueden ir sin outbox, porque la pantalla se resincroniza al reconectar.
+5. **Outbox:** los eventos que deben entregarse (correo, notificaciones guardadas, PDF, alertas) se escriben en `outbox` en la misma transacción, con el payload cifrado (`OUTBOX_KEY`) y borrado al entregarse. El worker los publica al menos una vez y elimina duplicados por id de evento (ADR 0019). Hoy van por el outbox los correos de invitación. Los WebSockets de pantalla pueden ir sin outbox, porque la pantalla se resincroniza al reconectar.
 
 ## Entornos y presupuesto
 
-**A. Desarrollo local — US$0 en AWS.** Docker compose (Postgres 16, API, worker, web) con dos organizaciones ficticias. CI en GitHub Actions. Staging local.
+**A. Desarrollo local — US$0 en AWS.** Docker compose (Postgres 16 y Mailpit) y `pnpm dev` (API, worker y web) con dos organizaciones ficticias. CI en GitHub Actions. Staging local.
 
 **B. Demo y piloto económico — unos US$22.83 al mes.**
 

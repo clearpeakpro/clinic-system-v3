@@ -30,7 +30,7 @@ TypeScript en todo. pnpm + Turborepo.
 ## Comandos
 
 - `pnpm install`
-- `pnpm dev` — Postgres y Mailpit (docker compose) + bootstrap de roles (idempotente) + migraciones pendientes + API (http://127.0.0.1:3001) + web (http://localhost:5173, reenvía `/api` a la API; arranca cuando la API responde)
+- `pnpm dev` — Postgres y Mailpit (docker compose) + bootstrap de roles (idempotente) + migraciones pendientes + API (http://127.0.0.1:3001) + worker (outbox y trabajos diarios) + web (http://localhost:5173, reenvía `/api` a la API; arranca cuando la API responde)
 - `pnpm test` — unitarias + integración (Testcontainers)
 - `pnpm test:e2e` — Playwright (compila la web y levanta Postgres con Testcontainers, la API y `vite preview`)
 - `pnpm --filter @clinic/web test:a11y` — axe sobre `/dev/ui` (hoja de componentes, solo en desarrollo: http://localhost:5173/dev/ui)
