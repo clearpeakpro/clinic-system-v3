@@ -8,7 +8,10 @@ import {
   renameMemberSchema,
   revokeInvitationSchema,
   changePasswordSchema,
+  createLocationSchema,
   mfaCodeSchema,
+  setLocationActiveSchema,
+  updateLocationSchema,
   selectContextSchema,
   type Permission,
 } from '@clinic/shared';
@@ -36,6 +39,7 @@ import { z } from 'zod';
 import { AuditService } from './audit.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
+import { LocationService } from './locations.ts';
 import { ProfileService } from './profile.ts';
 import { toHeaders } from './request-context.ts';
 import { ContextService, HttpError, type RequestMeta } from './services.ts';
@@ -336,11 +340,56 @@ export class MembershipsController {
   }
 }
 
+/** Administración › Sedes (S-ADM-10 a 12). */
+@Controller('locations')
+export class LocationsController {
+  readonly #locations: LocationService;
+  constructor(@Inject(LocationService) locations: LocationService) {
+    this.#locations = locations;
+  }
+
+  @Get()
+  @RequirePermission('locations.manage')
+  list(@Req() request: FastifyRequest) {
+    return this.#locations.list(principalOf(request));
+  }
+
+  @Post()
+  @RequirePermission('locations.manage')
+  create(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#locations.create(principalOf(request), parse(createLocationSchema, body), metaOf(request));
+  }
+
+  @Post(':id')
+  @HttpCode(204)
+  @RequirePermission('locations.manage')
+  async update(@Req() request: FastifyRequest, @Param('id') locationId: string, @Body() body: unknown) {
+    await this.#locations.update(principalOf(request), id(locationId), parse(updateLocationSchema, body), metaOf(request));
+  }
+
+  @Post(':id/deactivate')
+  @HttpCode(204)
+  @RequirePermission('locations.manage')
+  async deactivate(@Req() request: FastifyRequest, @Param('id') locationId: string, @Body() body: unknown) {
+    const { expectedVersion } = parse(setLocationActiveSchema, body);
+    await this.#locations.setActive(principalOf(request), id(locationId), false, expectedVersion, metaOf(request));
+  }
+
+  @Post(':id/activate')
+  @HttpCode(204)
+  @RequirePermission('locations.manage')
+  async activate(@Req() request: FastifyRequest, @Param('id') locationId: string, @Body() body: unknown) {
+    const { expectedVersion } = parse(setLocationActiveSchema, body);
+    await this.#locations.setActive(principalOf(request), id(locationId), true, expectedVersion, metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
   memberships: MembershipService;
   profile: ProfileService;
+  locations: LocationService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -348,12 +397,13 @@ export interface ApiProviders {
 
 export function createApiModule(providers: ApiProviders) {
   @Module({
-    controllers: [MeController, ContextController, InvitationsController, UsersController, MembershipsController],
+    controllers: [MeController, ContextController, InvitationsController, UsersController, MembershipsController, LocationsController],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
       { provide: InvitationService, useValue: providers.invitations },
       { provide: MembershipService, useValue: providers.memberships },
       { provide: ProfileService, useValue: providers.profile },
+      { provide: LocationService, useValue: providers.locations },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

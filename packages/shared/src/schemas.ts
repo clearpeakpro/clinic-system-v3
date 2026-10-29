@@ -78,6 +78,51 @@ export const changePasswordSchema = z.object({
 /** S-GEN-24: un código actual de la aplicación de autenticación confirma la acción. */
 export const mfaCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
 
+// --- Sedes (S-ADM-10 a 12, T-007) -----------------------------------------
+
+/** De 2 a 8 caracteres, empieza por letra, solo A–Z y dígitos (decisión de T-007; el manual pedía solo letras). */
+export const LOCATION_CODE_PATTERN = /^[A-Z][A-Z0-9]{1,7}$/;
+
+/** Zona IANA que conoce el motor de JavaScript (Node en la API, el navegador en la web). */
+export function isIanaTimeZone(value: string): boolean {
+  // Sin desfases sueltos («+05:00»), que Intl también acepta.
+  if (!/^[A-Za-z][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((v) => (v === '' ? null : v))
+    .nullable();
+
+const locationFields = {
+  name: z.string().trim().min(1).max(120),
+  timezone: z.string().refine(isIanaTimeZone),
+  address: optionalText(250),
+  phone: optionalText(30),
+};
+
+export const createLocationSchema = z.object({
+  code: z.string().regex(LOCATION_CODE_PATTERN),
+  ...locationFields,
+});
+
+/** El código no se envía: es inmutable (aparece en las URL y en los códigos humanos). */
+export const updateLocationSchema = z.object({ ...locationFields, expectedVersion });
+
+export const setLocationActiveSchema = z.object({ expectedVersion });
+
+export type CreateLocationInput = z.infer<typeof createLocationSchema>;
+export type UpdateLocationInput = z.infer<typeof updateLocationSchema>;
+
 export type SelectContextInput = z.infer<typeof selectContextSchema>;
 export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;

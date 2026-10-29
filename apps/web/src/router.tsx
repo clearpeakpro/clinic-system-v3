@@ -3,6 +3,7 @@ import { Frame } from './components/frame.tsx';
 import { IdleGuard } from './components/idle-guard.tsx';
 import { useMe } from './lib/session.ts';
 import { AcceptInvitationPage } from './pages/accept-invitation.tsx';
+import { AdminLocationsPage } from './pages/admin-locations.tsx';
 import { AdminUsersPage } from './pages/admin-users.tsx';
 import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
@@ -16,7 +17,7 @@ import { SelectLocationPage } from './pages/select-location.tsx';
 // /admin/<destino>. <SEDE> es el código de la sede (p. ej. NOR1).
 // T-006a: /admin/usuarios (S-ADM-02) y las páginas públicas
 // /invitacion/<token> (S-GEN-09) y /restablecer/<token> (S-GEN-10).
-// T-006b: /app/<SEDE>/perfil (S-GEN-21).
+// T-006b: /app/<SEDE>/perfil (S-GEN-21). T-007: /admin/sedes (S-ADM-10).
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -126,6 +127,16 @@ const adminUsersRoute = createRoute({
   },
 });
 
+const adminLocationsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'sedes',
+  component: function AdminLocations() {
+    const me = useMe();
+    if (me.data && !me.data.permissions.includes('locations.manage')) return <NotFoundPage />;
+    return <AdminLocationsPage />;
+  },
+});
+
 const adminDestinationRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '$destino',
@@ -148,7 +159,7 @@ const routeTree = rootRoute.addChildren([
   resetRoute,
   selectRoute,
   appRoute.addChildren([appIndexRoute, appProfileRoute, appDestinationRoute]),
-  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminDestinationRoute]),
+  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);
 

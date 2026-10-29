@@ -78,6 +78,20 @@
       "when": 1793235767888,
       "tag": "0010_users_last_sign_in",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793244239276,
+      "tag": "0011_locations_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793244265287,
+      "tag": "0012_platform_operator",
+      "breakpoints": true
     }
   ]
 }

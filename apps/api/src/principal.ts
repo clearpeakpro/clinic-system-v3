@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { membershipRoles, memberships, session as sessionTable, type TenantDb } from '@clinic/db';
+import { locations, membershipRoles, memberships, session as sessionTable, type TenantDb } from '@clinic/db';
 import {
   isRole,
   MFA_REQUIRED_ROLES,
@@ -111,7 +111,8 @@ export class PrincipalResolver {
     const locationId = session.activeLocationId;
     if (orgId && locationId) {
       roles = rolesAt(assignments, orgId, locationId);
-      if (roles.length > 0) context = { organizationId: orgId, locationId };
+      // Una sede desactivada deja sin contexto a quien trabajaba en ella (T-007).
+      if (roles.length > 0 && (await this.#locationActive(orgId, locationId))) context = { organizationId: orgId, locationId };
     }
 
     return {
@@ -125,11 +126,18 @@ export class PrincipalResolver {
         assignments,
         context,
         roles: context ? roles : [],
-        permissions: permissionsFor(roles),
+        permissions: permissionsFor(context ? roles : []),
         mfaRequired,
       },
       setCookies: authHeaders.getSetCookie(),
     };
+  }
+
+  async #locationActive(organizationId: string, locationId: string): Promise<boolean> {
+    const [site] = await this.#tenantDb.withTenant(organizationId, (tx) =>
+      tx.select({ active: locations.active }).from(locations).where(eq(locations.id, locationId)),
+    );
+    return site?.active === true;
   }
 
   /** Roles activos de la persona en todas sus organizaciones (políticas own_*_read). */

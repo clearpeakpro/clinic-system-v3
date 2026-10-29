@@ -1,5 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
+  check,
   date,
   foreignKey,
   integer,
@@ -38,11 +40,19 @@ export const locations = appSchema.table(
     timezone: text('timezone').notNull(),
     /** Dirección postal de la sede (opcional; se muestra en S-GEN-11). */
     address: text('address'),
+    /** Teléfono de contacto (S-ADM-11): opcional, sin formato validado. */
+    phone: text('phone'),
+    /** Una sede inactiva no se puede elegir ni operar; nunca se borra (T-007). */
+    active: boolean('active').notNull().default(true),
+    /** Concurrencia optimista (regla 7). */
+    version: integer('version').notNull().default(1),
     createdAt: createdAt(),
   },
   (t) => [
     unique('locations_organization_id_id_key').on(t.organizationId, t.id),
     unique('locations_organization_id_code_key').on(t.organizationId, t.code),
+    // De 2 a 8 caracteres, empieza por letra, solo A–Z y dígitos (decisión de T-007).
+    check('locations_code_format', sql`${t.code} ~ '^[A-Z][A-Z0-9]{1,7}$'`),
   ],
 );
 

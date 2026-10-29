@@ -60,6 +60,20 @@ S-GEN-21 a 25 no tienen captura. El Perfil usa el marco de S-GEN-12 y tarjetas b
 - **Preferencias:** solo el tema (Claro u Oscuro), guardado en el dispositivo. No hay idioma, porque la interfaz solo está en español.
 - **Contraseña:** la tarjeta la pide T-006, aunque el manual decía que no había cambio de contraseña.
 
+## Sedes (T-007)
+
+`admin/S-ADM-10_sedes_y_kioscos/`: la captura muestra el diálogo «Vincular kiosco» sobre la página desenfocada; la página se lee en `code.html`.
+
+| Se toma | No se construye |
+| --- | --- |
+| Encabezado con título, subtítulo (el del manual), «Actualizar» y «Nueva sede»; **cuadrícula de tarjetas** (3 columnas en escritorio, 2 en tableta, 1 en teléfono) con el código en recuadro monoespaciado, chip «Seleccionada» y barra superior en la sede actual, nombre, zona horaria, dirección y teléfono con icono, y el estado al pie | Kioscos, «Vincular kiosco» y el código de vinculación (fase 3), «Sincronizar redes», «HIPAA Verified Config», capacidad y consultorios, VLAN, horarios de atención, tráfico de autoservicio, «Sede operativa principal», «Sede secundaria», «Próxima apertura» / «En preparación», el desfase UTC junto a la zona y el aviso de despliegue |
+
+- **Estado:** chips «Activo» (verde) e «Inactivo» (gris), con icono y texto, como pide el manual. Las tarjetas inactivas van atenuadas (fondo hundido y barra gris), como las filas deshabilitadas de Usuarios.
+- **Zona horaria:** nombre IANA en monoespaciado y, si se conoce, su nombre corto («Central»), el mismo de la cabecera. Sin desfase UTC (manual, S-ADM-12).
+- **Acciones:** «Editar» y el menú «⋮» (Editar, Desactivar o Activar) al pie de cada tarjeta. En Stitch el pie lleva una flecha o «Gestionar».
+- **Sin dirección o sin teléfono:** la línea no aparece, como en la tarjeta de Fort Worth de Stitch.
+- **Diálogos S-ADM-11 y S-ADM-12:** sin captura; diálogos de la hoja S-GEN-30.
+
 ## Pantallas sin referencia de Stitch
 
 Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29; en T-006a, S-ADM-03 a 09, S-GEN-09 y S-GEN-10; en T-006b, S-GEN-21 a 25.

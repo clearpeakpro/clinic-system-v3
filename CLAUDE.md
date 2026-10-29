@@ -30,11 +30,12 @@ TypeScript en todo. pnpm + Turborepo.
 ## Comandos
 
 - `pnpm install`
-- `pnpm dev` — Postgres y Mailpit (docker compose) + migraciones pendientes + API (http://127.0.0.1:3001) + web (http://localhost:5173, reenvía `/api` a la API; arranca cuando la API responde)
+- `pnpm dev` — Postgres y Mailpit (docker compose) + bootstrap de roles (idempotente) + migraciones pendientes + API (http://127.0.0.1:3001) + web (http://localhost:5173, reenvía `/api` a la API; arranca cuando la API responde)
 - `pnpm test` — unitarias + integración (Testcontainers)
 - `pnpm test:e2e` — Playwright (compila la web y levanta Postgres con Testcontainers, la API y `vite preview`)
 - `pnpm --filter @clinic/web test:a11y` — axe sobre `/dev/ui` (hoja de componentes, solo en desarrollo: http://localhost:5173/dev/ui)
-- `pnpm db:bootstrap` (superusuario, una vez) / `pnpm db:migrate` / `pnpm db:seed` (clínicas ficticias y sus Propietarios)
+- `pnpm db:bootstrap` (superusuario) / `pnpm db:migrate` / `pnpm db:seed` (clínicas ficticias y sus Propietarios)
+- `pnpm org:create` / `pnpm audit:platform` — operador de la plataforma, como `clinic_operator` (ADR 0024)
 - `pnpm --filter @clinic/api dev` — API en http://127.0.0.1:3001 (Mailpit en http://localhost:8025)
 - `pnpm check:rls-context` — el contexto RLS solo se fija en `withTenant` / `withUser` (va dentro de `pnpm lint`)
 - `pnpm lint` / `pnpm typecheck`

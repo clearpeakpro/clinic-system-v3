@@ -9,4 +9,4 @@ Modelo SaaS con dueños de organización.
 
 ## Decisión
 
-Rol «Propietario» por encima del Administrador (suscripción y organización). Pendiente confirmar un rol de solo lectura para contabilidad.
+Rol «Propietario» por encima del Administrador (suscripción y organización). El rol de solo lectura para contabilidad no entra en V1 ([ADR 0025](0025-contabilidad-fuera-v1.md)).

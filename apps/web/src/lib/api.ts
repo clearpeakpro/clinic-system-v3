@@ -104,7 +104,7 @@ export type UserRow = MemberRow | InvitationRow;
 
 export interface UsersList {
   rows: UserRow[];
-  locations: { id: string; code: string; name: string }[];
+  locations: { id: string; code: string; name: string; active: boolean }[];
   assignableRoles: Role[];
 }
 
@@ -113,6 +113,25 @@ export interface MfaStatus {
   lockedUntil: string | null;
   backupCodesLeft: number | null;
   resetPendingSince: string | null;
+}
+
+/** Administración › Sedes (S-ADM-10). Tipos de apps/api/src/locations.ts. */
+export interface LocationRow {
+  id: string;
+  code: string;
+  name: string;
+  timezone: string;
+  address: string | null;
+  phone: string | null;
+  active: boolean;
+  version: number;
+}
+
+export interface LocationInput {
+  name: string;
+  timezone: string;
+  address: string | null;
+  phone: string | null;
 }
 
 /** S-GEN-22: estado del propio factor. */
@@ -165,6 +184,14 @@ export const api = {
     request<{ reset: OneTimeLink | null }>('POST', `/api/memberships/${membershipId}/mfa-reset`, { reason }),
   createPasswordReset: (membershipId: string, reason: string) =>
     request<OneTimeLink>('POST', `/api/memberships/${membershipId}/password-reset`, { reason }),
+
+  // Administración › Sedes
+  adminLocations: () => request<LocationRow[]>('GET', '/api/locations'),
+  createLocation: (input: LocationInput & { code: string }) => request<{ id: string }>('POST', '/api/locations', input),
+  updateLocation: (locationId: string, input: LocationInput, expectedVersion: number) =>
+    request<null>('POST', `/api/locations/${locationId}`, { ...input, expectedVersion }),
+  setLocationActive: (locationId: string, active: boolean, expectedVersion: number) =>
+    request<null>('POST', `/api/locations/${locationId}/${active ? 'activate' : 'deactivate'}`, { expectedVersion }),
 
   // Páginas públicas
   acceptInvitation: (input: { token: string; name?: string; password?: string }) =>

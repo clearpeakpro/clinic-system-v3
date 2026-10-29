@@ -106,6 +106,7 @@ const MESSAGES: Record<string, string> = {
   role_not_assignable: 'Esta acción no está permitida en el estado actual.',
   location_required: 'Seleccione al menos una sede.',
   invalid_location: 'Algunos campos no son válidos. Revíselos.',
+  location_inactive: 'Esa sede está inactiva: elija otra o actívela en Sedes.',
 };
 
 export function userActionMessage(error: unknown): string {

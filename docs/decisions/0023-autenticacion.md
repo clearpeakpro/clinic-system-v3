@@ -49,6 +49,7 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
      - **Hallazgo:** en 1.7.7, `verify-totp` con la sesión abierta no aplica el bloqueo por cuenta (solo lo hace al iniciar sesión). El Perfil aplica el mismo bloqueo sobre las columnas de Better Auth (`failed_verification_count`, `locked_until`): 10 códigos incorrectos bloquean el factor 15 minutos, también para el inicio de sesión.
 4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
 5. **Operador de la plataforma.** El rol de base de datos del operador (el único que lee los eventos de auditoría sin organización) es una tarea de la fase 1. Queda como pendiente P-11.
+   - **Cumplida en T-007 (2026-10-29):** rol `clinic_operator` y lectura auditada con `app.read_platform_audit` ([ADR 0024](0024-operador-plataforma.md)).
 
 ## Política de contraseñas y límite de intentos (T-003b, 2026-10-27)
 

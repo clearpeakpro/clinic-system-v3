@@ -2,13 +2,15 @@
 // el backend autoriza siempre. Este catálogo crece con cada fase: en la fase 1
 // solo existen los permisos de identidad.
 
-/** Roles por sede (membership_roles). Contabilidad queda fuera hasta P-04. */
+/** Roles por sede (membership_roles). Contabilidad no entra en V1 (ADR 0025, P-04). */
 export const ROLES = ['propietario', 'administrador', 'recepcion', 'enfermeria', 'proveedor'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = [
   'members.invite',
   'members.manage',
+  // Administración › Sedes (S-ADM-10 a 12, T-007).
+  'locations.manage',
   // Acceso a cada destino del menú (T-004). Salen de la tabla «Destinos del
   // menú» del manual (docs/manual/README.md, «Los cuatro roles»). Cada fase
   // los afinará en permisos de acción.
@@ -35,8 +37,8 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 // clínica necesitan además un rol clínico en la sede. Por eso, a diferencia del
 // manual, su menú es solo «Administración».
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  propietario: ['members.invite', 'members.manage', 'admin.access'],
-  administrador: ['members.invite', 'members.manage', 'admin.access'],
+  propietario: ['members.invite', 'members.manage', 'locations.manage', 'admin.access'],
+  administrador: ['members.invite', 'members.manage', 'locations.manage', 'admin.access'],
   recepcion: ['panel.view', 'patients.access', 'appointments.access', 'checkout.access', 'reports.location'],
   enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
   proveedor: [

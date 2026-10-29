@@ -77,7 +77,8 @@ export default async function globalSetup() {
   const superuserUrl = container.getConnectionUri();
   const migratorPassword = randomBytes(16).toString('hex');
   const appPassword = randomBytes(16).toString('hex');
-  await bootstrap({ superuserUrl, migratorPassword, appPassword });
+  const operatorPassword = randomBytes(16).toString('hex');
+  await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
   const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
   await migrate(migratorUrl);
   await seed(migratorUrl);
@@ -102,6 +103,11 @@ export default async function globalSetup() {
   });
   await waitFor(`http://127.0.0.1:${String(E2E.apiPort)}/api/me`);
   await waitFor(webOrigin);
+
+  // T-007: las pruebas ejecutan `pnpm org:create` y `pnpm audit:platform` de
+  // verdad, como el operador (clinic_operator) de esta base desechable.
+  process.env.E2E_OPERATOR_URL = urlFor(superuserUrl, 'clinic_operator', operatorPassword);
+  process.env.E2E_BASE_URL = webOrigin;
 
   // Orden: web, API y por último la base de datos (si no, la API registra
   // «terminating connection»). Se espera a que cada proceso termine.

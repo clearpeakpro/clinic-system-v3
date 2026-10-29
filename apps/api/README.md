@@ -25,7 +25,15 @@ La API se conecta **solo** como `clinic_app`: `loadConfig` no arranca con otro u
   - contraseña: `DEV_SEED_PASSWORD` de `.env`.
 - Al entrar por primera vez, cada uno debe inscribir el MFA.
 - **Ningún endpoint crea un Propietario**, ni siquiera por invitación (regla escalonada de abajo).
-- En producción lo creará el operador de la plataforma con `pnpm org:create` (T-007).
+- **En producción lo crea el operador de la plataforma** ([ADR 0024](../../docs/decisions/0024-operador-plataforma.md)), conectado como `clinic_operator` (`DATABASE_OPERATOR_URL`):
+
+  ```
+  pnpm org:create --organizacion "Clínica Ejemplo"     --propietario-correo propietario@example.test --propietario-nombre "Nombre Apellido"     --sede-codigo LAN --sede-nombre "Lancaster" --zona-horaria America/Chicago     [--sede-direccion "…"] [--sede-telefono "…"]
+  ```
+
+  - Crea la organización, su primera sede y la invitación del Propietario, en una transacción.
+  - Envía el correo y muestra el enlace una sola vez. El Propietario la acepta en `/invitacion/<token>` y configura su MFA.
+- **Auditoría sin organización:** `pnpm audit:platform [--desde …] [--hasta …] [--accion …] [--limite …]` muestra los eventos sin organización, uno por línea en JSON. Cada lectura queda auditada (`platform.audit_read`).
 - La semilla no se ejecuta con `NODE_ENV=production`.
 
 ## Regla escalonada de roles
@@ -56,6 +64,10 @@ Pruebas: `test/role-assignment.test.ts` y `packages/shared/test/permissions.test
 | `POST /api/me/mfa/disable` | sesión | S-GEN-24: desactivar el propio MFA con un código actual; `403 mfa_required_for_role` para Propietario y Administrador |
 | `POST /api/context` | sesión | Elegir organización y sede (validado contra `memberships`) |
 | `GET /api/users` | `members.manage` | S-ADM-02: personas e invitaciones pendientes de la organización activa, con lo que quien consulta puede hacer en cada fila y su último acceso (de la auditoría de inicio de sesión, sin IP; función `app.last_sign_ins`, migración 0010) |
+| `GET /api/locations` | `locations.manage` | S-ADM-10: todas las sedes de la organización activa, también las inactivas |
+| `POST /api/locations` | `locations.manage` | S-ADM-11: crear (código de 2 a 8 caracteres, empieza por letra, A–Z y dígitos; único en la organización: `409 location_code_taken`) |
+| `POST /api/locations/:id` | `locations.manage` | S-ADM-11: editar nombre, zona horaria IANA, dirección y teléfono, con versión. El código no cambia. |
+| `POST /api/locations/:id/deactivate` y `/activate` | `locations.manage` | S-ADM-10, con versión. No se desactiva la única activa (`409 last_active_location`). Una sede inactiva no se elige (`403 location_inactive`), no se ofrece al invitar y deja sin contexto a quien trabajaba en ella. |
 | `POST /api/invitations` | `members.invite` | S-ADM-03: invitar con roles y sedes. Envía el correo y devuelve el enlace `/invitacion/<token>` una sola vez (S-ADM-04); vence a las 48 h. Reinvitar a alguien aún «Invitado» anula el enlace anterior. |
 | `POST /api/invitations/:id/revoke` | `members.invite` | Revocar una invitación pendiente, con motivo |
 | `POST /api/invitations/:id/resend` | `members.invite` | S-ADM-02 «Reenviar»: enlace nuevo con los mismos roles y sedes (también si venció); anula el anterior, envía el correo y devuelve el enlace una sola vez. Regla escalonada como al revocar. |
