@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assignableRoles,
+  assignmentsFor,
   canAssignRole,
   canChangeRoles,
   canManageMember,
+  needsLocation,
   permissionsFor,
   ROLES,
   type Role,
@@ -81,5 +84,27 @@ describe('permisos', () => {
     expect([...permissionsFor(['proveedor'])].sort()).toEqual(
       ['appointments.access', 'nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access', 'provider_queue.access'],
     );
+  });
+});
+
+describe('roles y sedes de S-ADM-03 / S-ADM-06 (T-006a)', () => {
+  it('chips que ve cada uno', () => {
+    expect(assignableRoles(['propietario'])).toEqual(['administrador', 'recepcion', 'enfermeria', 'proveedor']);
+    expect(assignableRoles(['administrador'])).toEqual(['recepcion', 'enfermeria', 'proveedor']);
+    expect(assignableRoles(['administrador', 'proveedor'])).toEqual(['recepcion', 'enfermeria', 'proveedor']);
+    expect(assignableRoles(['recepcion'])).toEqual([]);
+  });
+
+  it('administrativos en toda la organización; clínicos en cada sede', () => {
+    expect(assignmentsFor(['proveedor', 'administrador', 'recepcion'], ['a', 'b', 'a'])).toEqual([
+      { role: 'administrador', locationId: null },
+      { role: 'recepcion', locationId: 'a' },
+      { role: 'recepcion', locationId: 'b' },
+      { role: 'proveedor', locationId: 'a' },
+      { role: 'proveedor', locationId: 'b' },
+    ]);
+    expect(assignmentsFor(['administrador'], [])).toEqual([{ role: 'administrador', locationId: null }]);
+    expect(needsLocation(['administrador'])).toBe(false);
+    expect(needsLocation(['administrador', 'enfermeria'])).toBe(true);
   });
 });

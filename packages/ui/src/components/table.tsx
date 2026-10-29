@@ -12,6 +12,10 @@ export interface Column<T> {
   align?: 'start' | 'end';
   /** La columna que encabeza cada tarjeta en el teléfono. */
   primary?: boolean;
+  /** Encabezado solo para lectores de pantalla (columna de acciones). */
+  hideHeader?: boolean;
+  /** Clases de la celda y su encabezado en la tabla (p. ej. ocultar la columna en anchos medios). */
+  className?: string;
 }
 
 export function DataTable<T>({
@@ -19,6 +23,9 @@ export function DataTable<T>({
   columns,
   rows,
   rowKey,
+  rowClassName,
+  density = 'default',
+  cardsBelow = 'tab',
   empty = 'Sin filas',
 }: {
   /** Nombre de la tabla para lectores de pantalla. */
@@ -26,6 +33,12 @@ export function DataTable<T>({
   columns: Column<T>[];
   rows: T[];
   rowKey: (row: T) => string;
+  /** Clases extra de la fila o tarjeta (p. ej. atenuar una fila deshabilitada). */
+  rowClassName?: (row: T) => string | undefined;
+  /** `compact`: menos relleno lateral, para tablas con muchas columnas (S-ADM-02). */
+  density?: 'default' | 'compact';
+  /** Hasta qué ancho se muestran tarjetas: `desk` para tablas anchas (la tableta vertical también ve tarjetas). */
+  cardsBelow?: 'tab' | 'desk';
   empty?: string;
 }) {
   if (rows.length === 0) {
@@ -35,7 +48,12 @@ export function DataTable<T>({
   const rest = columns.filter((c) => c !== primary);
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-lg bg-surface-container-lowest shadow-level-1 tab:block dark:bg-surface-container-low">
+      <div
+        className={cn(
+          'hidden overflow-x-auto rounded-lg bg-surface-container-lowest shadow-level-1 dark:bg-surface-container-low',
+          cardsBelow === 'desk' ? 'desk:block' : 'tab:block',
+        )}
+      >
         <table className="w-full border-collapse text-left">
           <caption className="sr-only">{caption}</caption>
           <thead className="bg-surface-container-low dark:bg-surface-container">
@@ -44,18 +62,34 @@ export function DataTable<T>({
                 <th
                   key={c.key}
                   scope="col"
-                  className={cn('px-space-md py-space-md text-caption tracking-wider text-on-surface-variant uppercase', c.align === 'end' && 'text-right')}
+                  className={cn(
+                    'py-space-md text-caption tracking-wider text-on-surface-variant uppercase',
+                    density === 'compact' ? 'px-space-sm first:pl-space-md last:pr-space-md' : 'px-space-md',
+                    c.align === 'end' && 'text-right',
+                    c.className,
+                  )}
                 >
-                  {c.header}
+                  {c.hideHeader ? <span className="sr-only">{c.header}</span> : c.header}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={rowKey(row)} className="border-t border-surface-container hover:bg-surface dark:border-surface-container-high dark:hover:bg-surface-container">
+              <tr
+                key={rowKey(row)}
+                className={cn('border-t border-surface-container hover:bg-surface dark:border-surface-container-high dark:hover:bg-surface-container', rowClassName?.(row))}
+              >
                 {columns.map((c) => (
-                  <td key={c.key} className={cn('h-16 px-space-md py-space-sm text-body-md text-on-surface', c.align === 'end' && 'text-right')}>
+                  <td
+                    key={c.key}
+                    className={cn(
+                      'h-16 py-space-sm text-body-md text-on-surface',
+                      density === 'compact' ? 'px-space-sm first:pl-space-md last:pr-space-md' : 'px-space-md',
+                      c.align === 'end' && 'text-right',
+                      c.className,
+                    )}
+                  >
                     {c.cell(row)}
                   </td>
                 ))}
@@ -64,9 +98,12 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      <ul aria-label={caption} className="flex flex-col gap-space-sm tab:hidden">
+      <ul aria-label={caption} className={cn('flex flex-col gap-space-sm', cardsBelow === 'desk' ? 'desk:hidden' : 'tab:hidden')}>
         {rows.map((row) => (
-          <li key={rowKey(row)} className="flex flex-col gap-space-xs rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">
+          <li
+            key={rowKey(row)}
+            className={cn('flex flex-col gap-space-xs rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low', rowClassName?.(row))}
+          >
             {primary ? <div className="text-body-lg-medium text-on-surface">{primary.cell(row)}</div> : null}
             <dl className="grid grid-cols-[auto_1fr] items-center gap-x-space-md gap-y-space-xs">
               {rest.map((c) => (

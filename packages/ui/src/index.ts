@@ -17,9 +17,10 @@ export {
   VisitStatusChip,
   type StatusTone,
 } from './components/chips.tsx';
-export { CodeField, CodeText, DateTimeText, MoneyField, MoneyText } from './components/data.tsx';
+export { CodeField, CodeText, DateTimeText, MoneyField, MoneyText, StatCard } from './components/data.tsx';
 export { ConfirmDialog, DiscardChangesDialog, type ConfirmDialogProps } from './components/dialogs.tsx';
 export { Banner, Field } from './components/field.tsx';
+export { ChipGroup, FilterChip, SegmentedControl, SelectField, TextAreaField, type SegmentOption } from './components/forms.tsx';
 export { OTP_LENGTH, OtpInput, totpSecondsLeft } from './components/otp-input.tsx';
 export {
   Checkbox,
@@ -35,4 +36,5 @@ export {
   type DialogProps,
 } from './components/overlay.tsx';
 export { AsyncView, EmptyState, ErrorState, RefreshBar, SkeletonRows, Spinner, StaleDataBanner, type AsyncSource } from './components/states.tsx';
+export { SnackbarProvider, useSnackbar, type SnackbarMessage } from './components/snackbar.tsx';
 export { DataTable, type Column } from './components/table.tsx';

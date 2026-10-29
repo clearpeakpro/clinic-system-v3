@@ -110,3 +110,30 @@ export function canChangeRoles(
   const actor = [...actorRoles];
   return canManageMember(actor, currentTargetRoles) && [...newTargetRoles].every((role) => canAssignRole(actor, role));
 }
+
+/** Roles que la persona puede asignar, en el orden del catálogo (chips de S-ADM-03 y S-ADM-06). */
+export function assignableRoles(actorRoles: Iterable<Role>): Role[] {
+  const actor = [...actorRoles];
+  return ROLES.filter((role) => canAssignRole(actor, role));
+}
+
+/**
+ * Roles y sedes de S-ADM-03 / S-ADM-06 → asignaciones por sede: los roles
+ * administrativos van a toda la organización (sede nula) y los clínicos, a
+ * cada sede elegida. Sin un rol clínico no hacen falta sedes.
+ */
+export function assignmentsFor(
+  roles: Iterable<Role>,
+  locationIds: Iterable<string>,
+): { role: Role; locationId: string | null }[] {
+  const unique = [...new Set(roles)];
+  const locations = [...new Set(locationIds)];
+  return ROLES.filter((role) => unique.includes(role)).flatMap((role): { role: Role; locationId: string | null }[] =>
+    ORG_WIDE_ROLES.includes(role) ? [{ role, locationId: null }] : locations.map((locationId) => ({ role, locationId })),
+  );
+}
+
+/** ¿Hay algún rol clínico (que necesita sede)? */
+export function needsLocation(roles: Iterable<Role>): boolean {
+  return [...roles].some((role) => !ORG_WIDE_ROLES.includes(role));
+}

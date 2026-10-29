@@ -43,55 +43,18 @@ Para regenerar los tokens tras cambiar `DESIGN.md`: `pnpm --filter @clinic/ui to
 Se copia la distribución, los tamaños, el espaciado, los colores, los iconos y las sombras. **No** se construyen datos ni funciones que el sistema no tiene.
 
 | Pantalla | Se toma | No se construye |
-| --- | --- | --- |
-| Comunes (S-GEN-03, 06, 11) | Barra con el logo, fondo con degradado suave, tarjeta sin borde con sombra, iconos en un halo claro, pie «© 2026 Clinic System · v0.1» | Selector de idioma; «HIPAA compliant», «certificado HIPAA/HITECH», «Security Shield» y versiones inventadas |
-| S-GEN-03 | Campos rellenos con icono, botón con flecha, aviso de inactividad (solo si la sesión se cerró por inactividad) | Casilla «Estación de trabajo clínica autorizada», etiquetas «Requerido» y «Protegida» |
-| S-GEN-06 | Seis casillas en dos grupos de 3 (un solo campo real: se puede pegar y autocompletar), cápsula con el correo, cuenta atrás con el reloj | «Confiar en esta estación de trabajo» (nada permite saltarse el MFA) |
-| S-GEN-11 | Cápsula de sesión, sedes agrupadas por organización, tarjetas con código, zona horaria y dirección, «Actual» | Fotos, ocupación de consultorios, médicos de guardia, ocupación de la red, sincronización EMR |
-| S-GEN-12 | Menú lateral, cabecera con el selector de sede y el avatar con iniciales, barra inferior y cajón | «En vivo» (T-009), campana y «Buscar pacientes» (fase 2), banner «Modo contingencia», foto de perfil, contenido de ejemplo del Panel |
+| --- | --- |
+| Encabezado con título, subtítulo y «Invitar usuario»; **tarjetas de totales** con conteos reales (Total registrados, Activos, Invitaciones pendientes, Deshabilitados); **filtros en una fila** sin etiquetas visibles (búsqueda, Roles, Sedes y Estado como desplegables); tabla compacta con avatar de iniciales, roles en texto secundario bajo el nombre, correo en monoespaciado, «Roles por sede» en cápsulas que no se parten, verificación 2FA y estado con icono; **fila del Propietario** con fondo violeta suave, la etiqueta «PROPIETARIO» y «Sin acceso clínico»; filas deshabilitadas atenuadas, con chips grises; **«Reenviar»** junto al estado de las invitaciones | «Activos en línea» y porcentajes, «Expira en 48h», «Registro de actividad», «Exportar», búsqueda por cédula, filtro por estado del MFA y botón de limpiar filtros, títulos y especialidades (Dr., MD, RN…), el rol Caja, «Sincronización LDAP», «Cifrado HIPAA», IPs, el aviso de HIPAA/HITECH, «Manual de políticas», la etiqueta «Seguridad & Acceso REF» y la paginación |
 
-Los radios siguen la decisión de tokens (8 y 12 px), aunque `code.html` use 12 px en campos y botones.
-
-## Hoja de componentes (T-005)
-
-`componentes/S-GEN-30_hoja_componentes/` es la referencia principal de los componentes de `packages/ui`. La página `/dev/ui` (solo en desarrollo) muestra los componentes con sus mismas 7 secciones, en claro y oscuro, para compararlos.
-
-La hoja contradice al DESIGN.md en varios puntos. Se decidió así:
-
-| Tema | La hoja | Decisión |
-| --- | --- | --- |
-| Colores de los chips de estado | Un color de Material 3 por estado; «Se retiró» en rojo | Los 6 tonos de la prosa del DESIGN.md («Visit Status Taxonomy»); iconos de la hoja |
-| Tamaño del chip | 48 px, punto de color, texto de 14 px | 32 px, borde de 1 px, texto de 12 px seminegrita (prosa) |
-| «Cancelada» | No aparece (10 estados) | Tono gris claro (Departed / Inactive) con el icono `Ban` |
-| Insignias de ruta | Un color por ruta | Neutras con borde (manual y Panel S-REC-01); iconos de la hoja |
-| Botón principal | `#0F766E`, 14 px | `#005C55` y 16 px, como en T-004 |
-| Botón destructivo | Rojo sólido | Rojo sólido (la prosa lo daba rojizo claro) |
-| Botón de contorno | Menta sin borde | Blanco con borde de 1 px (prosa) |
-| Carga | Esqueleto | Esqueleto en tablas y listas; spinner en lo demás; barra de 2 px al refrescar (manual S-GEN-28) |
-| Motivo del diálogo destructivo | Lista de motivos inventados y la norma NOM-004-SSA3 | Texto libre obligatorio (1 a 500 caracteres, el mismo esquema que la API) |
-| Aviso de inactividad | Tarjeta con cuenta atrás y barra, texto sobre la HIPAA | Ese aspecto con los textos del manual, sin mencionar la HIPAA |
-
-| Estado | Tono | Icono (lucide) |
-| --- | --- | --- |
-| Registrado | Registered (gris) | `UserCheck` |
-| Esperando enfermería | Waiting (ámbar) | `Hourglass` |
-| Con enfermería | In care (azul) | `ClipboardPlus` |
-| Esperando proveedor | Waiting (ámbar) | `UserSearch` |
-| Con proveedor | In care (azul) | `Stethoscope` |
-| Procedimiento pendiente | Waiting (ámbar) | `BriefcaseMedical` |
-| Listo para caja | Checkout (morado) | `CircleCheck` |
-| En caja | Checkout (morado) | `Calculator` |
-| Completada | Completed (verde) | `CircleCheckBig` |
-| Se retiró | Departed (gris claro) | `LogOut` |
-| Cancelada | Departed (gris claro) | `Ban` |
-
-**Contraste:** la hoja y la prosa dicen que los estados cumplen AAA (7:1), pero medidos sobre su fondo dan entre 4.72 y 6.98. Todos cumplen AA, que es lo que comprueban `packages/ui/test/tokens.test.ts` y la prueba de axe de `/dev/ui`.
-
-**No se construye:** el encabezado «SYS-COMP-01», «HIPAA / FDA Class I» y «v2.4.0 Estable»; los códigos R-01 a R-04, las descripciones y los «tiempos estimados» de las rutas; «Ver diagnóstico»; «Estado expediente: Verificado»; «Descargar especificación JSON»; «Servidor Clínico Activo». El menú lateral de la hoja (fondo menta) no cambia el marco, que sigue a S-GEN-12.
+- **Añadido (no está en Stitch):** la columna **«Último acceso»** («Hoy, 7:45 a. m.», «Ayer…», fecha o «Nunca»), sacada de la auditoría de inicio de sesión y sin IP; «—» en las invitaciones. También el menú de acciones de cada fila.
+- **Roles de toda la organización:** como en la fila del Propietario de Stitch, la cápsula dice solo «Organización completa» (el rol ya va bajo el nombre; el lector de pantalla oye «Administrador · Organización completa»).
+- **Chips de estado:** Invitado en información y Activo en éxito; Deshabilitado en gris, como en Stitch.
+- **Anchos:** desde 1280 px, todas las columnas; entre 1025 y 1279 px el correo pasa bajo el nombre; por debajo de 1025 px (tableta vertical y teléfono), tarjetas.
+- **Diálogos** (S-ADM-03 a 09) y **páginas públicas** (S-GEN-09, S-GEN-10): sin captura. Diálogos de la hoja S-GEN-30; páginas con el aspecto de S-GEN-03.
 
 ## Pantallas sin referencia de Stitch
 
-Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29.
+Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29; en T-006a, S-ADM-03 a 09, S-GEN-09 y S-GEN-10.
 
 ## Antes de generar más pantallas
 

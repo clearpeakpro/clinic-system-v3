@@ -1,6 +1,7 @@
 import { VISIT_ROUTES, VISIT_STATUSES } from '@clinic/shared';
 import {
   Button,
+  ChipGroup,
   CodeField,
   CodeText,
   ConfirmDialog,
@@ -9,19 +10,25 @@ import {
   DiscardChangesDialog,
   EmptyState,
   ErrorState,
+  FilterChip,
   MoneyField,
   MoneyText,
   RefreshBar,
   RouteBadge,
+  SegmentedControl,
+  SelectField,
+  StatCard,
   SemanticChip,
   SkeletonRows,
   Spinner,
   StaleDataBanner,
+  TextAreaField,
+  useSnackbar,
   VisitStatusChip,
   type Column,
 } from '@clinic/ui';
 import type { VisitRoute, VisitStatus } from '@clinic/shared';
-import { Check, Coffee, IdCard, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, Coffee, IdCard, MailPlus, RefreshCw, Trash2, UserRoundX } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IdleWarningDialog } from '../components/idle-guard.tsx';
 
@@ -184,6 +191,10 @@ export function DevUiPage() {
         <Section n={7} title="Campos con formato, códigos y fechas">
           <Fields />
         </Section>
+
+        <Section n={8} title="Formularios, totales y avisos (T-006a)">
+          <Forms />
+        </Section>
       </div>
     </main>
   );
@@ -273,6 +284,66 @@ function Fields() {
         <Row label="Fecha y hora">
           <DateTimeText value={SAMPLE_TIME} timeZone={TZ} />
         </Row>
+      </Sub>
+    </div>
+  );
+}
+
+function Forms() {
+  const snackbar = useSnackbar();
+  const [status, setStatus] = useState<'all' | 'invited' | 'active'>('all');
+  const [roles, setRoles] = useState<string[]>(['Recepción']);
+  const [reason, setReason] = useState('');
+  return (
+    <div className="flex flex-col gap-space-lg">
+      <Sub title="Tarjetas de totales">
+        <div className="grid grid-cols-2 gap-space-sm">
+          <StatCard label="Total registrados" value={9} icon={IdCard} />
+          <StatCard label="Invitaciones pendientes" value={2} icon={MailPlus} tone="info" />
+          <StatCard label="Deshabilitados" value={1} icon={UserRoundX} tone="neutral" />
+        </div>
+      </Sub>
+      <Sub title="Botones segmentados">
+        <SegmentedControl
+          label="Estado"
+          options={[
+            { value: 'all', label: 'Todos' },
+            { value: 'invited', label: 'Invitado' },
+            { value: 'active', label: 'Activo' },
+          ]}
+          value={status}
+          onChange={setStatus}
+        />
+      </Sub>
+      <Sub title="Chips de filtro">
+        <ChipGroup label="Roles" required error={roles.length === 0 ? 'Seleccione al menos un rol.' : null}>
+          {['Recepción', 'Enfermería', 'Proveedor'].map((r) => (
+            <FilterChip key={r} label={r} selected={roles.includes(r)} onToggle={(on) => { setRoles(on ? [...roles, r] : roles.filter((x) => x !== r)); }} />
+          ))}
+        </ChipGroup>
+      </Sub>
+      <Sub title="Desplegable y texto multilínea">
+        <SelectField label="Sede" defaultValue="all">
+          <option value="all">Todas las sedes</option>
+          <option value="NOR1">Norte Centro (NOR1)</option>
+        </SelectField>
+        <TextAreaField
+          label="Motivo"
+          required
+          hint="Se guarda en la auditoría: no incluya información de pacientes."
+          value={reason}
+          onChange={(e) => { setReason(e.target.value); }}
+        />
+      </Sub>
+      <Sub title="Aviso temporal">
+        <Button
+          variant="outline"
+          onClick={() => {
+            snackbar({ message: 'Este registro fue actualizado por otro usuario. Actualice para continuar.', action: { label: 'Actualizar', onClick: noop } });
+          }}
+        >
+          Mostrar aviso
+        </Button>
       </Sub>
     </div>
   );

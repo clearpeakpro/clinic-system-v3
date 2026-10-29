@@ -11,15 +11,17 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string | null;
   icon?: ReactNode;
   trailing?: ReactNode;
+  /** Etiqueta solo para lectores de pantalla (buscador de una fila de filtros). */
+  hideLabel?: boolean;
 }
 
-export function Field({ label, hint, error, icon, trailing, className, id, ...props }: FieldProps) {
+export function Field({ label, hint, error, icon, trailing, hideLabel = false, className, id, ...props }: FieldProps) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const describedBy = error ? `${inputId}-error` : undefined;
   return (
     <div className="flex flex-col gap-space-xs">
-      <div className="flex items-baseline justify-between">
+      <div className={cn('flex items-baseline justify-between', hideLabel && 'sr-only')}>
         <label htmlFor={inputId} className="text-body-md-medium text-on-surface">
           {label}
         </label>

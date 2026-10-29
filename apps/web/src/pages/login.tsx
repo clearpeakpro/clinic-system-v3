@@ -6,6 +6,7 @@ import { Banner, Button, Checkbox, copyText, Field, OTP_LENGTH, OtpInput, totpSe
 import { AuthCard, AuthHeader, AuthLayout } from '../components/auth-layout.tsx';
 import { BrandMark } from '../components/brand.tsx';
 import { api, ApiError } from '../lib/api.ts';
+import { failureKind, failureMessage } from '../lib/errors.ts';
 import { keys, queryClient } from '../lib/session.ts';
 
 // S-GEN-03 Iniciar sesión → S-GEN-06 código de MFA, o S-GEN-07 inscripción
@@ -22,11 +23,10 @@ const REASON_TEXT: Record<LoginReason, { title: string; body: string }> = {
 
 function signInError(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 429) return 'Demasiados intentos. Espere unos minutos e inténtelo de nuevo.';
     if (error.code === 'user_disabled' || error.status === 403) return 'Su cuenta ya no está activa. Contacte a un administrador.';
     if (error.status === 401) return 'Correo o contraseña incorrectos.';
   }
-  return 'No se pudo iniciar sesión. Revise su conexión e inténtelo de nuevo.';
+  return failureMessage(error, 'iniciar sesión');
 }
 
 export function LoginPage({ reason, step: initialStep }: { reason?: LoginReason | undefined; step?: 'inscripcion' | undefined }) {
@@ -188,12 +188,12 @@ function Credentials({
 
 function codeError(error: unknown, recovery: boolean): string {
   if (error instanceof ApiError) {
-    if (error.status === 429) return 'Demasiados intentos. Espere unos segundos e inténtelo de nuevo.';
     if (error.code === 'ACCOUNT_TEMPORARILY_LOCKED')
       return 'La verificación en dos pasos está bloqueada tras demasiados códigos erróneos seguidos. Pida a un administrador que la restablezca.';
     if (error.status === 401 && recovery) return 'Ese código de recuperación no es válido o ya se usó.';
     if (error.status === 401) return 'Ese código no es válido. Revise la aplicación e inténtelo de nuevo.';
   }
+  if (failureKind(error) !== 'other') return failureMessage(error, 'comprobar el código');
   return 'Este intento de inicio de sesión venció. Inicie sesión de nuevo.';
 }
 
@@ -319,7 +319,7 @@ function MfaCode({ email, onSuccess, onBack }: { email: string | null; onSuccess
 let pendingRecoveryCodes: string[] = [];
 
 /** S-GEN-07: inscripción obligatoria (QR, clave en grupos de 4, confirmar con un código). */
-function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: string }; onEnrolled: () => void; onBack: () => Promise<void> }) {
+export function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: string }; onEnrolled: () => void; onBack: () => Promise<void> }) {
   // Con la contraseña en memoria (recién iniciada la sesión) la inscripción
   // arranca sola; si se recargó la página, se vuelve a pedir.
   const [initialPassword] = useState(password.current);
@@ -347,7 +347,7 @@ function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: stri
       setQr(await QRCode.toDataURL(totpURI, { width: 196, margin: 1 }));
       setNeedsPassword(false);
     } catch (e) {
-      setError(e instanceof ApiError && e.status < 500 ? 'La contraseña no es correcta.' : 'No se pudo preparar la verificación. Inténtelo de nuevo.');
+      setError(failureKind(e) === 'other' ? 'La contraseña no es correcta.' : failureMessage(e, 'preparar la verificación'));
       setNeedsPassword(true);
     } finally {
       setBusy(false);
@@ -441,7 +441,7 @@ function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: stri
 }
 
 /** S-GEN-08: los códigos solo se muestran ahora; «Continuar» exige marcar «Guardé estos códigos». */
-function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> }) {
+export function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> }) {
   const [codes] = useState(() => pendingRecoveryCodes);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);

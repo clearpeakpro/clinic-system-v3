@@ -148,3 +148,47 @@ export function DateTimeText({
     </time>
   );
 }
+
+const STAT_TONES = {
+  primary: 'bg-surface-container text-primary dark:bg-surface-container-high',
+  info: 'bg-status-in-care-container text-status-in-care',
+  neutral: 'bg-surface-container-high text-on-surface-variant dark:bg-surface-container-highest',
+} as const;
+
+/**
+ * Tarjeta de total (cabecera de S-ADM-02): etiqueta, cifra grande y un icono
+ * en un cuadro de color. La cifra la calcula quien la muestra a partir de
+ * datos reales; nunca un porcentaje ni una tendencia inventados.
+ */
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  tone = 'primary',
+  className,
+}: {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  tone?: keyof typeof STAT_TONES;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-between gap-space-sm rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low',
+        className,
+      )}
+    >
+      <dl className="flex min-w-0 flex-col gap-space-xs">
+        <dt className="text-caption text-on-surface">{label}</dt>
+        <dd className={cn('font-mono text-headline-lg tabular-nums', tone === 'info' ? 'text-status-in-care' : tone === 'neutral' ? 'text-on-surface-variant' : 'text-on-surface')}>
+          {value}
+        </dd>
+      </dl>
+      <span aria-hidden className={cn('flex size-12 shrink-0 items-center justify-center rounded-md', STAT_TONES[tone])}>
+        <Icon className="size-6" />
+      </span>
+    </div>
+  );
+}

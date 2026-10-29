@@ -219,3 +219,28 @@ export function lastInvitationLink(app: TestApp, to?: string): URL {
   if (!match) throw new Error('sin enlace de invitación');
   return new URL(match[0]);
 }
+
+/** Token de un enlace /invitacion/<token> (o /restablecer/<token>). */
+export function tokenOf(link: string | URL): string {
+  const token = new URL(link).pathname.split('/').at(-1);
+  if (!token) throw new Error('enlace sin token');
+  return token;
+}
+
+/** Versión actual de una membresía (concurrencia optimista). */
+export async function versionOf(app: TestApp, org: typeof NORTE | typeof SUR, membershipId: string): Promise<number> {
+  const version = await createTenantDb(app.pool).withTenant(org.id, (tx) =>
+    tx
+      .select({ version: memberships.version })
+      .from(memberships)
+      .where(eq(memberships.id, membershipId))
+      .then((r) => r[0]?.version),
+  );
+  if (version === undefined) throw new Error('sin membresía');
+  return version;
+}
+
+/** Quita (deshabilita) una membresía con la versión actual. */
+export async function deactivateVia(client: Client, app: TestApp, org: typeof NORTE | typeof SUR, membershipId: string, reason = 'Prueba') {
+  return client.post(`/api/memberships/${membershipId}/deactivate`, { reason, expectedVersion: await versionOf(app, org, membershipId) });
+}

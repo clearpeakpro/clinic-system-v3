@@ -2,14 +2,19 @@ import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet,
 import { Frame } from './components/frame.tsx';
 import { IdleGuard } from './components/idle-guard.tsx';
 import { useMe } from './lib/session.ts';
+import { AcceptInvitationPage } from './pages/accept-invitation.tsx';
+import { AdminUsersPage } from './pages/admin-users.tsx';
 import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
+import { ResetPasswordPage } from './pages/reset-password.tsx';
 import { SelectLocationPage } from './pages/select-location.tsx';
 
 // Rutas (T-004): /, /login, /seleccionar-sede, /app/<SEDE>/<destino> y
 // /admin/<destino>. <SEDE> es el código de la sede (p. ej. NOR1).
+// T-006a: /admin/usuarios (S-ADM-02) y las páginas públicas
+// /invitacion/<token> (S-GEN-09) y /restablecer/<token> (S-GEN-10).
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -30,6 +35,24 @@ const loginRoute = createRoute({
   component: function Login() {
     const { motivo, paso } = loginRoute.useSearch();
     return <LoginPage reason={motivo} step={paso} />;
+  },
+});
+
+const invitationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/invitacion/$token',
+  component: function Invitation() {
+    const { token } = invitationRoute.useParams();
+    return <AcceptInvitationPage token={token} />;
+  },
+});
+
+const resetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/restablecer/$token',
+  component: function Reset() {
+    const { token } = resetRoute.useParams();
+    return <ResetPasswordPage token={token} />;
   },
 });
 
@@ -87,6 +110,17 @@ const adminIndexRoute = createRoute({
   },
 });
 
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'usuarios',
+  component: function AdminUsers() {
+    const me = useMe();
+    // El backend autoriza siempre; aquí solo se oculta.
+    if (me.data && !me.data.permissions.includes('members.manage')) return <NotFoundPage />;
+    return <AdminUsersPage />;
+  },
+});
+
 const adminDestinationRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '$destino',
@@ -105,9 +139,11 @@ const devRoutes = import.meta.env.DEV
 const routeTree = rootRoute.addChildren([
   bootRoute,
   loginRoute,
+  invitationRoute,
+  resetRoute,
   selectRoute,
   appRoute.addChildren([appIndexRoute, appDestinationRoute]),
-  adminRoute.addChildren([adminIndexRoute, adminDestinationRoute]),
+  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);
 

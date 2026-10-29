@@ -3,13 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   Client,
   createStaff,
+  deactivateVia,
   enrollTotp,
   NORTE,
   readAudit,
   selectContext,
   signIn,
   startApp,
-  lastInvitationLink,
+  tokenOf,
   totp,
   type Staff,
   type TestApp,
@@ -57,20 +58,23 @@ describe('criterio 8: auditoría', () => {
 
     // Invitación, aceptación y revocación de la membresía.
     await selectContext(withTotp, NORTE);
-    await withTotp.post('/api/invitations', { email: 'auditada@example.test', role: 'recepcion', locationId: NORTE.locations[0].id });
-    const link = lastInvitationLink(app);
-    const token = link.searchParams.get('token') ?? '';
+    const created = await withTotp.post('/api/invitations', {
+      email: 'auditada@example.test',
+      name: 'Persona Auditada',
+      roles: ['recepcion'],
+      locationIds: [NORTE.locations[0].id],
+    });
+    const token = tokenOf(created.json<{ link: string }>().link);
     secrets.push(token);
     const newPassword = 'Ficticia-auditada-555';
     secrets.push(newPassword);
     const accepted = await new Client(app, ips[4]).post('/api/invitations/accept', {
-      organizationId: NORTE.id,
       token,
       name: 'Persona Auditada',
       password: newPassword,
     });
     const { membershipId } = accepted.json<{ membershipId: string }>();
-    await withTotp.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Baja de prueba' });
+    await deactivateVia(withTotp, app, NORTE, membershipId, 'Baja de prueba');
 
     // Cookies de sesión: también son secretos.
     for (const value of [...client.cookies.values(), ...withTotp.cookies.values()]) secrets.push(value);
@@ -95,9 +99,10 @@ describe('criterio 8: auditoría', () => {
     ]) {
       expect(actions, action).toContain(action);
     }
-    // Un inicio pendiente del segundo factor no se registra como correcto: solo
-    // hubo un inicio correcto sin MFA (antes de inscribirse).
-    const successes = (await eventsSince()).filter((e) => e.action === 'auth.sign_in.success');
+    // Un inicio pendiente del segundo factor no se registra como correcto: el
+    // administrador solo tuvo un inicio correcto sin MFA (antes de inscribirse).
+    // (La persona invitada entra al aceptar: es otro actor.)
+    const successes = (await eventsSince()).filter((e) => e.action === 'auth.sign_in.success' && e.actor_id === admin.userId);
     expect(successes).toHaveLength(1);
     const backup = (await eventsSince()).find(
       (e) => e.action === 'auth.mfa.success' && e.metadata?.method === 'backup_code',
@@ -108,7 +113,8 @@ describe('criterio 8: auditoría', () => {
   it('cada evento lleva actor, IP y hora; los de organización, su organización', async () => {
     const events = await eventsSince();
     for (const event of events.filter((e) => /^auth\.(sign_in\.(success|mfa_required)|mfa\.)/.test(e.action))) {
-      expect(event, event.action).toMatchObject({ actor_type: 'user', actor_id: admin.userId, organization_id: null });
+      expect(event, event.action).toMatchObject({ actor_type: 'user', organization_id: null });
+      expect(event.actor_id, event.action).not.toBeNull();
       expect(ips, event.action).toContain(event.ip);
     }
     for (const event of events.filter((e) => e.action.startsWith('invitation.') || e.action.startsWith('membership.'))) {

@@ -13,7 +13,7 @@
     "db:migrate": "pnpm --filter @clinic/db db:migrate",
     "db:seed": "pnpm --filter @clinic/db db:seed && pnpm --filter @clinic/api seed:dev",
     "check:rls-context": "node packages/db/scripts/check-rls-context.ts",
-    "dev": "docker compose up -d && turbo run dev",
+    "dev": "docker compose up -d --wait && pnpm db:migrate && turbo run dev",
     "test:e2e": "pnpm --filter @clinic/web test:e2e"
   },
   "devDependencies": {

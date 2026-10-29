@@ -14,7 +14,9 @@ import { LOG_REDACT_PATHS, type LogSink } from './logging.ts';
 import type { Mailer } from './mailer.ts';
 import { PrincipalResolver } from './principal.ts';
 import { hasSessionCookie, isMfaEnrollmentPath, toHeaders } from './request-context.ts';
-import { ContextService, InvitationService, MembershipService } from './services.ts';
+import { InvitationService } from './invitations.ts';
+import { ContextService } from './services.ts';
+import { MembershipService } from './users.ts';
 
 export interface AppDeps {
   config: AppConfig;
@@ -34,7 +36,7 @@ export async function createApp({ config, mailer, logs }: AppDeps) {
   const services = {
     contexts: new ContextService(pool, tenantDb),
     invitations: new InvitationService(tenantDb, auth, mailer, audit, config),
-    memberships: new MembershipService(pool, tenantDb, resolver, audit),
+    memberships: new MembershipService(pool, tenantDb, resolver, audit, auth, config),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

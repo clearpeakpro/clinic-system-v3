@@ -4,7 +4,7 @@ import { checkPassword, COMMON_PASSWORD_COUNT } from '../src/password-policy.ts'
 import {
   Client,
   createStaff,
-  lastInvitationLink,
+  tokenOf,
   NORTE,
   signedInWithContext,
   signIn,
@@ -54,9 +54,9 @@ describe('política de contraseñas', () => {
     });
 
     const invite = async (email: string) => {
-      expect((await admin.post('/api/invitations', { email, role: 'recepcion', locationId: NORTE.locations[0].id })).statusCode).toBe(201);
-      const link = lastInvitationLink(app, email);
-      return { organizationId: link.searchParams.get('org'), token: link.searchParams.get('token') };
+      const response = await admin.post('/api/invitations', { email, name: 'Persona', roles: ['recepcion'], locationIds: [NORTE.locations[0].id] });
+      expect(response.statusCode).toBe(201);
+      return { token: tokenOf(response.json<{ link: string }>().link) };
     };
 
     it('aceptar una invitación aplica la política con códigos claros', async () => {

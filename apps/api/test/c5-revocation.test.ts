@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   Client,
   createStaff,
+  deactivateVia,
   membershipIdOf,
   NORTE,
   selectContext,
@@ -56,7 +57,7 @@ describe('criterio 5: revocación', () => {
     const inSur = await signedInWithContext(app, staff, SUR);
 
     const membershipId = await membershipIdOf(app, NORTE, staff.userId);
-    const response = await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Ya no trabaja en Norte' });
+    const response = await deactivateVia(admin, app, NORTE, membershipId, 'Ya no trabaja en Norte');
     expect(response.statusCode).toBe(204);
 
     expect((await inNorte.get('/api/me')).statusCode).toBe(401);
@@ -78,7 +79,7 @@ describe('criterio 5: revocación', () => {
     const client = new Client(app);
     await signIn(client, staff);
     const membershipId = await membershipIdOf(app, NORTE, staff.userId);
-    await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Prueba' });
+    await deactivateVia(admin, app, NORTE, membershipId);
     expect((await selectContext(client, NORTE)).statusCode).toBe(403);
   });
 
@@ -89,7 +90,7 @@ describe('criterio 5: revocación', () => {
     await signIn(withoutContext, staff);
 
     const membershipId = await membershipIdOf(app, NORTE, staff.userId);
-    await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: 'Baja' });
+    await deactivateVia(admin, app, NORTE, membershipId, 'Baja');
 
     expect(await sessionsOf(app, staff.userId)).toBe(0);
     expect((await withContext.get('/api/me')).statusCode).toBe(401);
@@ -99,7 +100,7 @@ describe('criterio 5: revocación', () => {
   it('quitar una membresía exige motivo', async () => {
     const staff = await createStaff(app, 'rev-motivo', [{ org: NORTE, location: 0, role: 'recepcion' }]);
     const membershipId = await membershipIdOf(app, NORTE, staff.userId);
-    expect((await admin.post(`/api/memberships/${membershipId}/deactivate`, {})).statusCode).toBe(400);
-    expect((await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: '   ' })).statusCode).toBe(400);
+    expect((await admin.post(`/api/memberships/${membershipId}/deactivate`, { expectedVersion: 1 })).statusCode).toBe(400);
+    expect((await admin.post(`/api/memberships/${membershipId}/deactivate`, { reason: '   ', expectedVersion: 1 })).statusCode).toBe(400);
   });
 });
