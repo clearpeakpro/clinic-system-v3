@@ -1,6 +1,6 @@
 import { locations, organizations, session as sessionTable, type TenantDb } from '@clinic/db';
 import { ORG_WIDE_ROLES } from '@clinic/shared';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import { rolesAt, type Principal } from './principal.ts';
@@ -46,6 +46,11 @@ export class ContextService {
     if (rolesAt(principal.assignments, organizationId, locationId).length === 0) {
       throw new HttpError(403, 'not_a_member');
     }
+    // El personal no opera en una sede inactiva (T-007).
+    const [site] = await this.#tenantDb.withTenant(organizationId, (tx) =>
+      tx.select({ active: locations.active }).from(locations).where(eq(locations.id, locationId)),
+    );
+    if (!site?.active) throw new HttpError(403, 'location_inactive');
     await this.#plain
       .update(sessionTable)
       .set({ activeOrganizationId: organizationId, activeLocationId: locationId })
@@ -76,7 +81,8 @@ export class ContextService {
           .from(locations)
           // Con un rol de toda la organización, todas sus sedes; si no, solo
           // las de sus roles (la base de datos impide roles clínicos sin sede).
-          .where(orgWide ? undefined : inArray(locations.id, ids))
+          // Las sedes inactivas no se pueden elegir (T-007).
+          .where(orgWide ? eq(locations.active, true) : and(eq(locations.active, true), inArray(locations.id, ids)))
           .orderBy(locations.code);
         return { organizationId, organizationName: org?.name ?? '', locations: rows };
       });

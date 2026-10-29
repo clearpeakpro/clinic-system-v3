@@ -103,7 +103,7 @@ Cada una de esas salidas tiene su control propio.
 - `membership_roles (membership_id, location_id, role)` asigna roles por sede. `location_id` nulo significa toda la organización y solo se permite para Propietario y Administrador.
 - `invitations` + `invitation_roles` (T-006a): una invitación lleva varios roles y sedes, que pasan tal cual a `membership_roles` al aceptarla. El enlace `/invitacion/<token>` lleva la organización y un secreto; solo se guarda el sha256 del secreto.
 - **Deshabilitar** a alguien cambia su membresía en **esa** organización. Lo que toca la cuenta global (nombre, MFA, contraseña) solo lo hace una organización si la cuenta no tiene membresías activas en otra; si no, lo hace el operador de la plataforma. Para saberlo sin leer otras organizaciones, la función `app.has_active_membership_elsewhere(user, org)` (SECURITY DEFINER de `clinic_owner`, con una política de solo lectura para ese rol) devuelve solo un sí o un no.
-- **Último acceso** (S-ADM-02): `audit_log` es solo de inserción para `clinic_app`. La función `app.last_sign_ins()` (SECURITY DEFINER de `clinic_owner`, con una política de solo lectura limitada a los eventos `auth.sign_in.success` y `auth.mfa.success`) devuelve solo usuario y hora de las personas de la organización del contexto RLS; nunca la IP ni otros eventos.
+- **Último acceso** (S-ADM-02), excepción documentada en el ADR 0024: `audit_log` es solo de inserción para `clinic_app`. La función `app.last_sign_ins()` (SECURITY DEFINER de `clinic_owner`, con una política de solo lectura limitada a los eventos `auth.sign_in.success` y `auth.mfa.success`) devuelve solo usuario y hora de las personas de la organización del contexto RLS; nunca la IP ni otros eventos.
 
 ### Permisos
 
@@ -118,6 +118,7 @@ Cada una de esas salidas tiene su control propio.
 | `clinic_owner` | NOLOGIN; dueño del esquema y de las tablas | Solo es propietario de objetos |
 | `clinic_migrator` | LOGIN, miembro de `clinic_owner`; NOSUPERUSER, NOBYPASSRLS | Migraciones en CI y en el despliegue. Nunca lo usan la API ni el worker. |
 | `clinic_app` | LOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE; no es dueño de nada | API y worker. Tiene SELECT/INSERT/UPDATE según la tabla; sin DELETE en finanzas ni en auditoría; solo INSERT en `audit_log`. |
+| `clinic_operator` | LOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE; no es miembro de nadie | Operador de la plataforma ([ADR 0024](decisions/0024-operador-plataforma.md)): `pnpm org:create` (SELECT/INSERT en organizaciones, sedes e invitaciones, bajo RLS) y `pnpm audit:platform` (solo con `app.read_platform_audit`, que audita cada lectura). Sin acceso a pacientes, a `auth` ni a membresías. |
 
 Todas las tablas con datos de una organización tienen `ENABLE` y `FORCE ROW LEVEL SECURITY`.
 

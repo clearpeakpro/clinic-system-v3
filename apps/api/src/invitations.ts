@@ -89,8 +89,9 @@ export class InvitationService {
 
     const invitationId = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       if (locationIds.length > 0) {
-        const found = await tx.select({ id: locations.id }).from(locations).where(inArray(locations.id, locationIds));
+        const found = await tx.select({ id: locations.id, active: locations.active }).from(locations).where(inArray(locations.id, locationIds));
         if (found.length !== locationIds.length) throw new HttpError(400, 'invalid_location');
+        if (found.some((l) => !l.active)) throw new HttpError(400, 'location_inactive');
       }
       // Un correo que ya es de alguien de la organización (activo o
       // deshabilitado) no se vuelve a invitar.

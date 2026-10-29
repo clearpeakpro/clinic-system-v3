@@ -89,8 +89,8 @@ export interface InvitationRow {
 
 export interface UsersList {
   rows: (MemberRow | InvitationRow)[];
-  /** Sedes de la organización, para los chips de S-ADM-03 / S-ADM-06 y la columna de sedes. */
-  locations: { id: string; code: string; name: string }[];
+  /** Sedes de la organización, para los chips de S-ADM-03 / S-ADM-06 y la columna de sedes. Las inactivas no se ofrecen. */
+  locations: { id: string; code: string; name: string; active: boolean }[];
   /** Roles que quien consulta puede asignar. */
   assignableRoles: Role[];
 }
@@ -154,7 +154,7 @@ export class MembershipService {
         .select({ invitationId: invitationRoles.invitationId, role: invitationRoles.role, locationId: invitationRoles.locationId })
         .from(invitationRoles);
       const sites = await tx
-        .select({ id: locations.id, code: locations.code, name: locations.name })
+        .select({ id: locations.id, code: locations.code, name: locations.name, active: locations.active })
         .from(locations)
         .orderBy(locations.code);
       // Solo de las personas de esta organización (migración 0010).
@@ -264,8 +264,19 @@ export class MembershipService {
       assertVersion(target.version, input.expectedVersion);
       const locationIds = [...new Set(input.roles.flatMap((r) => (r.locationId ? [r.locationId] : [])))];
       if (locationIds.length > 0) {
-        const found = await tx.select({ id: locations.id }).from(locations).where(inArray(locations.id, locationIds));
+        const found = await tx
+          .select({ id: locations.id, active: locations.active })
+          .from(locations)
+          .where(inArray(locations.id, locationIds));
         if (found.length !== locationIds.length) throw new HttpError(400, 'invalid_location');
+        // Una sede inactiva no se asigna de nuevo; las asignaciones que ya
+        // tenía en ella se conservan (T-007).
+        const current = await tx
+          .select({ locationId: membershipRoles.locationId })
+          .from(membershipRoles)
+          .where(eq(membershipRoles.membershipId, membershipId));
+        const kept = new Set(current.map((c) => c.locationId));
+        if (found.some((l) => !l.active && !kept.has(l.id))) throw new HttpError(400, 'location_inactive');
       }
       await tx.delete(membershipRoles).where(eq(membershipRoles.membershipId, membershipId));
       await tx.insert(membershipRoles).values(

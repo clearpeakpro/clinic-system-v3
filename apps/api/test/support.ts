@@ -9,6 +9,7 @@ import { createApp, type ClinicApp } from '../src/app.ts';
 import { DEFAULTS, type AppConfig } from '../src/config.ts';
 import { MemoryLogSink } from '../src/logging.ts';
 import { MemoryMailer } from '../src/mailer.ts';
+import { createOrganization } from '../src/platform.ts';
 
 export const NORTE = DEMO.norte;
 export const SUR = DEMO.sur;
@@ -243,4 +244,38 @@ export async function versionOf(app: TestApp, org: typeof NORTE | typeof SUR, me
 /** Quita (deshabilita) una membresía con la versión actual. */
 export async function deactivateVia(client: Client, app: TestApp, org: typeof NORTE | typeof SUR, membershipId: string, reason = 'Prueba') {
   return client.post(`/api/memberships/${membershipId}/deactivate`, { reason, expectedVersion: await versionOf(app, org, membershipId) });
+}
+
+/**
+ * Organización nueva para una prueba (T-007), creada como en producción: el
+ * operador (clinic_operator) con org:create, y su Propietario acepta la
+ * invitación, configura el MFA y elige la primera sede. Así las pruebas que
+ * cambian sedes no tocan las dos organizaciones ficticias de la semilla.
+ */
+export async function newOrganization(app: TestApp, code: string): Promise<{ org: typeof NORTE; owner: Client }> {
+  const operator = new pg.Pool({ connectionString: inject('platformOperatorUrl'), max: 1 });
+  try {
+    const email = `propietario.${code.toLowerCase()}.${randomUUID().slice(0, 8)}@example.test`;
+    const created = await createOrganization(
+      operator,
+      {
+        organizationName: `Organización ${code} (ficticia)`,
+        ownerEmail: email,
+        ownerName: `Propietario ${code}`,
+        location: { code, name: `Sede ${code}`, timezone: 'America/Chicago', address: null, phone: null },
+      },
+      { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, mailer: new MemoryMailer() },
+    );
+    const owner = new Client(app);
+    const password = `Ficticia-${randomBytes(9).toString('base64url')}`;
+    const accepted = await owner.post('/api/invitations/accept', { token: tokenOf(created.link), name: `Propietario ${code}`, password });
+    if (accepted.statusCode !== 201) throw new Error(`aceptar ${String(accepted.statusCode)}`);
+    await enrollTotp(owner, { userId: '', email, password });
+    const context = await owner.post('/api/context', { organizationId: created.organizationId, locationId: created.locationId });
+    if (context.statusCode !== 204) throw new Error(`contexto ${String(context.statusCode)}`);
+    const org = { id: created.organizationId, name: `Organización ${code}`, locations: [{ id: created.locationId, code }] } as unknown as typeof NORTE;
+    return { org, owner };
+  } finally {
+    await operator.end();
+  }
 }

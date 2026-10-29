@@ -9,8 +9,9 @@ Esquema Drizzle, migraciones, políticas RLS y semilla ficticia. Ver ADR 0002 y 
 | `clinic_owner` | NOLOGIN | Dueño de los esquemas `app` y `drizzle` y de todas las tablas. Nadie inicia sesión con él. |
 | `clinic_migrator` | LOGIN, miembro de `clinic_owner`; NOSUPERUSER, NOBYPASSRLS | Migraciones (hace `SET ROLE clinic_owner`) y la semilla de desarrollo. Nunca lo usan la API ni el worker. |
 | `clinic_app` | LOGIN; NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE; no es dueño ni miembro de nada | API y worker. Solo tiene los `GRANT` de `migrations/0001_rls.sql`. |
+| `clinic_operator` | LOGIN; NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE; no es dueño ni miembro de nada | Operador de la plataforma (ADR 0024): `pnpm org:create` y `pnpm audit:platform`. Sus permisos están en `migrations/0012_platform_operator.sql`. Sin acceso a pacientes. Contraseña: `CLINIC_OPERATOR_PASSWORD` (opcional en desarrollo). |
 
-Los roles los crea `sql/bootstrap.sql`, que ejecuta un **superusuario** una vez por base de datos (`pnpm db:bootstrap`). `clinic_migrator` no puede crear roles, así que esto no va en las migraciones.
+Los roles los crea `sql/bootstrap.sql`, que ejecuta un **superusuario** (`pnpm db:bootstrap`; es idempotente y `pnpm dev` lo ejecuta en cada arranque). `clinic_migrator` no puede crear roles, así que esto no va en las migraciones.
 
 ## RLS
 

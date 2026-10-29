@@ -9,6 +9,8 @@ declare module 'vitest' {
   export interface ProvidedContext {
     appUrl: string;
     migratorUrl: string;
+    /** Operador de la plataforma (ADR 0024). */
+    operatorUrl: string;
   }
 }
 
@@ -26,14 +28,16 @@ export async function setup(project: TestProject): Promise<void> {
   const superuserUrl = container.getConnectionUri();
   const migratorPassword = randomBytes(16).toString('hex');
   const appPassword = randomBytes(16).toString('hex');
+  const operatorPassword = randomBytes(16).toString('hex');
 
-  await bootstrap({ superuserUrl, migratorPassword, appPassword });
+  await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
   const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
   await migrate(migratorUrl);
   await seed(migratorUrl);
 
   project.provide('appUrl', urlFor(superuserUrl, 'clinic_app', appPassword));
   project.provide('migratorUrl', migratorUrl);
+  project.provide('operatorUrl', urlFor(superuserUrl, 'clinic_operator', operatorPassword));
 }
 
 export async function teardown(): Promise<void> {

@@ -161,7 +161,8 @@ export function InviteDialog({
           </ChipGroup>
           {withLocations ? (
             <ChipGroup label="Sedes" required error={submitted ? errors.locations : null} hint="Los roles clínicos se asignan en cada sede elegida.">
-              {list.locations.map((location) => (
+              {/* Las sedes inactivas no se ofrecen (T-007). */}
+              {list.locations.filter((l) => l.active).map((location) => (
                 <FilterChip
                   key={location.id}
                   label={`${location.name} (${location.code})`}

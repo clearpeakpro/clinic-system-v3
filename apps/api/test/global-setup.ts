@@ -7,8 +7,14 @@ import type { TestProject } from 'vitest/node';
 declare module 'vitest' {
   export interface ProvidedContext {
     appUrl: string;
-    /** Solo para leer audit_log en las pruebas, como lo haría el operador de la plataforma. */
+    /**
+     * Superusuario de la base desechable, solo para comprobar audit_log en las
+     * pruebas (eventos con y sin organización). En producción, los eventos sin
+     * organización solo los lee clinic_operator con read_platform_audit.
+     */
     operatorUrl: string;
+    /** Operador de la plataforma real (ADR 0024): pnpm org:create y audit:platform. */
+    platformOperatorUrl: string;
   }
 }
 
@@ -26,14 +32,16 @@ export async function setup(project: TestProject): Promise<void> {
   const superuserUrl = container.getConnectionUri();
   const migratorPassword = randomBytes(16).toString('hex');
   const appPassword = randomBytes(16).toString('hex');
+  const operatorPassword = randomBytes(16).toString('hex');
 
-  await bootstrap({ superuserUrl, migratorPassword, appPassword });
+  await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
   const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
   await migrate(migratorUrl);
   await seed(migratorUrl);
 
   project.provide('appUrl', urlFor(superuserUrl, 'clinic_app', appPassword));
   project.provide('operatorUrl', superuserUrl);
+  project.provide('platformOperatorUrl', urlFor(superuserUrl, 'clinic_operator', operatorPassword));
 }
 
 export async function teardown(): Promise<void> {

@@ -95,7 +95,8 @@ export const invitations = appSchema.table(
     acceptedByUserId: uuid('accepted_by_user_id'),
     /** Revocada por un administrador (S-ADM-07) o reemplazada al volver a invitar el mismo correo. */
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
-    createdByUserId: uuid('created_by_user_id').notNull(),
+    /** Nulo: la creó el operador de la plataforma (pnpm org:create, ADR 0024). */
+    createdByUserId: uuid('created_by_user_id'),
     createdAt: createdAt(),
   },
   (t) => [unique('invitations_organization_id_id_key').on(t.organizationId, t.id)],
@@ -156,6 +157,6 @@ export const auditLog = appSchema.table(
     createdAt: createdAt(),
   },
   (t) => [
-    check('audit_log_actor_type_check', sql`${t.actorType} in ('user', 'kiosk', 'anonymous')`),
+    check('audit_log_actor_type_check', sql`${t.actorType} in ('user', 'kiosk', 'anonymous', 'operator')`),
   ],
 );

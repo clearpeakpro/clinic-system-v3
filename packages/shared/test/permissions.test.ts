@@ -65,13 +65,13 @@ describe('regla escalonada de roles', () => {
 describe('permisos', () => {
   it('Propietario y Administrador solo tienen permisos administrativos (ninguno clínico)', () => {
     for (const role of ['propietario', 'administrador'] as Role[]) {
-      expect([...permissionsFor([role])].sort(), role).toEqual(['admin.access', 'members.invite', 'members.manage']);
+      expect([...permissionsFor([role])].sort(), role).toEqual(['admin.access', 'locations.manage', 'members.invite', 'members.manage']);
     }
   });
 
   it('los roles clínicos no gestionan miembros ni entran a Administración', () => {
     const clinical = permissionsFor(CLINICAL);
-    for (const p of ['members.invite', 'members.manage', 'admin.access'] as const) expect(clinical.has(p), p).toBe(false);
+    for (const p of ['members.invite', 'members.manage', 'locations.manage', 'admin.access'] as const) expect(clinical.has(p), p).toBe(false);
   });
 
   it('destinos del menú según el manual', () => {

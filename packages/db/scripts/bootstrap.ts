@@ -5,5 +5,6 @@ await bootstrap({
   superuserUrl: requireEnv('DATABASE_SUPERUSER_URL'),
   migratorPassword: requireEnv('CLINIC_MIGRATOR_PASSWORD'),
   appPassword: requireEnv('CLINIC_APP_PASSWORD'),
+  operatorPassword: process.env.CLINIC_OPERATOR_PASSWORD,
 });
 console.log('Roles de base de datos listos.');

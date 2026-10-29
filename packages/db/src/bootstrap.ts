@@ -6,6 +6,12 @@ export interface BootstrapOptions {
   superuserUrl: string;
   migratorPassword: string;
   appPassword: string;
+  /**
+   * Contraseña del operador de la plataforma (ADR 0024). Opcional: sin ella
+   * el rol existe pero no puede iniciar sesión (p. ej. en un entorno de
+   * desarrollo que aún no la configuró).
+   */
+  operatorPassword?: string | undefined;
 }
 
 /** Crea los roles y permisos de base de datos. Ver sql/bootstrap.sql. */
@@ -21,6 +27,11 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
     await client.query(
       `ALTER ROLE clinic_app PASSWORD ${client.escapeLiteral(options.appPassword)}`,
     );
+    if (options.operatorPassword) {
+      await client.query(
+        `ALTER ROLE clinic_operator PASSWORD ${client.escapeLiteral(options.operatorPassword)}`,
+      );
+    }
   } finally {
     await client.end();
   }

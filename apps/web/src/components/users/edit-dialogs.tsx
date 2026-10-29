@@ -157,10 +157,11 @@ export function EditAssignmentsDialog({ row, mode, list, onClose, onSaved, onCon
         {showLocations ? (
           <ChipGroup label="Sedes" required error={errors.locations} hint="Los roles clínicos se asignan en cada sede elegida.">
             <div className="flex w-full flex-col">
-              {list.locations.map((location) => (
+              {/* Las inactivas solo aparecen si ya las tenía: se pueden conservar o quitar, no añadir (T-007). */}
+              {list.locations.filter((l) => l.active || locationIds.includes(l.id)).map((location) => (
                 <Checkbox
                   key={location.id}
-                  label={`${location.name} (${location.code})`}
+                  label={`${location.name} (${location.code})${location.active ? '' : ' · inactiva'}`}
                   checked={locationIds.includes(location.id)}
                   onCheckedChange={(on) => { setLocationIds((l) => toggle(l, location.id, on)); }}
                 />
