@@ -1,13 +1,11 @@
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
 import { StdoutLogSink } from './logging.ts';
-import { SmtpMailer } from './mailer.ts';
 
 const config = loadConfig(process.env);
 const port = Number(process.env.PORT ?? 3001);
 const app = await createApp({
   config,
-  mailer: new SmtpMailer(config.smtpUrl, config.mailFrom),
   logs: new StdoutLogSink(),
 });
 await app.app.listen(port, '127.0.0.1');

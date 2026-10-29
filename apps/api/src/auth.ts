@@ -2,7 +2,7 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@clinic/shared';
 import { authSchema, account, session, twoFactor as twoFactorTable, user, verification } from '@clinic/db';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { twoFactor } from 'better-auth/plugins';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
@@ -36,12 +36,30 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
   const ipOf = (headers: Headers | undefined) => headers?.get(CLIENT_IP_HEADER) ?? null;
   const requestIdOf = (headers: Headers | undefined) => headers?.get(REQUEST_ID_HEADER) ?? undefined;
   const limiter = new SignInLimiter(pool, config.signInAccountMaxFailures, config.signInAccountWindowSeconds);
+  /**
+   * Eventos de autenticación fail-closed (T-008, ADR 0023): Better Auth no
+   * abre transacción al iniciar sesión, así que el evento no puede ir en la
+   * misma transacción que la sesión. Si no se puede escribir, la petición
+   * responde 503 en lugar de seguir sin dejar rastro.
+   */
+  // En 1.7.7, un error en un hook «after» cambia el cuerpo de la respuesta
+  // pero no su estado (p. ej. un 401 seguiría siendo 401). Por eso además se
+  // anota el id de la petición, y el montaje de Fastify (app.ts) responde 503.
+  const auditFailures = new Set<string>();
+  const record = async (event: Parameters<AuditService['platform']>[0]) => {
+    try {
+      await audit.platform(event);
+    } catch {
+      if (event.requestId) auditFailures.add(event.requestId);
+      throw new APIError('SERVICE_UNAVAILABLE', { message: 'Auditoría no disponible', code: 'audit_unavailable' });
+    }
+  };
   const emailOf = (body: unknown) => {
     const email = (body as { email?: unknown } | undefined)?.email;
     return typeof email === 'string' ? email : null;
   };
 
-  return betterAuth({
+  const auth = betterAuth({
     appName: 'Clinic System',
     baseURL: config.baseURL,
     secret: config.authSecret,
@@ -72,7 +90,9 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
       revokeSessionsOnPasswordReset: true,
       onPasswordReset: async ({ user: resetUser }) => {
         await pool.query('update auth."user" set mfa_reset_at = null where id = $1', [resetUser.id]);
-        await audit.platform({ action: 'auth.password_reset.completed', actorType: 'user', actorId: resetUser.id, ip: null });
+        // Corre después de fijar la contraseña: si la auditoría falla, la
+        // respuesta es 503, pero la contraseña ya cambió.
+        await record({ action: 'auth.password_reset.completed', actorType: 'user', actorId: resetUser.id, ip: null });
       },
     },
     // Los tokens de restablecimiento se guardan con hash (SHA-256), como el
@@ -149,14 +169,40 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
     databaseHooks: {
       session: {
         create: {
-          // Un usuario desactivado no puede abrir sesiones nuevas.
-          before: async (newSession) => {
-            const { rows } = await pool.query<{ disabled_at: Date | null }>(
-              'select disabled_at from auth."user" where id = $1',
+          // Un usuario desactivado no puede abrir sesiones nuevas. Y ninguna
+          // sesión existe sin su evento: se escribe ANTES de crearla, y si no
+          // se puede, la sesión no se crea (503).
+          before: async (newSession, ctx) => {
+            const { rows } = await pool.query<{ disabled_at: Date | null; two_factor_enabled: boolean | null }>(
+              'select disabled_at, two_factor_enabled from auth."user" where id = $1',
               [newSession.userId],
             );
             if (rows[0]?.disabled_at) {
               throw new APIError('FORBIDDEN', { message: 'Usuario desactivado', code: 'user_disabled' });
+            }
+            const path = ctx?.path ?? '';
+            const ip = ipOf(ctx?.headers);
+            const requestId = requestIdOf(ctx?.headers);
+            if (path === '/sign-in/email') {
+              // Con TOTP, el plugin descarta esta sesión y pide el código (twoFactorRedirect).
+              await record({
+                action: rows[0]?.two_factor_enabled ? 'auth.sign_in.mfa_required' : 'auth.sign_in.success',
+                actorType: 'user',
+                actorId: newSession.userId,
+                ip,
+                requestId,
+              });
+            } else if (path === '/two-factor/verify-totp' || path === '/two-factor/verify-backup-code') {
+              await record({
+                action: 'auth.mfa.success',
+                actorType: 'user',
+                actorId: newSession.userId,
+                ip,
+                requestId,
+                metadata: { method: path.endsWith('totp') ? 'totp' : 'backup_code' },
+              });
+            } else {
+              await record({ action: 'auth.session.created', actorType: 'user', actorId: newSession.userId, ip, requestId, metadata: { path } });
             }
           },
         },
@@ -168,7 +214,7 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
         if (ctx.path === '/sign-in/email') {
           const email = emailOf(ctx.body);
           if (email && (await limiter.isLocked(audit.hmacEmail(email)))) {
-            await audit.platform({
+            await record({
               action: 'auth.sign_in.throttled',
               actorType: 'anonymous',
               ip: ipOf(ctx.headers),
@@ -193,6 +239,13 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
         // administrador (S-ADM-02).
         if (ctx.path === '/request-password-reset' || ctx.path.startsWith('/reset-password/')) {
           throw new APIError('FORBIDDEN', { message: 'Restablecimiento solo por un administrador', code: 'password_reset_by_admin_only' });
+        }
+        // El cierre de sesión se audita antes de borrar la sesión (fail-closed).
+        if (ctx.path === '/sign-out') {
+          const current = await getSessionFromCtx(ctx);
+          if (current) {
+            await record({ action: 'auth.sign_out', actorType: 'user', actorId: current.user.id, ip: ipOf(ctx.headers), requestId: requestIdOf(ctx.headers) });
+          }
         }
         // Perfil (T-006b): cambiar la contraseña, desactivar el MFA y regenerar
         // los códigos de recuperación solo pasan por /api/me/* (profile.ts),
@@ -227,16 +280,9 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
               if (newSession) await limiter.reset(audit.hmacEmail(email));
               else if (failed) await limiter.recordFailure(audit.hmacEmail(email));
             }
-            // OJO: este hook corre ANTES que el del plugin twoFactor. Aquí
-            // newSession todavía existe aunque el plugin la descarte después
-            // (twoFactorRedirect). Con trustDevice desactivado, un usuario con
-            // TOTP siempre queda pendiente del segundo factor.
-            if (newSession && (newSession.user as { twoFactorEnabled?: boolean | null }).twoFactorEnabled) {
-              await audit.platform({ action: 'auth.sign_in.mfa_required', actorType: 'user', actorId: newSession.user.id, ip, requestId });
-            } else if (newSession) {
-              await audit.platform({ action: 'auth.sign_in.success', actorType: 'user', actorId: newSession.user.id, ip, requestId });
-            } else if (failed) {
-              await audit.platform({
+            // El éxito (y mfa_required) se audita al crear la sesión (databaseHooks).
+            if (!newSession && failed) {
+              await record({
                 action: 'auth.sign_in.failure',
                 actorType: 'anonymous',
                 ip,
@@ -248,18 +294,19 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
           }
           case '/two-factor/enable':
             if (!failed && ctx.context.session) {
-              await audit.platform({ action: 'auth.mfa.enrollment_started', actorType: 'user', actorId: ctx.context.session.user.id, ip, requestId });
+              await record({ action: 'auth.mfa.enrollment_started', actorType: 'user', actorId: ctx.context.session.user.id, ip, requestId });
             }
             break;
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code': {
             // Las llamadas de servidor del Perfil (profile.ts) confirman una
-            // acción, no son un acceso: las audita el propio servicio.
-            if (!ctx.request) break;
+            // acción, no son un acceso: las audita el propio servicio. El éxito
+            // de un inicio de sesión se audita al crear la sesión (databaseHooks).
+            if (!ctx.request || !failed) break;
             const method = ctx.path.endsWith('totp') ? 'totp' : 'backup_code';
-            const actorId = newSession?.user.id ?? ctx.context.session?.user.id;
-            await audit.platform({
-              action: failed ? 'auth.mfa.failure' : 'auth.mfa.success',
+            const actorId = ctx.context.session?.user.id;
+            await record({
+              action: 'auth.mfa.failure',
               actorType: actorId ? 'user' : 'anonymous',
               actorId,
               ip,
@@ -268,13 +315,14 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
             });
             break;
           }
-          case '/sign-out':
-            if (ctx.context.session) {
-              await audit.platform({ action: 'auth.sign_out', actorType: 'user', actorId: ctx.context.session.user.id, ip, requestId });
-            }
-            break;
         }
       }),
+    },
+  });
+  return Object.assign(auth, {
+    /** true (una sola vez) si en esa petición no se pudo escribir un evento de auditoría. */
+    consumeAuditFailure(requestId: string): boolean {
+      return auditFailures.delete(requestId);
     },
   });
 }

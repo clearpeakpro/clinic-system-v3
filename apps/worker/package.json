@@ -1,0 +1,32 @@
+{
+  "name": "@clinic/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts"
+  },
+  "dependencies": {
+    "@clinic/db": "workspace:*",
+    "nodemailer": "^10.2.1",
+    "pg": "^8.23.1",
+    "pg-boss": "12.38.0",
+    "zod": "^4.6.7",
+    "uuid": "^14.0.3",
+    "drizzle-orm": "^0.45.4"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.1",
+    "@types/node": "^26.6.5",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "eslint": "^10.13.0",
+    "testcontainers": "^12.2.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

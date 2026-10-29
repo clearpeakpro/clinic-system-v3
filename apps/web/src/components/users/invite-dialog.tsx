@@ -86,7 +86,6 @@ export function InviteDialog({
         email: email.trim().toLowerCase(),
         link: created.link,
         expiresAt: created.expiresAt,
-        mailSent: created.mailSent,
       };
       close();
       onCreated(secret);

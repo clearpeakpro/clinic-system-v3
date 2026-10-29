@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import {
+  enqueueMail,
   invitationRoles,
   invitations,
   locations,
@@ -7,6 +8,7 @@ import {
   memberships,
   user as userTable,
   type TenantDb,
+  type Tx,
 } from '@clinic/db';
 import {
   assignmentsFor,
@@ -19,7 +21,6 @@ import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import type { AuditService } from './audit.ts';
 import { CLIENT_IP_HEADER, REQUEST_ID_HEADER, type Auth } from './auth.ts';
 import type { AppConfig } from './config.ts';
-import type { Mailer } from './mailer.ts';
 import { checkPassword } from './password-policy.ts';
 import { rolesInOrganization, sha256Hex, type Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
@@ -27,7 +28,8 @@ import { HttpError, requireContext, type RequestMeta } from './services.ts';
 // Invitaciones (S-ADM-03, S-ADM-04, S-GEN-09). El enlace /invitacion/<token>
 // sirve una sola vez y vence. El token lleva la organización (para buscar la
 // invitación bajo su RLS) y un secreto; solo se guarda el sha256 del secreto.
-// El correo es el canal principal (pasará al outbox en T-008); el diálogo de
+// El correo es el canal principal: se escribe en el outbox en la misma
+// transacción que la invitación (T-008) y lo entrega el worker. El diálogo de
 // un solo uso (S-ADM-04) muestra el mismo enlace como respaldo.
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -50,8 +52,16 @@ export interface CreatedInvitation {
   invitationId: string;
   link: string;
   expiresAt: string;
-  /** false si el correo no salió: el administrador entrega el enlace del diálogo. */
-  mailSent: boolean;
+}
+
+/** Correo de invitación (el enlace lleva el token: el payload del outbox va cifrado). */
+export function invitationMail(email: string, link: string, ttlSeconds: number, organizationName?: string) {
+  const role = organizationName ? ` como Propietario de ${organizationName}` : '';
+  return {
+    to: email,
+    subject: 'Invitación a Clinic System',
+    text: `Le invitaron a Clinic System${role}. Abra este enlace para aceptar la invitación:\n\n${link}\n\nEl enlace sirve una sola vez y vence en ${String(Math.round(ttlSeconds / 3600))} horas.`,
+  };
 }
 
 export interface AcceptResult {
@@ -63,14 +73,12 @@ export interface AcceptResult {
 export class InvitationService {
   readonly #tenantDb: TenantDb;
   readonly #auth: Auth;
-  readonly #mailer: Mailer;
   readonly #audit: AuditService;
   readonly #config: AppConfig;
 
-  constructor(tenantDb: TenantDb, auth: Auth, mailer: Mailer, audit: AuditService, config: AppConfig) {
+  constructor(tenantDb: TenantDb, auth: Auth, audit: AuditService, config: AppConfig) {
     this.#tenantDb = tenantDb;
     this.#auth = auth;
-    this.#mailer = mailer;
     this.#audit = audit;
     this.#config = config;
   }
@@ -86,6 +94,7 @@ export class InvitationService {
     const email = input.email.trim().toLowerCase();
     const secret = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + this.#config.invitationTtlSeconds * 1000);
+    const link = `${this.#config.baseURL}/invitacion/${encodeInvitationToken(ctx.organizationId, secret)}`;
 
     const invitationId = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       if (locationIds.length > 0) {
@@ -138,11 +147,10 @@ export class InvitationService {
         ...meta,
         metadata: { roles: [...new Set(input.roles)].sort().join(','), locations: locationIds.length, reissued: replaced.length > 0 },
       });
+      await this.#enqueue(tx, ctx.organizationId, row.id, email, link);
       return row.id;
     });
-
-    const link = `${this.#config.baseURL}/invitacion/${encodeInvitationToken(ctx.organizationId, secret)}`;
-    return { invitationId, link, expiresAt: expiresAt.toISOString(), mailSent: await this.#deliver(email, link) };
+    return { invitationId, link, expiresAt: expiresAt.toISOString() };
   }
 
   /**
@@ -155,6 +163,7 @@ export class InvitationService {
     const actorRoles = rolesInOrganization(actor.assignments, ctx.organizationId);
     const secret = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + this.#config.invitationTtlSeconds * 1000);
+    const link = `${this.#config.baseURL}/invitacion/${encodeInvitationToken(ctx.organizationId, secret)}`;
 
     const created = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       const [previous] = await tx
@@ -198,28 +207,21 @@ export class InvitationService {
         ...meta,
         metadata: { previousInvitationId: invitationId },
       });
-      return { id: row.id, email: previous.email };
+      await this.#enqueue(tx, ctx.organizationId, row.id, previous.email, link);
+      return { id: row.id };
     });
-
-    const link = `${this.#config.baseURL}/invitacion/${encodeInvitationToken(ctx.organizationId, secret)}`;
-    return { invitationId: created.id, link, expiresAt: expiresAt.toISOString(), mailSent: await this.#deliver(created.email, link) };
+    return { invitationId: created.id, link, expiresAt: expiresAt.toISOString() };
   }
 
-  /**
-   * Después del commit. Si el correo falla, la invitación sigue valiendo: el
-   * administrador entrega el enlace del diálogo (S-ADM-04).
-   */
-  async #deliver(email: string, link: string): Promise<boolean> {
-    try {
-      await this.#mailer.send({
-        to: email,
-        subject: 'Invitación a Clinic System',
-        text: `Le invitaron a Clinic System. Abra este enlace para aceptar la invitación:\n\n${link}\n\nEl enlace sirve una sola vez y vence en ${String(Math.round(this.#config.invitationTtlSeconds / 3600))} horas.`,
-      });
-      return true;
-    } catch {
-      return false;
-    }
+  /** El correo va al outbox en la misma transacción: si la invitación se deshace, el correo también. */
+  async #enqueue(tx: Tx, organizationId: string, invitationId: string, email: string, link: string): Promise<void> {
+    await enqueueMail(tx, this.#config.outboxKey, {
+      organizationId,
+      kind: 'mail.invitation',
+      entityType: 'invitation',
+      entityId: invitationId,
+      mail: invitationMail(email, link, this.#config.invitationTtlSeconds),
+    });
   }
 
   /** S-ADM-07 «Revocar invitación»: el enlace deja de funcionar. */

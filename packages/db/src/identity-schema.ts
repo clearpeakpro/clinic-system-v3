@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   check,
   foreignKey,
   integer,
@@ -155,8 +156,24 @@ export const auditLog = appSchema.table(
     // Nunca contraseñas, tokens, códigos ni datos de pacientes.
     metadata: jsonb('metadata').$type<Record<string, string | number | boolean>>(),
     createdAt: createdAt(),
+    // Cadena de hash (ADR 0018, T-008). Las calcula el trigger
+    // app.audit_log_chain (migración 0013) en cada INSERT: lo que envíe la
+    // aplicación se sobrescribe. Una cadena por organización y una de
+    // plataforma ('platform') para los eventos sin organización.
+    chain: text('chain').notNull().default(''),
+    seq: bigint('seq', { mode: 'number' }).notNull().default(0),
+    prevHash: text('prev_hash'),
+    hash: text('hash').notNull().default(''),
   },
   (t) => [
-    check('audit_log_actor_type_check', sql`${t.actorType} in ('user', 'kiosk', 'anonymous', 'operator')`),
+    check('audit_log_actor_type_check', sql`${t.actorType} in ('user', 'kiosk', 'anonymous', 'operator', 'system')`),
+    unique('audit_log_chain_seq_key').on(t.chain, t.seq),
   ],
 );
+
+/** Cabeza de cada cadena de auditoría. Solo la usan las funciones de la migración 0013. */
+export const auditChainHeads = appSchema.table('audit_chain_heads', {
+  chain: text('chain').primaryKey(),
+  seq: bigint('seq', { mode: 'number' }).notNull(),
+  hash: text('hash').notNull(),
+});

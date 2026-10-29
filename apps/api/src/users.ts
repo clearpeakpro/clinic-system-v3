@@ -6,6 +6,7 @@ import {
   locations,
   membershipRoles,
   memberships,
+  outbox,
   session as sessionTable,
   twoFactor as twoFactorTable,
   user as userTable,
@@ -85,6 +86,11 @@ export interface InvitationRow {
   /** Venció sin aceptarse (sigue en la lista como «Invitado» hasta reemitirla o revocarla). */
   expired: boolean;
   manageable: boolean;
+  /**
+   * Estado de su correo en el outbox (T-008): «failed» se muestra como
+   * «Correo no entregado» junto a «Reenviar». Nulo si no hay correo.
+   */
+  mailStatus: 'pending' | 'sent' | 'failed' | null;
 }
 
 export interface UsersList {
@@ -106,6 +112,11 @@ export interface MfaStatus {
 export interface OneTimeLink {
   link: string;
   expiresAt: string;
+}
+
+function mailStatusOf(mails: { entityId: string | null; status: string; createdAt: Date }[], invitationId: string): InvitationRow['mailStatus'] {
+  const latest = mails.filter((m) => m.entityId === invitationId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+  return latest?.status === 'pending' || latest?.status === 'sent' || latest?.status === 'failed' ? latest.status : null;
 }
 
 function lastSignIn(rows: { user_id: string; last_sign_in_at: Date | string }[], userId: string): string | null {
@@ -153,6 +164,13 @@ export class MembershipService {
       const pendingRoles = await tx
         .select({ invitationId: invitationRoles.invitationId, role: invitationRoles.role, locationId: invitationRoles.locationId })
         .from(invitationRoles);
+      // El último correo de cada invitación pendiente.
+      const mails = pending.length
+        ? await tx
+            .select({ entityId: outbox.entityId, status: outbox.status, createdAt: outbox.createdAt })
+            .from(outbox)
+            .where(and(eq(outbox.entityType, 'invitation'), inArray(outbox.entityId, pending.map((p) => p.id))))
+        : [];
       const sites = await tx
         .select({ id: locations.id, code: locations.code, name: locations.name, active: locations.active })
         .from(locations)
@@ -161,7 +179,7 @@ export class MembershipService {
       const { rows: lastSignIns } = await tx.execute<{ user_id: string; last_sign_in_at: Date | string }>(
         sql`select user_id, last_sign_in_at from app.last_sign_ins()`,
       );
-      return { members, roles, pending, pendingRoles, sites, lastSignIns };
+      return { members, roles, pending, pendingRoles, sites, lastSignIns, mails };
     });
 
     const userIds = data.members.map((m) => m.userId);
@@ -220,6 +238,7 @@ export class MembershipService {
         expiresAt: inv.expiresAt.toISOString(),
         expired: inv.expiresAt.getTime() <= now,
         manageable: assignments.every((a) => canAssignRole(actorRoles, a.role)),
+        mailStatus: mailStatusOf(data.mails, inv.id),
       });
     }
     rows.sort((a, b) => a.name.localeCompare(b.name, 'es') || a.email.localeCompare(b.email));

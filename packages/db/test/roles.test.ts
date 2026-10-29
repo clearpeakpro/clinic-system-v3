@@ -14,6 +14,10 @@ const TABLES = [
   'audit_log',
   // T-006a
   'invitation_roles',
+  // T-008
+  'audit_chain_heads',
+  'outbox',
+  'idempotency_keys',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {

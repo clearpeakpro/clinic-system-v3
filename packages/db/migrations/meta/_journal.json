@@ -92,6 +92,20 @@
       "when": 1793244265287,
       "tag": "0012_platform_operator",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793249109773,
+      "tag": "0013_worker_outbox_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793249122096,
+      "tag": "0014_audit_chain_outbox_rls",
+      "breakpoints": true
     }
   ]
 }

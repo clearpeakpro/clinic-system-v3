@@ -5,8 +5,9 @@ import { E2E } from './global-setup.ts';
 
 // T-006a: Administración › Usuarios con datos ficticios. El Propietario de
 // Norte invita, la persona acepta y entra; el Propietario la deshabilita y su
-// sesión se corta. En E2E el correo no sale (SMTP_URL inaccesible): el enlace
-// se toma del diálogo de un solo uso (S-ADM-04), que es el respaldo.
+// sesión se corta. En E2E el worker no puede entregar el correo (sin servidor
+// SMTP y con un solo intento, T-008): la fila muestra «Correo no entregado» y
+// el enlace se toma del diálogo de un solo uso (S-ADM-04), que es el respaldo.
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Navegación principal' }).first();
 
@@ -46,7 +47,7 @@ async function invite(page: Page, email: string, name: string, roles: string[], 
 
   const secret = page.getByRole('dialog', { name: 'Invitación creada' });
   await expect(secret).toBeVisible();
-  await expect(secret).toContainText('No se pudo enviar el correo');
+  await expect(secret).toContainText('También se envía por correo');
   const link = await secret.getByTestId('one-time-link').innerText();
   expect(link).toMatch(/\/invitacion\/[\w-]+\.[\w-]+$/);
   await secret.getByRole('button', { name: 'Cerrar' }).click();
@@ -104,6 +105,16 @@ test('el Propietario invita, la persona acepta y entra; al deshabilitarla, su se
   await expect(row(page, 'nuevo.proveedor@example.test')).toContainText('Invitado');
   await expect(row(page, 'nuevo.proveedor@example.test')).toContainText('Proveedor · NOR1');
   await expect(row(page, 'nuevo.proveedor@example.test')).toContainText('—');
+  // El worker no pudo entregar el correo (outbox, T-008): chip junto a «Reenviar».
+  await expect
+    .poll(
+      async () => {
+        await page.getByRole('button', { name: 'Actualizar' }).click();
+        return row(page, 'nuevo.proveedor@example.test').getByText('Correo no entregado').count();
+      },
+      { timeout: 30_000, intervals: [1000, 2000] },
+    )
+    .toBe(1);
   await expect.poll(totals).toEqual({ total: String(Number(before.total) + 1), invited: String(Number(before.invited) + 1) });
   // El Propietario aparece resaltado y con su etiqueta; nunca entró en esta prueba salvo ahora: «Hoy».
   await expect(row(page, 'propietario.norte@example.test')).toContainText('Propietario');

@@ -15,9 +15,8 @@ export interface Secret {
   name: string;
   link: string;
   expiresAt: string;
-  /** Invitación: correo de destino y si salió el correo. */
+  /** Invitación: correo de destino (el correo lo envía el worker desde el outbox, T-008). */
   email?: string;
-  mailSent?: boolean;
   /** Restablecimiento del MFA: el factor estaba bloqueado. */
   wasLocked?: boolean;
   /** Restablecimiento del MFA: su rol exige volver a configurarla. */
@@ -83,16 +82,8 @@ export function SecretDialog({ secret, timeZone, onClose }: { secret: Secret | n
       ) : null}
       {(secret.kind === 'invitation' || secret.kind === 'resent') && secret.email ? (
         <p className="text-body-md text-on-surface-variant">
-          {secret.mailSent ? (
-            <>
-              También se envió por correo a <span className="font-mono text-code-sm break-all text-on-surface">{secret.email}</span>.
-            </>
-          ) : (
-            <>
-              No se pudo enviar el correo a <span className="font-mono text-code-sm break-all text-on-surface">{secret.email}</span>: entregue este enlace por
-              otro medio.
-            </>
-          )}
+          También se envía por correo a <span className="font-mono text-code-sm break-all text-on-surface">{secret.email}</span>. Si no llega, Usuarios lo
+          indicará con «Correo no entregado».
         </p>
       ) : null}
       <div className="flex flex-col gap-space-xs rounded-md bg-surface-container-low p-space-sm dark:bg-surface-container">

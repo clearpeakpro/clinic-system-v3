@@ -7,6 +7,8 @@ import {
   createStaff,
   enrollTotp,
   lastInvitationLink,
+  queuedMails,
+  readOutboxRaw,
   NORTE,
   readAudit,
   selectContext,
@@ -27,7 +29,6 @@ interface Created {
   invitationId: string;
   link: string;
   expiresAt: string;
-  mailSent: boolean;
 }
 
 describe('criterio 1: invitaciones', () => {
@@ -55,10 +56,8 @@ describe('criterio 1: invitaciones', () => {
     });
     expect(response.statusCode).toBe(201);
     const created = response.json<Created>();
-    // El mismo enlace va por correo y en la respuesta (diálogo S-ADM-04).
-    expect(app.mailer.sent.at(-1)?.to).toBe(email);
-    expect(lastInvitationLink(app, email).toString()).toBe(created.link);
-    expect(created.mailSent).toBe(true);
+    // El mismo enlace va por correo (outbox, T-008) y en la respuesta (diálogo S-ADM-04).
+    expect((await lastInvitationLink(app, email)).toString()).toBe(created.link);
     return { ...created, token: tokenOf(created.link) };
   };
 
@@ -251,8 +250,7 @@ describe('criterio 1: invitaciones', () => {
     expect(response.statusCode).toBe(201);
     const second = response.json<Created>();
     expect(second.invitationId).not.toBe(first.invitationId);
-    expect(second.mailSent).toBe(true);
-    expect(lastInvitationLink(app, 'reenviada@example.test').toString()).toBe(second.link);
+    expect((await lastInvitationLink(app, 'reenviada@example.test')).toString()).toBe(second.link);
 
     // El enlace anterior ya no sirve; el nuevo sí, con los mismos roles y sedes.
     const old = await new Client(app).post('/api/invitations/accept', { token: first.token, name: 'X', password: 'Ficticia-clave-123' });
@@ -294,19 +292,25 @@ describe('criterio 1: invitaciones', () => {
     expect(accepted.statusCode).toBe(201);
   });
 
-  it('si el correo falla, la invitación vale igual y la respuesta lo dice', async () => {
-    vi.spyOn(app.mailer, 'send').mockRejectedValueOnce(new Error('SMTP caído'));
-    const response = await admin.post('/api/invitations', {
-      email: 'sin.correo@example.test',
-      name: 'Persona',
-      roles: ['proveedor'],
-      locationIds: [NORTE.locations[0].id],
-    });
-    expect(response.statusCode).toBe(201);
-    const created = response.json<Created>();
-    expect(created.mailSent).toBe(false);
-    const accepted = await new Client(app).post('/api/invitations/accept', { token: tokenOf(created.link), name: 'P', password: 'Ficticia-clave-123' });
+  it('el correo va al outbox en la misma transacción: cifrado, con su invitación, y nada si la invitación falla', async () => {
+    const created = await invite('outbox@example.test');
+    const [mail] = await queuedMails(app, 'outbox@example.test');
+    expect(mail).toMatchObject({ status: 'pending', entityId: created.invitationId, subject: 'Invitación a Clinic System' });
+    // En la base de datos el enlace no aparece en claro.
+    const raw = await readOutboxRaw(mail?.eventId ?? '');
+    expect(raw).not.toContain(created.token.split('.')[1]);
+
+    // Si la invitación no se crea (correo de alguien que ya es de la organización), tampoco el correo.
+    const before = (await queuedMails(app)).length;
+    const taken = await admin.post('/api/invitations', { email: 'outbox@example.test', name: 'X', roles: ['recepcion'], locationIds: [NORTE.locations[0].id] });
+    expect(taken.statusCode).toBe(201);
+    const accepted = await new Client(app).post('/api/invitations/accept', { token: tokenOf(taken.json<Created>().link), name: 'P', password: 'Ficticia-clave-123' });
     expect(accepted.statusCode).toBe(201);
+    const after = (await queuedMails(app)).length;
+    const again = await admin.post('/api/invitations', { email: 'outbox@example.test', name: 'X', roles: ['recepcion'], locationIds: [NORTE.locations[0].id] });
+    expect(again.json()).toEqual({ code: 'email_taken' });
+    expect((await queuedMails(app)).length).toBe(after);
+    expect(after).toBe(before + 1);
   });
 
   it('Recepción no puede invitar', async () => {

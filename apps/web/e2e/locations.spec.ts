@@ -22,8 +22,8 @@ async function operator(script: 'org-create' | 'audit-platform', args: string[])
       ...process.env,
       DATABASE_OPERATOR_URL: process.env.E2E_OPERATOR_URL,
       BASE_URL: process.env.E2E_BASE_URL,
-      // Sin servidor de correo: el comando muestra el enlace en la terminal.
-      SMTP_URL: 'smtp://127.0.0.1:1',
+      // El correo va al outbox (T-008); el comando muestra además el enlace.
+      OUTBOX_KEY: process.env.E2E_OUTBOX_KEY,
     },
   });
 }
@@ -61,7 +61,7 @@ test('el operador crea una organización; su Propietaria administra las sedes', 
     '--sede-nombre', arg('Oeste Centro'),
     '--zona-horaria', 'America/Denver',
   ]);
-  expect(created.stdout).toContain('No se pudo enviar el correo');
+  expect(created.stdout).toContain('La invitación también se envía por correo');
   const link = /https?:\/\/\S+\/invitacion\/\S+/.exec(created.stdout)?.[0];
   if (!link) throw new Error('org:create no mostró el enlace');
 

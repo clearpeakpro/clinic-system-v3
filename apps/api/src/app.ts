@@ -11,7 +11,6 @@ import { CLIENT_IP_HEADER, createAuth, REQUEST_ID_HEADER } from './auth.ts';
 import { assertConfig, type AppConfig } from './config.ts';
 import { createApiModule, ErrorFilter, PermissionGuard } from './http.ts';
 import { LOG_REDACT_PATHS, type LogSink } from './logging.ts';
-import type { Mailer } from './mailer.ts';
 import { PrincipalResolver } from './principal.ts';
 import { hasSessionCookie, isMfaEnrollmentPath, toHeaders } from './request-context.ts';
 import { InvitationService } from './invitations.ts';
@@ -22,11 +21,10 @@ import { MembershipService } from './users.ts';
 
 export interface AppDeps {
   config: AppConfig;
-  mailer: Mailer;
   logs: LogSink;
 }
 
-export async function createApp({ config, mailer, logs }: AppDeps) {
+export async function createApp({ config, logs }: AppDeps) {
   assertConfig(config, config.secureCookies);
   const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
   const tenantDb = createTenantDb(pool);
@@ -37,7 +35,7 @@ export async function createApp({ config, mailer, logs }: AppDeps) {
 
   const services = {
     contexts: new ContextService(pool, tenantDb),
-    invitations: new InvitationService(tenantDb, auth, mailer, audit, config),
+    invitations: new InvitationService(tenantDb, auth, audit, config),
     memberships: new MembershipService(pool, tenantDb, resolver, audit, auth, config),
     profile: new ProfileService(pool, tenantDb, auth, audit, config),
     locations: new LocationService(tenantDb, audit),
@@ -100,6 +98,8 @@ export async function createApp({ config, mailer, logs }: AppDeps) {
           ...(request.body ? { body: JSON.stringify(request.body) } : {}),
         }),
       );
+      // Fail-closed (T-008): si no se pudo auditar, ni la respuesta ni sus cookies salen.
+      if (auth.consumeAuditFailure(request.id)) return reply.status(503).send({ code: 'audit_unavailable' });
       void reply.status(response.status);
       response.headers.forEach((value, key) => {
         if (key !== 'set-cookie') void reply.header(key, value);

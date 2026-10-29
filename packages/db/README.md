@@ -69,6 +69,17 @@ pnpm db:migrate
 pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» (sedes en hora Central, America/Chicago, con direcciones ficticias)
 ```
 
+## Worker: pg-boss, outbox e idempotencia (T-008)
+
+- **pg-boss** (`src/jobs.ts`): `migrate()` instala el esquema `pgboss` y sus colas como `clinic_owner`, y da a `clinic_app` solo permisos de lectura y escritura.
+- **Outbox** (`src/outbox.ts`): `enqueueMail(tx, OUTBOX_KEY, …)` escribe el evento cifrado en la transacción del cambio y avisa con `pg_notify('clinic_outbox')`.
+- **Cadena de auditoría** (migración 0014):
+  - el trigger `audit_log_chain`;
+  - `verify_audit_chain` y `audit_chains`;
+  - `outbox_due` y `purge_idempotency_keys`.
+
+  Todas son `SECURITY DEFINER` de `clinic_owner` y no devuelven datos de las filas.
+
 ## Pruebas
 
 `pnpm test` levanta Postgres 16 con Testcontainers (Docker en ejecución), aplica bootstrap, migraciones y semilla, y ejecuta las pruebas conectando como `clinic_app` mediante `pg.Pool`. Las contraseñas de prueba se generan al azar en cada ejecución.

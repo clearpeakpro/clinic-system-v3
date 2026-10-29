@@ -115,6 +115,13 @@ Detalle en el ADR 0023.
 - **Absoluta:** `ABSOLUTE_TIMEOUT_SECONDS` (12 h por defecto), aplicada por nuestro guard.
 - **En la base de datos:** las sesiones viven en `auth.session`, sin `cookieCache`. La revocación vale en la siguiente petición.
 
+## Outbox, auditoría e idempotencia (T-008)
+
+- **Correo:** la API no envía correos. Las invitaciones (crear, «Reenviar» y `org:create`) escriben el correo en el outbox en la misma transacción, cifrado con `OUTBOX_KEY`, y lo entrega el worker. `GET /api/users` incluye `mailStatus` en cada invitación (`failed` → «Correo no entregado»).
+- **Eventos de autenticación fail-closed:** si no se pueden auditar, `503 audit_unavailable` (ADR 0023).
+- **`Idempotency-Key`:** `IdempotencyService` y `@IdempotencyKey()` (`src/idempotency.ts`), listos para la fase 3. Se guardan solo el estado y los ids del recurso (ADR 0019).
+- **Cadena de hash de `audit_log`:** la calcula la base de datos (ADR 0018); la API no hace nada especial.
+
 ## Al actualizar Better Auth
 
 Better Auth está fijado en **1.7.7** (publicada el 2026-09-30), sin `^`. Para cualquier actualización:
