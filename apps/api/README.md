@@ -122,6 +122,22 @@ Detalle en el ADR 0023.
 - **`Idempotency-Key`:** `IdempotencyService` y `@IdempotencyKey()` (`src/idempotency.ts`), listos para la fase 3. Se guardan solo el estado y los ids del recurso (ADR 0019).
 - **Cadena de hash de `audit_log`:** la calcula la base de datos (ADR 0018); la API no hace nada especial.
 
+## Tiempo real y notificaciones (T-009)
+
+- **Socket.IO** (`src/realtime.ts`) en `/api/socket.io`, sobre el mismo servidor HTTP:
+  - solo WebSocket y desde un origen de confianza (`BASE_URL` y `TRUSTED_ORIGINS`);
+  - al conectar se validan la sesión, el MFA y la sede activa con el mismo `PrincipalResolver`;
+  - salas `org:<id>:loc:<id>` y `org:<id>:user:<id>`; los eventos solo llevan ids.
+- **Revocación** (ADR 0023): una conexión `LISTEN` al canal `clinic_realtime` recibe:
+  - las sesiones borradas (trigger de `auth.session`), cuyos sockets se cierran al instante;
+  - las revalidaciones (cambio de roles, sede desactivada);
+  - los avisos de la bandeja.
+
+  Cada socket se revalida además cada `REALTIME_REVALIDATE_SECONDS` (30 s), sin renovar la sesión. Sin la conexión `LISTEN`, cierra los sockets y no acepta nuevos hasta recuperarla.
+- **Notificaciones** (`src/notifications.ts`): `GET /api/notifications`, `POST /api/notifications/:id/read`, `read-all` y `clear`.
+  - Solo los avisos propios de la organización activa.
+  - No se auditan (ADR 0008).
+
 ## Al actualizar Better Auth
 
 Better Auth está fijado en **1.7.7** (publicada el 2026-09-30), sin `^`. Para cualquier actualización:

@@ -90,5 +90,12 @@ Pruebas: `apps/api/test/password-policy.test.ts` y `apps/api/test/sign-in-limits
   - En 1.7.7, un error en un hook «after» cambia el cuerpo pero no el estado de la respuesta. Por eso el montaje de Fastify comprueba si la petición tuvo un fallo de auditoría y responde 503.
   - `auth.password_reset.completed` corre después de fijar la contraseña: si falla, la respuesta es 503, pero la contraseña ya cambió.
   - Pruebas: `apps/api/test/t008.test.ts`.
-- **Con varias instancias de la API:** la revocación necesita `LISTEN/NOTIFY`.
+- **Revocación de WebSockets (T-009, 2026-10-29).** Ya usa `LISTEN/NOTIFY`, también válido con varias instancias de la API:
+  - un trigger de `auth.session` avisa por el canal `clinic_realtime` cada vez que se borra una sesión, por cualquier camino: desactivar a un usuario, quitarle una membresía, cerrar sesión (también en todos los dispositivos), cambiar o restablecer la contraseña, o la expiración absoluta;
+  - la API cierra en menos de 1 s los sockets de esa sesión;
+  - el cambio de roles y la desactivación de una sede revalidan al instante los sockets afectados;
+  - además, cada socket se revalida cada 30 s (`REALTIME_REVALIDATE_SECONDS`) **sin renovar la sesión** (`disableRefresh`), para que un socket abierto no impida el cierre por inactividad;
+  - sin la conexión `LISTEN`, la API no se enteraría de una revocación: cierra los sockets y no acepta nuevos hasta recuperarla;
+  - **trampa documentada:** Better Auth cambia la sesión de la persona en algunas operaciones (por ejemplo, al activar el MFA) y borra la anterior. Por eso la web no da la sesión por cerrada cuando su socket se cierra: reconecta al cabo de 1 s y solo va al acceso si el servidor rechaza la conexión;
+  - pruebas: `apps/api/test/t009.test.ts`.
 - **Esfuerzo estimado para producción:** unos 7 días (ver el informe).

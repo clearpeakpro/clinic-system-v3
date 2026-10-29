@@ -7,10 +7,12 @@ Proceso separado de la API (ADR 0020, T-008). Usa solo `clinic_app` y abre `with
 - **Outbox** (ADR 0019):
   - un aviso de `LISTEN/NOTIFY` (`clinic_outbox`) y un barrido cada `OUTBOX_SWEEP_SECONDS` buscan los eventos pendientes;
   - cada uno va a pg-boss (`outbox-deliver`, `singletonKey` = id del evento) y se entrega dentro de `withTenant` (`src/deliver.ts`);
-  - reintentos con espera creciente hasta `OUTBOX_MAX_ATTEMPTS`; después, `failed` y `mail.failed` en la auditoría.
+  - reintentos con espera creciente hasta `OUTBOX_MAX_ATTEMPTS`; después, `failed` y `mail.failed` en la auditoría;
+  - las notificaciones (T-009, tipo `notification`) se guardan en `notifications` y avisan a los sockets de la persona en la misma transacción. Un aviso no leído sobre la misma entidad y tipo se reemplaza.
 - **Cada día** (cron en UTC):
   - verificación de las cadenas de auditoría (`AUDIT_VERIFY_CRON`, por defecto `0 3 * * *`);
-  - purga de las claves de idempotencia vencidas (`IDEMPOTENCY_PURGE_CRON`, por defecto `30 3 * * *`).
+  - purga de las claves de idempotencia vencidas (`IDEMPOTENCY_PURGE_CRON`, por defecto `30 3 * * *`);
+  - purga de las notificaciones de más de 30 días (`NOTIFICATIONS_PURGE_CRON`, por defecto `45 3 * * *`).
 - **Log técnico:** una línea JSON por evento, solo con ids y contadores (`src/log.ts`).
 
 ## Configuración

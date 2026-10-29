@@ -80,6 +80,15 @@ pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» 
 
   Todas son `SECURITY DEFINER` de `clinic_owner` y no devuelven datos de las filas.
 
+## Notificaciones y tiempo real (T-009)
+
+- **Tabla `notifications`** (`src/notifications-schema.ts`, migraciones 0015 y 0016), con RLS forzado. `clinic_app` tiene `SELECT`, `INSERT` y `UPDATE`; borra solo `purge_notifications()` (30 días).
+- **`enqueueNotification(tx, OUTBOX_KEY, …)`** (`src/outbox.ts`) escribe el aviso en el outbox, en la transacción del cambio.
+- **Canal `clinic_realtime`** (`src/realtime.ts`):
+  - `notifyRealtime(tx, mensaje)` publica al confirmarse la transacción;
+  - `parseRealtimeMessage` valida lo recibido;
+  - el trigger `session_revoked_notify` de `auth.session` avisa de cada sesión borrada.
+
 ## Pruebas
 
 `pnpm test` levanta Postgres 16 con Testcontainers (Docker en ejecución), aplica bootstrap, migraciones y semilla, y ejecuta las pruebas conectando como `clinic_app` mediante `pg.Pool`. Las contraseñas de prueba se generan al azar en cada ejecución.

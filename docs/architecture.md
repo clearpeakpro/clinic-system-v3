@@ -70,7 +70,7 @@ El diagrama muestra C. En B todo corre en un solo EC2 (ver «Entornos y presupue
 
 **Interfaz compartida:** `packages/ui` tiene los tokens (`tokens.css`) y los componentes de React que usan todas las pantallas: botones, chips de estado y ruta, diálogos (S-GEN-26/27), estados de carga, vacío y error (S-GEN-28), dinero, códigos, fechas en la zona de la sede y tablas (S-GEN-30). React es una dependencia de pares y Tailwind de `apps/web` lee las clases del paquete (`@source`). Los catálogos de estados y rutas de la visita están en `packages/shared`. La página `/dev/ui`, solo en desarrollo, los muestra todos en claro y oscuro.
 
-**Worker:** es un proceso separado (`apps/worker`) que comparte paquetes con la API. En local arranca con `pnpm dev` (`tsx watch`); en B, un contenedor aparte en el mismo EC2 con su propio límite de memoria; en C, un servicio de ECS Fargate. Nunca corre dentro del proceso de la API. Usa pg-boss (esquema `pgboss`, instalado por las migraciones) para entregar el outbox y para los trabajos diarios (verificación de la cadena de auditoría y purga de las claves de idempotencia).
+**Worker:** es un proceso separado (`apps/worker`) que comparte paquetes con la API. En local arranca con `pnpm dev` (`tsx watch`); en B, un contenedor aparte en el mismo EC2 con su propio límite de memoria; en C, un servicio de ECS Fargate. Nunca corre dentro del proceso de la API. Usa pg-boss (esquema `pgboss`, instalado por las migraciones) para entregar el outbox y para los trabajos diarios (verificación de la cadena de auditoría y purga de las claves de idempotencia y de las notificaciones de más de 30 días).
 
 | Módulo | Pantallas | Responsabilidad |
 | --- | --- | --- |
@@ -159,7 +159,12 @@ Se ejecutan como `clinic_app`, con el mismo pool que usa la API, sobre Testconta
 
 - **Worker:** cada trabajo lleva su `organization_id` y se ejecuta dentro de `withTenant` como `clinic_app`.
 - **S3:** bucket privado con bloqueo de acceso público y prefijo `org/<org_id>/…`. Las URLs firmadas las emite solo la API, después de autorizar, y duran 5 minutos.
-- **WebSockets:** salas `org:<id>:loc:<id>`. La membresía se valida al unirse y al reconectar. Los eventos solo llevan ids y estados, nunca nombres ni datos clínicos.
+- **WebSockets** (Socket.IO en `/api/socket.io`, solo WebSocket, origen de confianza; T-009):
+  - salas `org:<id>:loc:<id>` (eventos de pantalla) y `org:<id>:user:<id>` (avisos de la persona);
+  - la sesión, la membresía y la sede se validan al conectar y al reconectar, y cada 30 s sin renovar la sesión;
+  - los eventos solo llevan ids y estados, nunca nombres ni datos clínicos;
+  - la base de datos, el worker y la API se avisan por `LISTEN/NOTIFY` (canal `clinic_realtime`): un trigger de `auth.session` avisa de cada sesión borrada y la API cierra sus sockets en menos de 1 s (ADR 0023);
+  - sin conexión, la web refresca la pantalla visible cada 30 s y muestra el banner de modo degradado (S-GEN-19).
 - **Exportaciones:** las genera el worker con contexto de organización, se guardan bajo el prefijo de la organización, se entregan con enlace de corta duración y se auditan.
 
 ## Modelo de datos
@@ -181,7 +186,8 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | `orders` / `charges` / `payments` / `receipts` | centavos, estado, anulado_por, motivo | |
 | `documents` | paciente, visita?, categoría, s3_key | |
 | `code_counters` | org, sede?, tipo, año?, siguiente | |
-| `idempotency_keys` / `outbox` | clave, hash de la petición, respuesta; evento, estado | |
+| `idempotency_keys` / `outbox` | clave, hash de la petición, estado e ids; evento, estado | |
+| `notifications` | destinatario, sede, tipo, entidad, código humano, leída, oculta | 30 días (ADR 0008); llegan por el outbox |
 | `audit_log` | ver «Auditoría» | Append-only |
 
 ## Autenticación: prueba técnica de Better Auth
@@ -266,7 +272,7 @@ Ningún dato real entra al sistema sin tres cosas: **el BAA de AWS firmado**, **
    - `Idempotency-Key` obligatorio en llegada, kiosco, pagos y anulaciones. `idempotency_keys` guarda organización, clave, hash de la petición, **código de estado e ids del recurso creado** (nunca la respuesta) durante 24 h. Misma clave → se vuelve a leer el recurso con los permisos de quien llama; misma clave con otro contenido → 409 (ADR 0019).
    - Restricciones únicas en la base de datos (por ejemplo, una visita abierta por cita).
    - pg-boss usa `singletonKey` y sus trabajos son idempotentes.
-5. **Outbox:** los eventos que deben entregarse (correo, notificaciones guardadas, PDF, alertas) se escriben en `outbox` en la misma transacción, con el payload cifrado (`OUTBOX_KEY`) y borrado al entregarse. El worker los publica al menos una vez y elimina duplicados por id de evento (ADR 0019). Hoy van por el outbox los correos de invitación. Los WebSockets de pantalla pueden ir sin outbox, porque la pantalla se resincroniza al reconectar.
+5. **Outbox:** los eventos que deben entregarse (correo, notificaciones guardadas, PDF, alertas) se escriben en `outbox` en la misma transacción, con el payload cifrado (`OUTBOX_KEY`) y borrado al entregarse. El worker los publica al menos una vez y elimina duplicados por id de evento (ADR 0019). Hoy van por el outbox los correos de invitación y las notificaciones guardadas (T-009). Los WebSockets de pantalla pueden ir sin outbox, porque la pantalla se resincroniza al reconectar.
 
 ## Entornos y presupuesto
 
