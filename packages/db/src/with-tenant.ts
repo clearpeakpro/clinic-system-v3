@@ -3,10 +3,11 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import * as authSchema from './auth-schema.ts';
 import * as identitySchema from './identity-schema.ts';
+import * as notificationsSchema from './notifications-schema.ts';
 import * as opsSchema from './ops-schema.ts';
 import * as appSchema from './schema.ts';
 
-const schema = { ...appSchema, ...authSchema, ...identitySchema, ...opsSchema };
+const schema = { ...appSchema, ...authSchema, ...identitySchema, ...opsSchema, ...notificationsSchema };
 
 export type Db = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];

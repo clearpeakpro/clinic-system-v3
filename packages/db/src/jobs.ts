@@ -17,6 +17,8 @@ export const QUEUES = {
   auditVerify: 'audit-verify',
   /** Purga diaria de las claves de idempotencia vencidas. */
   idempotencyPurge: 'idempotency-purge',
+  /** Purga diaria de las notificaciones de más de 30 días (ADR 0008, T-009). */
+  notificationsPurge: 'notifications-purge',
 } as const;
 
 const QUEUE_OPTIONS: Record<string, { policy: string; retryLimit: number; retryDelay: number; retryBackoff: boolean; expireInSeconds: number }> = {
@@ -24,6 +26,7 @@ const QUEUE_OPTIONS: Record<string, { policy: string; retryLimit: number; retryD
   [QUEUES.outboxDeliver]: { policy: 'stately', retryLimit: 3, retryDelay: 5, retryBackoff: true, expireInSeconds: 120 },
   [QUEUES.auditVerify]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 3600 },
   [QUEUES.idempotencyPurge]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 600 },
+  [QUEUES.notificationsPurge]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 600 },
 };
 
 /** Instala o actualiza pg-boss y sus colas (lo llama migrate()). */

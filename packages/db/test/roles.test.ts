@@ -18,6 +18,8 @@ const TABLES = [
   'audit_chain_heads',
   'outbox',
   'idempotency_keys',
+  // T-009
+  'notifications',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {
