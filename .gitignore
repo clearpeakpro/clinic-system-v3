@@ -11,5 +11,6 @@ coverage/
 cdk.out/
 playwright-report/
 playwright-report-a11y/
+playwright-report-demo/
 dev-dist/
 test-results/

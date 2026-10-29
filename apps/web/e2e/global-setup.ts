@@ -74,7 +74,12 @@ function finished(child: ChildProcess): Promise<void> {
   });
 }
 
-export default async function globalSetup() {
+/**
+ * Levanta la base de datos, la API, el worker y la web. Con `demoReset`
+ * (guion de la demo, T-010), la base se prepara con el mismo comando que usa
+ * la persona: `pnpm demo:reset` (scripts/demo-reset.ts).
+ */
+export async function startStack(options: { demoReset?: boolean } = {}) {
   await assertFree(E2E.webPort);
   await assertFree(E2E.apiPort);
   const container = await new PostgreSqlContainer('postgres:16-alpine').start();
@@ -82,10 +87,6 @@ export default async function globalSetup() {
   const migratorPassword = randomBytes(16).toString('hex');
   const appPassword = randomBytes(16).toString('hex');
   const operatorPassword = randomBytes(16).toString('hex');
-  await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
-  const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
-  await migrate(migratorUrl);
-  await seed(migratorUrl);
 
   const webOrigin = `http://127.0.0.1:${String(E2E.webPort)}`;
   const outboxKey = randomBytes(32).toString('hex');
@@ -100,7 +101,23 @@ export default async function globalSetup() {
     PORT: String(E2E.apiPort),
     DEV_SEED_PASSWORD: E2E.password,
   };
-  await finished(run('pnpm', ['exec', 'tsx', 'scripts/seed-dev-users.ts'], apiDir, apiEnv));
+  if (options.demoReset) {
+    await finished(
+      run('pnpm', ['exec', 'tsx', 'scripts/demo-reset.ts', '--si'], apiDir, {
+        ...apiEnv,
+        DATABASE_SUPERUSER_URL: superuserUrl,
+        CLINIC_MIGRATOR_PASSWORD: migratorPassword,
+        CLINIC_APP_PASSWORD: appPassword,
+        CLINIC_OPERATOR_PASSWORD: operatorPassword,
+      }),
+    );
+  } else {
+    await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
+    const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
+    await migrate(migratorUrl);
+    await seed(migratorUrl);
+    await finished(run('pnpm', ['exec', 'tsx', 'scripts/seed-dev-users.ts'], apiDir, apiEnv));
+  }
 
   const api = run('pnpm', ['exec', 'tsx', 'src/main.ts'], apiDir, apiEnv);
   // T-008: el worker entrega el outbox. Sin servidor de correo (puerto 1) y con
@@ -125,6 +142,8 @@ export default async function globalSetup() {
   process.env.E2E_OUTBOX_KEY = outboxKey;
   // T-009: las pruebas escriben avisos en el outbox como lo haría la API.
   process.env.E2E_APP_URL = apiEnv.DATABASE_APP_URL;
+  // T-010: el guion ejecuta pnpm demo:aviso con la configuración de la API.
+  process.env.E2E_API_ENV = JSON.stringify(apiEnv);
 
   // Orden: web, worker, API y por último la base de datos (si no, se registra
   // «terminating connection»). Se espera a que cada proceso termine.
@@ -132,4 +151,8 @@ export default async function globalSetup() {
     for (const child of [web, worker, api]) await stop(child);
     await container.stop();
   };
+}
+
+export default function globalSetup() {
+  return startStack();
 }
