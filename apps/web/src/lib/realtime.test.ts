@@ -5,6 +5,10 @@ import { RealtimeClient, RESYNC_MS, retryDelayMs, type LiveSocket } from './real
 
 class FakeSocket implements LiveSocket {
   readonly handlers = new Map<string, (...args: never[]) => void>();
+  closeListener: (() => void) | null = null;
+  onTransportClose(listener: () => void) {
+    this.closeListener = listener;
+  }
   disconnected = false;
   on(event: string, listener: (...args: never[]) => void) {
     this.handlers.set(event, listener);
@@ -102,6 +106,31 @@ describe('conexión en vivo', () => {
     expect(handlers.resync.mock.calls.length).toBe(resyncs + 1);
   });
 
+  it('una conexión cerrada antes de conectar cuenta como fallida', () => {
+    const { client, sockets, last } = setup();
+    client.start('org:loc');
+    last().closeListener?.();
+    vi.advanceTimersByTime(0);
+    expect(client.getState()).toMatchObject({ status: 'disconnected', degraded: true });
+    vi.advanceTimersByTime(1000);
+    expect(sockets).toHaveLength(2);
+    // Una vez conectada, su cierre lo trata «disconnect».
+    last().emit('connect');
+    last().closeListener?.();
+    expect(client.getState().status).toBe('connected');
+  });
+
+  it('un rechazo del servidor llega tras el cierre del transporte y manda su código', () => {
+    const { client, handlers, last } = setup();
+    client.start('org:loc');
+    // Orden real de socket.io-client: cierra el transporte y después emite el error.
+    last().closeListener?.();
+    last().emit('connect_error', new Error('unauthenticated'));
+    vi.advanceTimersByTime(0);
+    expect(handlers.sessionChanged).toHaveBeenCalledTimes(1);
+    expect(client.getState()).toMatchObject({ status: 'disconnected', degraded: false });
+  });
+
   it('«Ocultar aviso» dura hasta la siguiente desconexión', () => {
     const { client, last } = setup();
     client.start('org:loc');
@@ -115,20 +144,32 @@ describe('conexión en vivo', () => {
     expect(client.getState()).toMatchObject({ degraded: true, bannerHidden: false });
   });
 
-  it('sesión terminada: se detiene, sin modo degradado, y avisa al marco', () => {
+  it('sesión terminada: comprueba al cabo de 1 s; si el servidor la rechaza, avisa al marco, sin modo degradado', () => {
     const { client, handlers, sockets, last } = setup();
     client.start('org:loc');
     last().emit('connect');
     last().emit('ended', { reason: 'session_ended' });
-    expect(handlers.sessionChanged).toHaveBeenCalledTimes(1);
+    // Puede ser solo un cambio de sesión (activar el MFA): todavía no se avisa.
+    expect(handlers.sessionChanged).not.toHaveBeenCalled();
     expect(client.getState()).toEqual({ status: 'disconnected', degraded: false, bannerHidden: false });
-    vi.advanceTimersByTime(60_000);
-    expect(sockets).toHaveLength(1);
+    vi.advanceTimersByTime(1000);
+    expect(sockets).toHaveLength(2);
 
-    client.start('org:loc');
+    // Sesión nueva: vuelve a estar en vivo sin más.
+    last().emit('connect');
+    expect(client.getState().status).toBe('connected');
+
+    // Sesión terminada de verdad: el servidor la rechaza.
+    last().emit('ended', { reason: 'session_ended' });
+    vi.advanceTimersByTime(1000);
     last().emit('connect_error', new Error('unauthenticated'));
-    expect(handlers.sessionChanged).toHaveBeenCalledTimes(2);
-    expect(client.getState().degraded).toBe(false);
+    expect(handlers.sessionChanged).toHaveBeenCalledTimes(1);
+    expect(client.getState()).toMatchObject({ status: 'disconnected', degraded: false });
+    // El marco la detiene al ir al acceso: no hay más intentos.
+    client.stop();
+    const count = sockets.length;
+    vi.advanceTimersByTime(60_000);
+    expect(sockets).toHaveLength(count);
   });
 
   it('cambio de sede en otra pestaña: avisa al marco y reconecta enseguida', () => {

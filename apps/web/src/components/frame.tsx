@@ -29,6 +29,7 @@ export function Frame({ area, sede }: { area: 'clinic' | 'admin'; sede?: string 
   useEffect(() => {
     const error = me.error;
     if (!error) return;
+    if (error.code === 'mfa_enrollment_required' || error.status === 401) realtime.stop();
     if (error.code === 'mfa_enrollment_required') void navigate({ to: '/login', search: { paso: 'inscripcion' }, replace: true });
     else if (error.status === 401) void navigate({ to: '/login', search: { motivo: 'cerrada' }, replace: true });
   }, [me.error, navigate]);

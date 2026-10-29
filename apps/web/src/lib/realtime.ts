@@ -34,10 +34,20 @@ export interface LiveSocket {
   on(event: string, listener: (...args: never[]) => void): unknown;
   removeAllListeners(): unknown;
   disconnect(): unknown;
+  /** Cierre del transporte: el único aviso si se cierra antes de terminar de conectar. */
+  onTransportClose?(listener: () => void): unknown;
 }
 
 export const RESYNC_MS = 30_000;
 export const STABLE_MS = 60_000;
+/**
+ * Tras «sesión terminada», se vuelve a intentar al cabo de este tiempo en vez
+ * de dar la sesión por cerrada: Better Auth cambia la sesión de la persona en
+ * algunas operaciones (p. ej. al activar el MFA) y borra la anterior; la
+ * cookie nueva llega en esa misma respuesta. Si de verdad terminó, el servidor
+ * rechaza la conexión («unauthenticated») y el marco lleva al acceso.
+ */
+export const SESSION_RECHECK_MS = 1000;
 
 /** Espera antes del intento `attempt` (0, 1, 2…): exponencial con variación, de 1 s a 30 s. */
 export function retryDelayMs(attempt: number, random: () => number = Math.random): number {
@@ -45,8 +55,15 @@ export function retryDelayMs(attempt: number, random: () => number = Math.random
   return Math.max(1000, Math.round(base * (0.5 + random() * 0.5)));
 }
 
-function openSocket(): Socket {
-  return io({ path: '/api/socket.io', transports: ['websocket'], reconnection: false, withCredentials: true });
+/** Sin respuesta en este tiempo, el intento cuenta como fallido. */
+export const CONNECT_TIMEOUT_MS = 10_000;
+
+function openSocket(): LiveSocket {
+  // forceNew: cada intento con su propia conexión (sin reutilizar la anterior).
+  const socket: Socket = io({ path: '/api/socket.io', transports: ['websocket'], reconnection: false, forceNew: true, timeout: CONNECT_TIMEOUT_MS });
+  return Object.assign(socket, {
+    onTransportClose: (listener: () => void) => socket.io.engine.on('close', listener),
+  });
 }
 
 /** Códigos con que el servidor rechaza la conexión que dependen de la sesión. */
@@ -120,19 +137,16 @@ export class RealtimeClient {
       if (recovered) this.#handlers.resync();
     });
     socket.on('connect_error', (error: Error) => {
-      if (error.message === 'unauthenticated') {
-        this.stop();
-        this.#handlers.sessionChanged();
-        return;
-      }
       if (SESSION_CODES.has(error.message)) this.#handlers.sessionChanged();
-      this.#lost();
+      // Sin sesión no es un fallo de la conexión en vivo: sin modo degradado.
+      // Si terminó, el marco lleva al acceso y detiene la conexión.
+      if (error.message === 'unauthenticated') this.#retryLater(retryDelayMs(this.#attempt++));
+      else this.#lost();
     });
     socket.on('ended', (payload: { reason?: string } | undefined) => {
       const reason = payload?.reason;
       if (reason === 'session_ended') {
-        this.stop();
-        this.#handlers.sessionChanged();
+        this.#retryLater(SESSION_RECHECK_MS);
       } else if (reason === 'context_changed') {
         // Otra pestaña cambió de sede o perdió la actual: el marco decide.
         this.#drop();
@@ -147,6 +161,14 @@ export class RealtimeClient {
     });
     socket.on('notifications', () => {
       this.#handlers.notifications();
+    });
+    // Cerrada antes de terminar de conectar sin «connect_error». Se espera una
+    // vuelta: al rechazar la conexión, socket.io-client cierra el transporte
+    // justo antes de emitir «connect_error» con el código del servidor.
+    socket.onTransportClose?.(() => {
+      setTimeout(() => {
+        if (socket === this.#socket && this.#state.status === 'connecting') this.#lost();
+      }, 0);
     });
   }
 
@@ -172,6 +194,18 @@ export class RealtimeClient {
     this.#clearRetry();
     const delay = retryDelayMs(this.#attempt);
     this.#attempt += 1;
+    this.#retryTimer = setTimeout(() => {
+      this.#retryTimer = null;
+      if (this.#key !== null) this.#open();
+    }, delay);
+  }
+
+  /** Vuelve a conectar más tarde sin pasar a modo degradado. */
+  #retryLater(delay: number): void {
+    this.#drop();
+    if (this.#key === null) return;
+    this.#set({ ...this.#state, status: 'disconnected' });
+    this.#clearRetry();
     this.#retryTimer = setTimeout(() => {
       this.#retryTimer = null;
       if (this.#key !== null) this.#open();
