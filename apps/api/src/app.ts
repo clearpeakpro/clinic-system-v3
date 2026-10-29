@@ -15,6 +15,7 @@ import type { Mailer } from './mailer.ts';
 import { PrincipalResolver } from './principal.ts';
 import { hasSessionCookie, isMfaEnrollmentPath, toHeaders } from './request-context.ts';
 import { InvitationService } from './invitations.ts';
+import { ProfileService } from './profile.ts';
 import { ContextService } from './services.ts';
 import { MembershipService } from './users.ts';
 
@@ -37,6 +38,7 @@ export async function createApp({ config, mailer, logs }: AppDeps) {
     contexts: new ContextService(pool, tenantDb),
     invitations: new InvitationService(tenantDb, auth, mailer, audit, config),
     memberships: new MembershipService(pool, tenantDb, resolver, audit, auth, config),
+    profile: new ProfileService(pool, tenantDb, auth, audit, config),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

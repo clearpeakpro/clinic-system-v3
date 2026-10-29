@@ -52,9 +52,17 @@ Se copia la distribución, los tamaños, el espaciado, los colores, los iconos y
 - **Anchos:** desde 1280 px, todas las columnas; entre 1025 y 1279 px el correo pasa bajo el nombre; por debajo de 1025 px (tableta vertical y teléfono), tarjetas.
 - **Diálogos** (S-ADM-03 a 09) y **páginas públicas** (S-GEN-09, S-GEN-10): sin captura. Diálogos de la hoja S-GEN-30; páginas con el aspecto de S-GEN-03.
 
+## Perfil (T-006b)
+
+S-GEN-21 a 25 no tienen captura. El Perfil usa el marco de S-GEN-12 y tarjetas blancas como las de S-GEN-11. Los diálogos son los de la hoja S-GEN-30, y los paneles de QR y de códigos son los de S-GEN-07 y 08.
+
+- **Tarjetas:** Cuenta, Preferencias, Verificación en dos pasos, Contraseña y Sesiones. En una columna siguen el orden del manual; en escritorio se reparten en dos columnas.
+- **Preferencias:** solo el tema (Claro u Oscuro), guardado en el dispositivo. No hay idioma, porque la interfaz solo está en español.
+- **Contraseña:** la tarjeta la pide T-006, aunque el manual decía que no había cambio de contraseña.
+
 ## Pantallas sin referencia de Stitch
 
-Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29; en T-006a, S-ADM-03 a 09, S-GEN-09 y S-GEN-10.
+Si una pantalla del manual no tiene carpeta aquí, se construye con su ficha del manual y los mismos componentes, y su PR lo indica. En T-004 fueron S-GEN-01, 07, 08, 13, 16, 17, 20 y 29; en T-006a, S-ADM-03 a 09, S-GEN-09 y S-GEN-10; en T-006b, S-GEN-21 a 25.
 
 ## Antes de generar más pantallas
 

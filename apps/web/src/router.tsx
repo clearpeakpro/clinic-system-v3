@@ -8,6 +8,7 @@ import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
+import { ProfilePage } from './pages/profile.tsx';
 import { ResetPasswordPage } from './pages/reset-password.tsx';
 import { SelectLocationPage } from './pages/select-location.tsx';
 
@@ -15,6 +16,7 @@ import { SelectLocationPage } from './pages/select-location.tsx';
 // /admin/<destino>. <SEDE> es el código de la sede (p. ej. NOR1).
 // T-006a: /admin/usuarios (S-ADM-02) y las páginas públicas
 // /invitacion/<token> (S-GEN-09) y /restablecer/<token> (S-GEN-10).
+// T-006b: /app/<SEDE>/perfil (S-GEN-21).
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -87,6 +89,9 @@ const appIndexRoute = createRoute({
   },
 });
 
+// S-GEN-21 Perfil: para todos, sin permiso extra y fuera del menú lateral.
+const appProfileRoute = createRoute({ getParentRoute: () => appRoute, path: 'perfil', component: ProfilePage });
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -142,7 +147,7 @@ const routeTree = rootRoute.addChildren([
   invitationRoute,
   resetRoute,
   selectRoute,
-  appRoute.addChildren([appIndexRoute, appDestinationRoute]),
+  appRoute.addChildren([appIndexRoute, appProfileRoute, appDestinationRoute]),
   adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);

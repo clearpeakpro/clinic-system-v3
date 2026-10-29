@@ -54,6 +54,8 @@ export interface Me {
   context: { organizationId: string; locationId: string } | null;
   /** Roles en la sede activa (vacío sin contexto). */
   roles: Role[];
+  /** Perfil: sus roles por sede en la organización activa (sede nula = toda la organización). */
+  assignments: { role: Role; locationId: string | null }[];
   permissions: Permission[];
 }
 
@@ -113,6 +115,15 @@ export interface MfaStatus {
   resetPendingSince: string | null;
 }
 
+/** S-GEN-22: estado del propio factor. */
+export interface OwnMfaStatus {
+  enrolled: boolean;
+  /** Alguno de sus roles lo exige: no se puede desactivar. */
+  required: boolean;
+  lockedUntil: string | null;
+  backupCodesLeft: number | null;
+}
+
 /** Enlace de un solo uso (S-ADM-04). */
 export interface OneTimeLink {
   link: string;
@@ -125,6 +136,13 @@ export const api = {
   selectContext: (organizationId: string, locationId: string) =>
     request<null>('POST', '/api/context', { organizationId, locationId }),
   idleLogout: () => request<null>('POST', '/api/me/idle-logout', {}),
+
+  // Perfil (S-GEN-21 a 25)
+  ownMfa: () => request<OwnMfaStatus>('GET', '/api/me/mfa'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ otherSessionsClosed: number }>('POST', '/api/me/password', { currentPassword, newPassword }),
+  regenerateRecoveryCodes: (code: string) => request<{ backupCodes: string[] }>('POST', '/api/me/mfa/recovery-codes', { code }),
+  disableOwnMfa: (code: string) => request<null>('POST', '/api/me/mfa/disable', { code }),
 
   // Administración › Usuarios
   users: () => request<UsersList>('GET', '/api/users'),

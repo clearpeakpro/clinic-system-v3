@@ -7,6 +7,8 @@ import {
   reactivateMembershipSchema,
   renameMemberSchema,
   revokeInvitationSchema,
+  changePasswordSchema,
+  mfaCodeSchema,
   selectContextSchema,
   type Permission,
 } from '@clinic/shared';
@@ -34,6 +36,8 @@ import { z } from 'zod';
 import { AuditService } from './audit.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
+import { ProfileService } from './profile.ts';
+import { toHeaders } from './request-context.ts';
 import { ContextService, HttpError, type RequestMeta } from './services.ts';
 import { MembershipService } from './users.ts';
 
@@ -106,14 +110,17 @@ function metaOf(request: FastifyRequest): RequestMeta {
 export class MeController {
   readonly #contexts: ContextService;
   readonly #audit: AuditService;
+  readonly #profile: ProfileService;
   readonly #idleTimeoutSeconds: number;
   constructor(
     @Inject(ContextService) contexts: ContextService,
     @Inject(AuditService) audit: AuditService,
+    @Inject(ProfileService) profile: ProfileService,
     @Inject(IDLE_TIMEOUT_SECONDS) idleTimeoutSeconds: number,
   ) {
     this.#contexts = contexts;
     this.#audit = audit;
+    this.#profile = profile;
     this.#idleTimeoutSeconds = idleTimeoutSeconds;
   }
 
@@ -129,8 +136,41 @@ export class MeController {
       mfaRequired: principal.mfaRequired,
       context: principal.context,
       roles: principal.roles,
+      // Perfil (S-GEN-21): sus roles y sedes en la organización activa.
+      assignments: principal.context
+        ? principal.assignments
+            .filter((a) => a.organizationId === principal.context?.organizationId)
+            .map((a) => ({ role: a.role, locationId: a.locationId }))
+        : [],
       permissions: [...principal.permissions].sort(),
     };
+  }
+
+  /** S-GEN-22: estado del propio MFA. */
+  @Get('mfa')
+  mfa(@Req() request: FastifyRequest) {
+    return this.#profile.mfaStatus(principalOf(request));
+  }
+
+  /** Perfil: cambiar la contraseña; cierra las demás sesiones (decisión de T-006). */
+  @Post('password')
+  changePassword(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#profile.changePassword(principalOf(request), parse(changePasswordSchema, body), toHeaders(request.headers), metaOf(request));
+  }
+
+  /** S-GEN-24 → S-GEN-25: códigos nuevos, una sola vez en la respuesta. */
+  @Post('mfa/recovery-codes')
+  recoveryCodes(@Req() request: FastifyRequest, @Body() body: unknown) {
+    const { code } = parse(mfaCodeSchema, body);
+    return this.#profile.regenerateRecoveryCodes(principalOf(request), code, toHeaders(request.headers), metaOf(request));
+  }
+
+  /** S-GEN-24 «Desactivar»: 403 mfa_required_for_role si un rol lo exige. */
+  @Post('mfa/disable')
+  @HttpCode(204)
+  async disableMfa(@Req() request: FastifyRequest, @Body() body: unknown) {
+    const { code } = parse(mfaCodeSchema, body);
+    await this.#profile.disableMfa(principalOf(request), code, toHeaders(request.headers), metaOf(request));
   }
 
   @Get('locations')
@@ -300,6 +340,7 @@ export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
   memberships: MembershipService;
+  profile: ProfileService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -312,6 +353,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: ContextService, useValue: providers.contexts },
       { provide: InvitationService, useValue: providers.invitations },
       { provide: MembershipService, useValue: providers.memberships },
+      { provide: ProfileService, useValue: providers.profile },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

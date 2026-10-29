@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Check, ChevronDown, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
+import { Check, ChevronDown, LogOut, Menu, Moon, Sun, UserRound, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button, cn, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Sheet, SheetClose, Spinner } from '@clinic/ui';
 import { api, type Me } from '../lib/api.ts';
@@ -94,7 +94,7 @@ function Header({ me, locations, active }: { me: Me; locations: FlatLocation[]; 
       <div className="flex-1" />
       {/* Espacio reservado: «En vivo» (T-009), notificaciones y «Buscar pacientes» (fase 2). */}
       <div data-slot="header-actions" className="flex items-center gap-space-md" />
-      <AccountMenu me={me} />
+      <AccountMenu me={me} code={active.code} />
     </header>
   );
 }
@@ -170,8 +170,9 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
-/** S-GEN-16 Menú de cuenta. Sin idioma (interfaz solo en español); «Perfil» llega con T-006. */
-function AccountMenu({ me }: { me: Me }) {
+/** S-GEN-16 Menú de cuenta. Sin idioma (interfaz solo en español). */
+function AccountMenu({ me, code }: { me: Me; code: string }) {
+  const navigate = useNavigate();
   const [theme, setTheme] = useState<ThemePreference>(() => (document.documentElement.classList.contains('dark') ? 'dark' : 'light'));
   const [logout, setLogout] = useState<null | 'simple' | 'everywhere'>(null);
   const pick = (value: ThemePreference) => {
@@ -197,6 +198,10 @@ function AccountMenu({ me }: { me: Me }) {
             <p className="text-body-md-medium text-on-surface">{me.name}</p>
             <p className="text-caption text-on-surface-variant">{me.email}</p>
           </div>
+          <DropdownSeparator />
+          <DropdownItem onSelect={() => void navigate({ to: '/app/$sede/perfil', params: { sede: code } })}>
+            <UserRound aria-hidden className="size-5" /> Perfil
+          </DropdownItem>
           <DropdownSeparator />
           <DropdownItem onSelect={() => { pick('light'); }}>
             <Sun aria-hidden className="size-5" /> Tema: Claro {theme === 'light' ? <Check aria-label="Actual" className="ml-auto size-4" /> : null}

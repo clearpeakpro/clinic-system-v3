@@ -194,6 +194,13 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
         if (ctx.path === '/request-password-reset' || ctx.path.startsWith('/reset-password/')) {
           throw new APIError('FORBIDDEN', { message: 'Restablecimiento solo por un administrador', code: 'password_reset_by_admin_only' });
         }
+        // Perfil (T-006b): cambiar la contraseña, desactivar el MFA y regenerar
+        // los códigos de recuperación solo pasan por /api/me/* (profile.ts),
+        // que confirma con un código de la aplicación, aplica la regla de
+        // roles y audita. Better Auth los ofrece por HTTP solo con la contraseña.
+        if (ctx.request && ['/change-password', '/two-factor/disable', '/two-factor/generate-backup-codes'].includes(ctx.path)) {
+          throw new APIError('FORBIDDEN', { message: 'Use el Perfil', code: 'use_profile' });
+        }
         // Registro público cerrado: solo el servidor crea usuarios, al aceptar
         // una invitación. Las llamadas de auth.api no traen `request`.
         if (ctx.path === '/sign-up/email' && ctx.request) {
@@ -246,6 +253,9 @@ export function createAuth({ config, pool, audit, logs }: AuthDeps) {
             break;
           case '/two-factor/verify-totp':
           case '/two-factor/verify-backup-code': {
+            // Las llamadas de servidor del Perfil (profile.ts) confirman una
+            // acción, no son un acceso: las audita el propio servicio.
+            if (!ctx.request) break;
             const method = ctx.path.endsWith('totp') ? 'totp' : 'backup_code';
             const actorId = newSession?.user.id ?? ctx.context.session?.user.id;
             await audit.platform({

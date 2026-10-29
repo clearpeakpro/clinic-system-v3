@@ -66,6 +66,18 @@ export const changeRolesSchema = z.object({
 /** Restablecimiento de contraseña (S-ADM-02) y del MFA (S-ADM-08): con motivo. */
 export const credentialResetSchema = z.object({ reason });
 
+/**
+ * Perfil (T-006b): cambiar la propia contraseña. La longitud y la lista de
+ * contraseñas comunes las comprueba la API (ADR 0023); aquí solo se acota.
+ */
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(1024),
+  newPassword: z.string().min(1).max(1024),
+});
+
+/** S-GEN-24: un código actual de la aplicación de autenticación confirma la acción. */
+export const mfaCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/) });
+
 export type SelectContextInput = z.infer<typeof selectContextSchema>;
 export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;

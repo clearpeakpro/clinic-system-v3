@@ -42,7 +42,11 @@ ADR 0021 condicionó Better Auth a una prueba de 8 criterios. Si fallaba el 3, e
 2. **Contexto RLS solo por sus funciones.** Añadir a la CI una comprobación que falle si se fija `app.org_id` o `app.user_id` fuera de `withTenant` o `withUser`.
 3. **Contraseña y MFA.** En la fase 1, pruebas y permisos mínimos de `clinic_app` para cambiar la contraseña y para desactivar el MFA.
    - **T-006a (2026-10-28):** `clinic_app` recibe solo `UPDATE` en `auth.account` y `DELETE` en `auth.two_factor` (migración `0009`, comprobado en `packages/db/test/roles.test.ts`). Los usan el restablecimiento de contraseña y el del MFA por un administrador, con sus pruebas (`apps/api/test/users-admin.test.ts`).
-   - **Pendiente para T-006b:** el cambio de contraseña y la desactivación del MFA desde el Perfil, con sus pruebas.
+   - **Cumplida en T-006b (2026-10-29):** el cambio de contraseña y la desactivación del MFA desde el Perfil usan esos mismos permisos, sin GRANT nuevos. Pruebas en `apps/api/test/profile.test.ts`.
+     - Pasan solo por `/api/me/password`, `/api/me/mfa/disable` y `/api/me/mfa/recovery-codes`. Los equivalentes de Better Auth (`/change-password`, `/two-factor/disable`, `/two-factor/generate-backup-codes`) responden `403 use_profile` por HTTP.
+     - Cambiar la contraseña exige la actual, cierra las demás sesiones y conserva la actual con su sede. Las contraseñas actuales incorrectas cuentan para el límite por cuenta del inicio de sesión.
+     - Desactivar el MFA o regenerar los códigos exige un código actual de la aplicación (S-GEN-24). Desactivar se rechaza con `403 mfa_required_for_role` si un rol de la persona lo exige.
+     - **Hallazgo:** en 1.7.7, `verify-totp` con la sesión abierta no aplica el bloqueo por cuenta (solo lo hace al iniciar sesión). El Perfil aplica el mismo bloqueo sobre las columnas de Better Auth (`failed_verification_count`, `locked_until`): 10 códigos incorrectos bloquean el factor 15 minutos, también para el inicio de sesión.
 4. **Pruebas que vigilan la configuración.** Las pruebas de `cookieCache` (revocación), de códigos de recuperación cifrados y de registro público cerrado corren siempre en la CI y se revisan en cada actualización de Better Auth.
 5. **Operador de la plataforma.** El rol de base de datos del operador (el único que lee los eventos de auditoría sin organización) es una tarea de la fase 1. Queda como pendiente P-11.
 

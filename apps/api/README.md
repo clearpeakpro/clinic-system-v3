@@ -50,6 +50,10 @@ Pruebas: `test/role-assignment.test.ts` y `packages/shared/test/permissions.test
 | `GET/POST /api/auth/*` | — | Better Auth: inicio y cierre de sesión, sesión, TOTP y códigos de recuperación. El registro público está cerrado. |
 | `GET /api/me` | sesión | Usuario, estado del MFA, contexto activo y permisos efectivos |
 | `GET /api/me/locations` | sesión | Organizaciones y sedes que puede elegir |
+| `GET /api/me/mfa` | sesión | S-GEN-22: estado del propio MFA (activo, obligatorio por rol, bloqueo, códigos que quedan) |
+| `POST /api/me/password` | sesión | Perfil: cambiar la contraseña con la actual; cierra las demás sesiones |
+| `POST /api/me/mfa/recovery-codes` | sesión | S-GEN-24/25: códigos de recuperación nuevos, con un código actual de la aplicación |
+| `POST /api/me/mfa/disable` | sesión | S-GEN-24: desactivar el propio MFA con un código actual; `403 mfa_required_for_role` para Propietario y Administrador |
 | `POST /api/context` | sesión | Elegir organización y sede (validado contra `memberships`) |
 | `GET /api/users` | `members.manage` | S-ADM-02: personas e invitaciones pendientes de la organización activa, con lo que quien consulta puede hacer en cada fila y su último acceso (de la auditoría de inicio de sesión, sin IP; función `app.last_sign_ins`, migración 0010) |
 | `POST /api/invitations` | `members.invite` | S-ADM-03: invitar con roles y sedes. Envía el correo y devuelve el enlace `/invitacion/<token>` una sola vez (S-ADM-04); vence a las 48 h. Reinvitar a alguien aún «Invitado» anula el enlace anterior. |
