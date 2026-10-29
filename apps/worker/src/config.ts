@@ -16,6 +16,8 @@ export interface WorkerConfig {
   auditVerifyCron: string;
   /** Cron (UTC) de la purga diaria de las claves de idempotencia vencidas. */
   idempotencyPurgeCron: string;
+  /** Cron (UTC) de la purga diaria de las notificaciones de más de 30 días. */
+  notificationsPurgeCron: string;
 }
 
 export const WORKER_DEFAULTS = {
@@ -23,6 +25,7 @@ export const WORKER_DEFAULTS = {
   outboxSweepSeconds: 30,
   auditVerifyCron: '0 3 * * *',
   idempotencyPurgeCron: '30 3 * * *',
+  notificationsPurgeCron: '45 3 * * *',
 } as const;
 
 const envSchema = z.object({
@@ -34,6 +37,7 @@ const envSchema = z.object({
   OUTBOX_SWEEP_SECONDS: z.coerce.number().int().min(1).max(3600).default(WORKER_DEFAULTS.outboxSweepSeconds),
   AUDIT_VERIFY_CRON: z.string().default(WORKER_DEFAULTS.auditVerifyCron),
   IDEMPOTENCY_PURGE_CRON: z.string().default(WORKER_DEFAULTS.idempotencyPurgeCron),
+  NOTIFICATIONS_PURGE_CRON: z.string().default(WORKER_DEFAULTS.notificationsPurgeCron),
 });
 
 /** Falla al arrancar si falta algo; el mensaje nombra la variable, nunca su valor. */
@@ -56,5 +60,6 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     outboxSweepSeconds: e.OUTBOX_SWEEP_SECONDS,
     auditVerifyCron: e.AUDIT_VERIFY_CRON,
     idempotencyPurgeCron: e.IDEMPOTENCY_PURGE_CRON,
+    notificationsPurgeCron: e.NOTIFICATIONS_PURGE_CRON,
   };
 }
