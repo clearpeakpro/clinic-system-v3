@@ -444,7 +444,8 @@ function UsersContent({
             isOwner(row)
               ? 'bg-status-checkout-container/60 hover:bg-status-checkout-container dark:bg-status-checkout-container/30 dark:hover:bg-status-checkout-container/50'
               : statusOf(row) === 'disabled'
-                ? 'bg-surface-container-low/60 dark:bg-surface-container/40'
+                ? // Atenuada en los dos temas: fondo hundido y barra gris a la izquierda.
+                  'bg-surface-container-low/60 shadow-[inset_4px_0_0_var(--color-outline-variant)] dark:bg-surface-container-lowest dark:hover:bg-surface-container-lowest'
                 : undefined
           }
         />

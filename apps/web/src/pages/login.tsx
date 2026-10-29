@@ -319,7 +319,21 @@ function MfaCode({ email, onSuccess, onBack }: { email: string | null; onSuccess
 let pendingRecoveryCodes: string[] = [];
 
 /** S-GEN-07: inscripción obligatoria (QR, clave en grupos de 4, confirmar con un código). */
-export function MfaEnroll({ password, onEnrolled, onBack }: { password: { current: string }; onEnrolled: () => void; onBack: () => Promise<void> }) {
+/**
+ * S-GEN-07 (página de acceso) y etapas 1–2 de S-GEN-23 (`embedded`: dentro del
+ * diálogo del Perfil, que pone su título y su «Cancelar»).
+ */
+export function MfaEnroll({
+  password,
+  onEnrolled,
+  onBack,
+  embedded = false,
+}: {
+  password: { current: string };
+  onEnrolled: () => void;
+  onBack?: () => Promise<void>;
+  embedded?: boolean;
+}) {
   // Con la contraseña en memoria (recién iniciada la sesión) la inscripción
   // arranca sola; si se recargó la página, se vuelve a pedir.
   const [initialPassword] = useState(password.current);
@@ -378,15 +392,20 @@ export function MfaEnroll({ password, onEnrolled, onBack }: { password: { curren
 
   return (
     <div className="flex flex-col gap-space-md">
-      <AuthHeader
-        icon={<Smartphone aria-hidden className="size-9" />}
-        title="Configurar la verificación en dos pasos"
-        subtitle="Esta cuenta necesita un código de una aplicación de autenticación cada vez que inicia sesión. Configurarla toma un minuto."
-      />
+      {embedded ? null : (
+        <AuthHeader
+          icon={<Smartphone aria-hidden className="size-9" />}
+          title="Configurar la verificación en dos pasos"
+          subtitle="Esta cuenta necesita un código de una aplicación de autenticación cada vez que inicia sesión. Configurarla toma un minuto."
+        />
+      )}
       {needsPassword ? (
         <form onSubmit={(e) => { e.preventDefault(); void start(passwordInput); }} className="flex flex-col gap-space-md">
+          {embedded ? (
+            <p className="text-body-md text-on-surface">Por seguridad, escriba su contraseña para configurar la verificación en dos pasos.</p>
+          ) : null}
           <Field
-            label="Confirme su contraseña"
+            label={embedded ? 'Contraseña actual' : 'Confirme su contraseña'}
             type="password"
             autoComplete="current-password"
             autoFocus
@@ -435,14 +454,19 @@ export function MfaEnroll({ password, onEnrolled, onBack }: { password: { curren
           </Button>
         </form>
       )}
-      <BackLink onBack={onBack} />
+      {onBack ? <BackLink onBack={onBack} /> : null}
     </div>
   );
 }
 
 /** S-GEN-08: los códigos solo se muestran ahora; «Continuar» exige marcar «Guardé estos códigos». */
-export function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> }) {
-  const [codes] = useState(() => pendingRecoveryCodes);
+/**
+ * S-GEN-08 (página de acceso), etapa 3 de S-GEN-23 y S-GEN-25 (`embedded`:
+ * dentro de un diálogo con su propio título). `codes`: los recién
+ * regenerados; si no, los de la inscripción que acaba de terminar.
+ */
+export function RecoveryCodes({ onContinue, codes: given, embedded = false }: { onContinue: () => Promise<void>; codes?: string[]; embedded?: boolean }) {
+  const [codes] = useState(() => given ?? pendingRecoveryCodes);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -457,11 +481,17 @@ export function RecoveryCodes({ onContinue }: { onContinue: () => Promise<void> 
 
   return (
     <div className="flex flex-col gap-space-md">
-      <AuthHeader
-        icon={<KeyRound aria-hidden className="size-9" />}
-        title="Guarde sus códigos de recuperación"
-        subtitle="Si pierde su teléfono, cada código le permite iniciar sesión una vez. Guárdelos en un lugar seguro y privado: solo se muestran ahora."
-      />
+      {embedded ? (
+        <p className="text-body-md text-on-surface">
+          Si pierde su teléfono, cada código le permite iniciar sesión una vez. Guárdelos en un lugar seguro y privado: solo se muestran ahora.
+        </p>
+      ) : (
+        <AuthHeader
+          icon={<KeyRound aria-hidden className="size-9" />}
+          title="Guarde sus códigos de recuperación"
+          subtitle="Si pierde su teléfono, cada código le permite iniciar sesión una vez. Guárdelos en un lugar seguro y privado: solo se muestran ahora."
+        />
+      )}
       <ul data-testid="recovery-codes" className="grid grid-cols-2 gap-space-sm rounded-lg bg-surface-container p-space-md font-mono text-code-md select-all">
         {codes.map((c) => (
           <li key={c}>{c}</li>
