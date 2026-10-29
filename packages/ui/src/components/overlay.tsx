@@ -2,7 +2,7 @@ import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import { Check, X } from 'lucide-react';
-import type { ComponentProps, ReactNode } from 'react';
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react';
 import { cn } from '../cn.ts';
 
 export interface DialogProps {
@@ -196,5 +196,88 @@ export function Checkbox({ label, checked, onCheckedChange }: { label: string; c
       </CheckboxPrimitive.Root>
       {label}
     </label>
+  );
+}
+
+/** ¿Pantalla de 600 px o más? (tableta y escritorio; S-GEN-12). */
+function useTabletUp(): boolean {
+  const query = '(min-width: 600px)';
+  const [matches, setMatches] = useState(() => typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const list = window.matchMedia(query);
+    const onChange = () => {
+      setMatches(list.matches);
+    };
+    list.addEventListener('change', onChange);
+    return () => {
+      list.removeEventListener('change', onChange);
+    };
+  }, []);
+  return matches;
+}
+
+/**
+ * Panel anclado a un botón de la cabecera (S-GEN-15): en tableta y escritorio,
+ * 400 × 520 px arriba a la derecha y sin oscurecer el fondo; en el teléfono,
+ * hoja inferior de 480 px con asa. Título visible y acciones a su derecha.
+ */
+export function FloatingPanel({
+  open,
+  onOpenChange,
+  trigger,
+  title,
+  actions,
+  children,
+  inline = false,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Botón que lo abre (también lo cierra). */
+  trigger?: ReactNode;
+  title: string;
+  actions?: ReactNode;
+  children: ReactNode;
+  /** Solo para /dev/ui: se dibuja en la página. */
+  inline?: boolean;
+}) {
+  const tabletUp = useTabletUp();
+  const sheet = !tabletUp && !inline;
+  const content = (
+    <DialogPrimitive.Content
+      className={cn(
+        'flex flex-col overflow-hidden border border-outline-variant/60 bg-surface-container-lowest dark:bg-surface-container-low',
+        inline
+          ? 'relative h-[520px] w-full max-w-[400px] rounded-lg shadow-level-2'
+          : sheet
+            ? 'fixed inset-x-0 bottom-0 z-50 h-[480px] max-h-[85dvh] rounded-t-lg shadow-level-3'
+            : 'fixed top-[72px] right-4 z-50 h-[520px] max-h-[calc(100dvh-88px)] w-[400px] max-w-[calc(100vw-2rem)] rounded-lg shadow-level-2',
+      )}
+      {...(inline ? { onOpenAutoFocus: (e: Event) => { e.preventDefault(); } } : {})}
+    >
+      {sheet ? <div aria-hidden className="mx-auto mt-space-sm h-1 w-8 shrink-0 rounded-full bg-outline-variant" /> : null}
+      <div className="flex min-h-16 shrink-0 items-center gap-space-xs border-b border-surface-container-high py-space-xs pr-space-xs pl-space-md">
+        <DialogPrimitive.Title className="flex-1 text-headline-sm text-on-surface">{title}</DialogPrimitive.Title>
+        <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
+        {actions}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+    </DialogPrimitive.Content>
+  );
+  if (inline) {
+    return (
+      <DialogPrimitive.Root open modal={false}>
+        {content}
+      </DialogPrimitive.Root>
+    );
+  }
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal={sheet}>
+      {trigger ? <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger> : null}
+      <DialogPrimitive.Portal>
+        {sheet ? <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-[var(--backdrop)] backdrop-blur-[4px]" /> : null}
+        {content}
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

@@ -172,9 +172,9 @@ test('el Propietario invita, la persona acepta y entra; al deshabilitarla, su se
   await expect(confirm).toHaveCount(0);
   await expect(target).toContainText('Deshabilitado');
 
-  // Su sesión se cortó: la siguiente petición la lleva al inicio de sesión.
-  await guest.reload();
-  await expect(guest).toHaveURL(/\/login/);
+  // Su sesión se cortó: el servidor cierra su conexión en vivo y la pantalla
+  // vuelve sola al inicio de sesión, sin recargar (T-009).
+  await expect(guest).toHaveURL(/\/login/, { timeout: 10_000 });
 });
 
 test('un Administrador invitado se inscribe en el MFA al aceptar y no puede invitar Administradores', async ({ browser }) => {

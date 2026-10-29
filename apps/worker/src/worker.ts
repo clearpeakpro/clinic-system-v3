@@ -5,7 +5,7 @@ import type { WorkerConfig } from './config.ts';
 import { deliverEvent } from './deliver.ts';
 import { log } from './log.ts';
 import type { Mailer } from './mailer.ts';
-import { purgeIdempotencyKeys, verifyAuditChains } from './maintenance.ts';
+import { purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from './maintenance.ts';
 
 // El worker (ADR 0020): proceso aparte, conectado como clinic_app, que nunca
 // corre dentro de la API. pg-boss no crea ni migra su esquema aquí: lo
@@ -14,8 +14,10 @@ import { purgeIdempotencyKeys, verifyAuditChains } from './maintenance.ts';
 //    aviso (LISTEN/NOTIFY); además se revisa cada pocos segundos. Cada evento
 //    pendiente se pone en cola con singletonKey = su id, y el trabajo lo
 //    entrega dentro de withTenant (deliver.ts).
+//    Las notificaciones (T-009) van por el mismo camino: se guardan y se avisa
+//    a los sockets de la persona por LISTEN/NOTIFY.
 //  - Cada día: verificación de las cadenas de auditoría y purga de las claves
-//    de idempotencia vencidas.
+//    de idempotencia vencidas y de las notificaciones de más de 30 días.
 
 export interface RunningWorker {
   /** Revisa el outbox ahora (también lo hacen el aviso y el temporizador). */
@@ -53,7 +55,11 @@ export async function startWorker(config: WorkerConfig, mailer: Mailer): Promise
     log('info', 'claves de idempotencia purgadas', { purged: await purgeIdempotencyKeys(pool) });
   });
   await boss.schedule(QUEUES.auditVerify, config.auditVerifyCron, null, { tz: 'UTC' });
+  await boss.work(QUEUES.notificationsPurge, async () => {
+    log('info', 'notificaciones purgadas', { purged: await purgeNotifications(pool) });
+  });
   await boss.schedule(QUEUES.idempotencyPurge, config.idempotencyPurgeCron, null, { tz: 'UTC' });
+  await boss.schedule(QUEUES.notificationsPurge, config.notificationsPurgeCron, null, { tz: 'UTC' });
 
   let sweeping: Promise<number> | null = null;
   const sweep = (): Promise<number> => {

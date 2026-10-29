@@ -5,7 +5,8 @@ import type pg from 'pg';
 
 // Trabajos diarios del worker (T-008): verificación de las cadenas de
 // auditoría (ADR 0018) y purga de las claves de idempotencia vencidas
-// (ADR 0019). Las funciones de la base de datos no devuelven ningún dato de
+// (ADR 0019); desde T-009, también de las notificaciones de más de 30 días
+// (ADR 0008). Las funciones de la base de datos no devuelven ningún dato de
 // las filas: solo si la cadena está bien, su tamaño y su cabeza.
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -71,5 +72,11 @@ export async function verifyAuditChains(pool: pg.Pool, tenantDb: TenantDb): Prom
 /** Borra las claves de idempotencia vencidas (24 h) de todas las organizaciones. */
 export async function purgeIdempotencyKeys(pool: pg.Pool): Promise<number> {
   const { rows } = await pool.query<{ purged: number }>('select app.purge_idempotency_keys() as purged');
+  return rows[0]?.purged ?? 0;
+}
+
+/** Borra las notificaciones de más de 30 días de todas las organizaciones (ADR 0008). */
+export async function purgeNotifications(pool: pg.Pool): Promise<number> {
+  const { rows } = await pool.query<{ purged: number }>('select app.purge_notifications() as purged');
   return rows[0]?.purged ?? 0;
 }

@@ -1,12 +1,24 @@
 import { randomUUID } from 'node:crypto';
-import { createTenantDb, DEMO, enqueueMail, idempotencyKeys, outbox, type TenantDb } from '@clinic/db';
+import {
+  createTenantDb,
+  DEMO,
+  enqueueMail,
+  enqueueNotification,
+  idempotencyKeys,
+  notifications,
+  outbox,
+  parseRealtimeMessage,
+  REALTIME_CHANNEL,
+  type TenantDb,
+} from '@clinic/db';
 import { eq } from 'drizzle-orm';
 import pg from 'pg';
+import { v7 as uuidv7 } from 'uuid';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { WORKER_DEFAULTS, loadWorkerConfig } from '../src/config.ts';
 import { backoffSeconds, deliverEvent, type DeliverDeps } from '../src/deliver.ts';
 import { MemoryMailer, type Mailer } from '../src/mailer.ts';
-import { purgeIdempotencyKeys, verifyAuditChains } from '../src/maintenance.ts';
+import { purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from '../src/maintenance.ts';
 import { startWorker } from '../src/worker.ts';
 
 // T-008: el worker entrega el outbox al menos una vez sin procesar dos veces
@@ -118,7 +130,8 @@ describe('worker', () => {
       // Lo pendiente de las pruebas anteriores también sale.
       const id = await enqueue('aviso@example.test');
       await expect.poll(() => mailer.sent.some((m) => m.messageId === id), { timeout: 20_000 }).toBe(true);
-      expect(await rowOf(id)).toMatchObject({ status: 'sent' });
+      // El correo sale antes de que se confirme la transacción que marca el evento.
+      await expect.poll(async () => (await rowOf(id))?.status, { timeout: 5_000 }).toBe('sent');
       // Un barrido después no vuelve a enviarlo.
       await worker.sweep();
       await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -153,5 +166,131 @@ describe('worker', () => {
     );
     expect(await purgeIdempotencyKeys(pool)).toBeGreaterThanOrEqual(1);
     expect(await tenantDb.withTenant(NORTE.id, (tx) => tx.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, key)))).toEqual([]);
+  });
+});
+
+// T-009: notificaciones guardadas por el outbox (ADR 0008).
+describe('notificaciones', () => {
+  let pool: pg.Pool;
+  let tenantDb: TenantDb;
+  let userId: string;
+
+  beforeAll(async () => {
+    pool = new pg.Pool({ connectionString: inject('appUrl'), max: 6 });
+    tenantDb = createTenantDb(pool);
+    userId = uuidv7();
+    await pool.query(
+      `insert into auth."user" (id, name, email, email_verified, created_at, updated_at) values ($1, 'Persona ficticia', $2, true, now(), now())`,
+      [userId, `aviso.${userId}@example.test`],
+    );
+  });
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  const deps = (extra: Partial<DeliverDeps> = {}): DeliverDeps => ({ tenantDb, mailer: new MemoryMailer(), outboxKey: KEY, maxAttempts: 3, ...extra });
+  const enqueue = (entityId: string | undefined, code = 'NOR1-C-000123') =>
+    tenantDb.withTenant(NORTE.id, (tx) =>
+      enqueueNotification(tx, KEY, {
+        organizationId: NORTE.id,
+        userId,
+        kind: 'appointment.changed',
+        locationId: NORTE.locations[0].id,
+        ...(entityId ? { entityType: 'appointment', entityId } : {}),
+        code,
+      }),
+    );
+  const deliver = (id: string, extra?: Partial<DeliverDeps>) => deliverEvent(deps(extra), { organizationId: NORTE.id, id });
+  const mine = () =>
+    tenantDb.withTenant(NORTE.id, (tx) => tx.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(notifications.createdAt));
+
+  it('la guarda, marca el evento y avisa a los sockets de la persona en la misma transacción', async () => {
+    const listener = new pg.Client({ connectionString: inject('appUrl') });
+    await listener.connect();
+    const received: string[] = [];
+    listener.on('notification', (n) => {
+      if (n.channel === REALTIME_CHANNEL && n.payload) received.push(n.payload);
+    });
+    await listener.query(`LISTEN ${REALTIME_CHANNEL}`);
+    try {
+      const id = await enqueue(randomUUID());
+      expect(await deliver(id)).toBe('sent');
+      const [row] = (await mine()).filter((n) => n.eventId === id);
+      expect(row).toMatchObject({ id, kind: 'appointment.changed', code: 'NOR1-C-000123', locationId: NORTE.locations[0].id, readAt: null });
+      const [event] = await tenantDb.withTenant(NORTE.id, (tx) => tx.select().from(outbox).where(eq(outbox.id, id)));
+      expect(event).toMatchObject({ status: 'sent', payload: null });
+      await expect.poll(() => received.map((p) => parseRealtimeMessage(p))).toContainEqual({ t: 'notifications', org: NORTE.id, user: userId });
+    } finally {
+      await listener.end();
+    }
+  });
+
+  it('un evento repetido, también a la vez, deja una sola fila', async () => {
+    const id = await enqueue(undefined);
+    const results = await Promise.all([1, 2, 3].map(() => deliver(id)));
+    expect(results.filter((r) => r === 'sent')).toHaveLength(1);
+    expect(await deliver(id)).toBe('skipped');
+    expect((await mine()).filter((n) => n.eventId === id)).toHaveLength(1);
+  });
+
+  it('si el worker se cae antes de confirmar, el aviso no se pierde ni se guarda a medias', async () => {
+    const crash = () => {
+      throw new Error('el proceso se cae');
+    };
+    const id = await enqueue(undefined);
+    await expect(deliver(id, { hooks: { afterSend: crash } })).rejects.toThrow('se cae');
+    expect((await mine()).filter((n) => n.eventId === id)).toEqual([]);
+    expect(await deliver(id)).toBe('sent');
+    expect((await mine()).filter((n) => n.eventId === id)).toHaveLength(1);
+  });
+
+  it('un aviso no leído sobre la misma entidad y tipo se reemplaza; uno leído no', async () => {
+    const entityId = randomUUID();
+    const first = await enqueue(entityId, 'NOR1-C-000200');
+    await deliver(first);
+    const second = await enqueue(entityId, 'NOR1-C-000201');
+    await deliver(second);
+    const sameEntity = async () => (await mine()).filter((n) => n.entityId === entityId);
+    expect(await sameEntity()).toEqual([expect.objectContaining({ id: first, eventId: second, code: 'NOR1-C-000201', readAt: null })]);
+
+    await tenantDb.withTenant(NORTE.id, (tx) => tx.update(notifications).set({ readAt: new Date() }).where(eq(notifications.id, first)));
+    const third = await enqueue(entityId, 'NOR1-C-000202');
+    await deliver(third);
+    expect((await sameEntity()).map((n) => n.id)).toEqual([first, third]);
+  });
+
+  it('si no se puede guardar, reintenta y al agotar los intentos la marca fallida y lo audita', async () => {
+    const id = await tenantDb.withTenant(NORTE.id, (tx) =>
+      // Destinatario inexistente: la FK falla al guardar.
+      enqueueNotification(tx, KEY, { organizationId: NORTE.id, userId: randomUUID(), kind: 'appointment.changed' }),
+    );
+    const now = async () => tenantDb.withTenant(NORTE.id, (tx) => tx.update(outbox).set({ nextAttemptAt: new Date() }).where(eq(outbox.id, id)));
+    expect(await deliver(id, { maxAttempts: 2 })).toBe('retry');
+    await now();
+    expect(await deliver(id, { maxAttempts: 2 })).toBe('failed');
+    const [event] = await tenantDb.withTenant(NORTE.id, (tx) => tx.select().from(outbox).where(eq(outbox.id, id)));
+    expect(event).toMatchObject({ status: 'failed', payload: null, lastError: 'store_error' });
+  });
+
+  it('el proceso completo: el worker la entrega al confirmarse la transacción', async () => {
+    const worker = await startWorker(
+      { ...loadWorkerConfig({ DATABASE_APP_URL: inject('appUrl'), OUTBOX_KEY: KEY }), outboxSweepSeconds: 3600 },
+      new MemoryMailer(),
+    );
+    try {
+      const id = await enqueue(undefined);
+      await expect.poll(async () => (await mine()).some((n) => n.eventId === id), { timeout: 20_000 }).toBe(true);
+    } finally {
+      await worker.stop();
+    }
+  });
+
+  it('purga las de más de 30 días', async () => {
+    const old = uuidv7();
+    await tenantDb.withTenant(NORTE.id, (tx) =>
+      tx.insert(notifications).values({ id: old, organizationId: NORTE.id, userId, kind: 'appointment.changed', eventId: uuidv7(), createdAt: new Date(Date.now() - 31 * 86_400_000) }),
+    );
+    expect(await purgeNotifications(pool)).toBeGreaterThanOrEqual(1);
+    expect((await mine()).some((n) => n.id === old)).toBe(false);
   });
 });

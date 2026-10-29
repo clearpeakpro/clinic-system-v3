@@ -33,4 +33,9 @@ Implementación: `apps/api/src/idempotency.ts` (`IdempotencyService` y `@Idempot
   - el trabajo bloquea la fila dentro de `withTenant` (`FOR UPDATE SKIP LOCKED`), envía y la marca como entregada en la misma transacción. Un evento repetido no se procesa dos veces, y si el worker se cae antes de confirmar, el evento sigue pendiente.
 - **Límite de «al menos una vez»:** si el worker se cae después de que el servidor de correo acepte el mensaje, el correo puede llegar dos veces. Lleva `Message-ID` = id del evento.
 - **Reintentos:** con espera creciente. Al agotarse, el evento queda `failed`, su payload se borra, se audita `mail.failed` y Usuarios muestra «Correo no entregado» junto a «Reenviar».
-- **Qué va por el outbox:** por ahora, solo los correos de invitación. Los restablecimientos de contraseña no se envían por correo (T-006a).
+- **Qué va por el outbox:**
+  - los correos de invitación; los restablecimientos de contraseña no se envían por correo (T-006a);
+  - desde T-009, las notificaciones guardadas ([ADR 0008](0008-historial-notificaciones.md)): tipo `notification` y `enqueueNotification`.
+    - El worker las guarda en `notifications` y avisa a los sockets de la persona (`pg_notify('clinic_realtime')`) en la misma transacción que marca el evento.
+    - Sin efectos fuera de la base de datos, así que se entregan una sola vez.
+    - Si no se pueden guardar, reintentos; al agotarse, `failed` y `notification.failed` en la auditoría.

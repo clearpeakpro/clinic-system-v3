@@ -40,6 +40,7 @@ import { AuditService } from './audit.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
 import { LocationService } from './locations.ts';
+import { NotificationService } from './notifications.ts';
 import { ProfileService } from './profile.ts';
 import { toHeaders } from './request-context.ts';
 import { ContextService, HttpError, type RequestMeta } from './services.ts';
@@ -384,12 +385,45 @@ export class LocationsController {
   }
 }
 
+/** Centro de notificaciones (S-GEN-15, T-009): avisos propios de la organización activa. */
+@Controller('notifications')
+export class NotificationsController {
+  readonly #notifications: NotificationService;
+  constructor(@Inject(NotificationService) notifications: NotificationService) {
+    this.#notifications = notifications;
+  }
+
+  @Get()
+  list(@Req() request: FastifyRequest) {
+    return this.#notifications.list(principalOf(request));
+  }
+
+  @Post('read-all')
+  @HttpCode(204)
+  async readAll(@Req() request: FastifyRequest) {
+    await this.#notifications.markAllRead(principalOf(request));
+  }
+
+  @Post('clear')
+  @HttpCode(204)
+  async clear(@Req() request: FastifyRequest) {
+    await this.#notifications.clear(principalOf(request));
+  }
+
+  @Post(':id/read')
+  @HttpCode(204)
+  async read(@Req() request: FastifyRequest, @Param('id') notificationId: string) {
+    await this.#notifications.markRead(principalOf(request), id(notificationId));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
   memberships: MembershipService;
   profile: ProfileService;
   locations: LocationService;
+  notifications: NotificationService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -397,13 +431,22 @@ export interface ApiProviders {
 
 export function createApiModule(providers: ApiProviders) {
   @Module({
-    controllers: [MeController, ContextController, InvitationsController, UsersController, MembershipsController, LocationsController],
+    controllers: [
+      MeController,
+      ContextController,
+      InvitationsController,
+      UsersController,
+      MembershipsController,
+      LocationsController,
+      NotificationsController,
+    ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
       { provide: InvitationService, useValue: providers.invitations },
       { provide: MembershipService, useValue: providers.memberships },
       { provide: ProfileService, useValue: providers.profile },
       { provide: LocationService, useValue: providers.locations },
+      { provide: NotificationService, useValue: providers.notifications },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

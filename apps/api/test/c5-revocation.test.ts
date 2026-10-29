@@ -13,8 +13,8 @@ import {
   type TestApp,
 } from './support.ts';
 
-// Criterio 5 (T-002), sin la parte de WebSocket (llega con T-009): desactivar
-// a un usuario o quitarle la membresía invalida sus sesiones.
+// Criterio 5 (T-002): desactivar a un usuario o quitarle la membresía
+// invalida sus sesiones. El cierre de sus sockets está en t009.test.ts.
 
 const sessionsOf = async (app: TestApp, userId: string) =>
   (

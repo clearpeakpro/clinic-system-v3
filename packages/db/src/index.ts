@@ -2,9 +2,21 @@ export * from './schema.ts';
 export * from './auth-schema.ts';
 export * from './identity-schema.ts';
 export * from './ops-schema.ts';
+export * from './notifications-schema.ts';
 export { createTenantDb, type Db, type TenantDb, type Tx } from './with-tenant.ts';
 export { bootstrap, type BootstrapOptions } from './bootstrap.ts';
 export { migrate } from './migrate.ts';
 export { JOB_SCHEMA, QUEUES, setupJobQueues } from './jobs.ts';
-export { decryptPayload, encryptPayload, enqueueMail, OUTBOX_CHANNEL, type MailPayload } from './outbox.ts';
+export {
+  decryptNotificationPayload,
+  decryptPayload,
+  encryptPayload,
+  enqueueMail,
+  enqueueNotification,
+  NOTIFICATION_EVENT,
+  OUTBOX_CHANNEL,
+  type MailPayload,
+  type NotificationPayload,
+} from './outbox.ts';
+export { notifyRealtime, parseRealtimeMessage, REALTIME_CHANNEL, type RealtimeMessage } from './realtime.ts';
 export { DEMO, seed } from './seed.ts';

@@ -54,6 +54,11 @@ export interface AppConfig {
    * worker y org:create. Al menos 32 caracteres.
    */
   outboxKey: string;
+  /**
+   * Revalidación periódica de cada socket (T-009): sesión, membresía y sede.
+   * Cubre lo que no avisa al instante el canal de tiempo real.
+   */
+  realtimeRevalidateSeconds: number;
 }
 
 /** Margen del servidor sobre el límite de inactividad del cliente (S-GEN-20). */
@@ -72,6 +77,7 @@ export const DEFAULTS = {
   twoFactorIpWindowSeconds: 60,
   twoFactorMaxFailures: 10,
   twoFactorLockSeconds: 15 * 60,
+  realtimeRevalidateSeconds: 30,
 } as const;
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
@@ -98,6 +104,7 @@ const envSchema = z.object({
   TWO_FACTOR_LOCK_SECONDS: seconds.default(DEFAULTS.twoFactorLockSeconds),
   TRUST_PROXY: bool.default(false),
   OUTBOX_KEY: z.string().min(32),
+  REALTIME_REVALIDATE_SECONDS: seconds.default(DEFAULTS.realtimeRevalidateSeconds),
 });
 
 /**
@@ -133,6 +140,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     secureCookies: e.NODE_ENV === 'production',
     trustProxy: e.TRUST_PROXY,
     outboxKey: e.OUTBOX_KEY,
+    realtimeRevalidateSeconds: e.REALTIME_REVALIDATE_SECONDS,
   };
   assertConfig(config, e.NODE_ENV === 'production');
   return config;

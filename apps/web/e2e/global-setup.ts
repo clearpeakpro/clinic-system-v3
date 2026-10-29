@@ -25,7 +25,10 @@ function urlFor(base: string, user: string, password: string): string {
 }
 
 function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): ChildProcess {
-  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' });
+  // La salida estándar (logs de peticiones) se descarta: una tubería que
+  // nadie lee se llena y, en Windows, bloquea al proceso que escribe (la API
+  // dejaba de responder al final de la E2E completa). Los errores se muestran.
+  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ['ignore', 'ignore', 'pipe'], shell: process.platform === 'win32' });
   child.stderr.on('data', (chunk: Buffer) => process.stderr.write(chunk));
   return child;
 }
@@ -120,6 +123,8 @@ export default async function globalSetup() {
   process.env.E2E_OPERATOR_URL = urlFor(superuserUrl, 'clinic_operator', operatorPassword);
   process.env.E2E_BASE_URL = webOrigin;
   process.env.E2E_OUTBOX_KEY = outboxKey;
+  // T-009: las pruebas escriben avisos en el outbox como lo haría la API.
+  process.env.E2E_APP_URL = apiEnv.DATABASE_APP_URL;
 
   // Orden: web, worker, API y por último la base de datos (si no, se registra
   // «terminating connection»). Se espera a que cada proceso termine.
