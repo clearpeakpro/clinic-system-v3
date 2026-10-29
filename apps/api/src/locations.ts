@@ -1,4 +1,4 @@
-import { locations, type TenantDb, type Tx } from '@clinic/db';
+import { locations, notifyRealtime, type TenantDb, type Tx } from '@clinic/db';
 import type { CreateLocationInput, UpdateLocationInput } from '@clinic/shared';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { AuditService } from './audit.ts';
@@ -144,6 +144,8 @@ export class LocationService {
         entityId: locationId,
         ...meta,
       });
+      // Quien trabajaba en ella pierde el contexto: sus sockets se cierran ya (T-009).
+      if (!active) await notifyRealtime(tx, { t: 'revalidate', org: ctx.organizationId });
     });
   }
 

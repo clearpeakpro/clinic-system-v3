@@ -6,6 +6,7 @@ import {
   locations,
   membershipRoles,
   memberships,
+  notifyRealtime,
   outbox,
   session as sessionTable,
   twoFactor as twoFactorTable,
@@ -321,6 +322,8 @@ export class MembershipService {
           locations: locationIds.length,
         },
       });
+      // Sus sockets se revalidan ya: si pierde la sede activa, se cierran (T-009).
+      await notifyRealtime(tx, { t: 'revalidate', org: ctx.organizationId, user: target.userId });
     });
   }
 

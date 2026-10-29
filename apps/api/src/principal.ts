@@ -78,15 +78,19 @@ export class PrincipalResolver {
    * Identifica a quien llama en cada petición. El contexto (organización y
    * sede) sale de la sesión validada y de memberships; los encabezados del
    * cliente se ignoran.
+   *
+   * `refresh: false` (revalidación de los sockets, T-009): comprueba la sesión
+   * sin renovarla, para que un socket abierto no impida el cierre por
+   * inactividad.
    */
-  async resolve(headers: Headers, hasSessionCookie: boolean): Promise<Resolution> {
+  async resolve(headers: Headers, hasSessionCookie: boolean, options: { refresh?: boolean } = {}): Promise<Resolution> {
     if (!hasSessionCookie) return { ok: true, principal: null, setCookies: [] };
 
     // returnHeaders: al refrescar la sesión deslizante, Better Auth renueva la
     // cookie; la reenviamos en la respuesta.
     const { headers: authHeaders, response } = await this.#auth.api.getSession({
       headers,
-      query: { disableCookieCache: true },
+      query: { disableCookieCache: true, ...(options.refresh === false ? { disableRefresh: true } : {}) },
       returnHeaders: true,
     });
     if (!response) return { ok: false, status: 401, code: 'unauthenticated' };

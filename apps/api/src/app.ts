@@ -15,7 +15,9 @@ import { PrincipalResolver } from './principal.ts';
 import { hasSessionCookie, isMfaEnrollmentPath, toHeaders } from './request-context.ts';
 import { InvitationService } from './invitations.ts';
 import { LocationService } from './locations.ts';
+import { NotificationService } from './notifications.ts';
 import { ProfileService } from './profile.ts';
+import { RealtimeGateway } from './realtime.ts';
 import { ContextService } from './services.ts';
 import { MembershipService } from './users.ts';
 
@@ -39,6 +41,7 @@ export async function createApp({ config, logs }: AppDeps) {
     memberships: new MembershipService(pool, tenantDb, resolver, audit, auth, config),
     profile: new ProfileService(pool, tenantDb, auth, audit, config),
     locations: new LocationService(tenantDb, audit),
+    notifications: new NotificationService(tenantDb),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;
@@ -120,6 +123,10 @@ export async function createApp({ config, logs }: AppDeps) {
   app.useGlobalFilters(new ErrorFilter());
   await app.init();
 
+  // Tiempo real (T-009): Socket.IO sobre el mismo servidor HTTP, en /api/socket.io.
+  const realtime = new RealtimeGateway(app.getHttpServer(), { resolver, config, logs });
+  await realtime.start();
+
   return {
     app,
     fastify,
@@ -127,7 +134,9 @@ export async function createApp({ config, logs }: AppDeps) {
     pool,
     services,
     resolver,
+    realtime,
     async close() {
+      await realtime.close();
       await app.close();
       await pool.end();
     },
