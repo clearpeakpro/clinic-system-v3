@@ -42,7 +42,14 @@ async function enrollMfa(page: Page) {
 }
 
 const card = (page: Page, code: string) => page.getByRole('list', { name: 'Sedes' }).getByRole('listitem').filter({ hasText: code });
-const axe = async (page: Page) => (await new AxeBuilder({ page }).withTags(TAGS).analyze()).violations.map((v) => v.id);
+/** Infracciones de axe con su elemento, para que un fallo diga dónde. */
+const axe = async (page: Page) =>
+  (await new AxeBuilder({ page }).withTags(TAGS).analyze()).violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')}`));
+/** Los colores del menú y las tarjetas tienen transición: se espera a que la página quede estable. */
+const expectAccessible = (page: Page) => expect.poll(() => axe(page), { timeout: 10_000 }).toEqual([]);
+
+// Crea una organización: repetir la prueba no tendría sentido (como users.spec).
+test.describe.configure({ retries: 0 });
 
 test('el operador crea una organización; su Propietaria administra las sedes', async ({ page }) => {
   test.setTimeout(150_000);
@@ -72,7 +79,7 @@ test('el operador crea una organización; su Propietaria administra las sedes', 
   await expect(page.getByRole('heading', { name: 'Sedes', level: 1 })).toBeVisible();
   await expect(card(page, 'OES1')).toContainText('Seleccionada');
   await expect(card(page, 'OES1')).toContainText('America/Denver');
-  expect(await axe(page)).toEqual([]);
+  await expectAccessible(page);
 
   // S-ADM-11 y S-ADM-12: nueva sede.
   await page.getByRole('button', { name: 'Nueva sede' }).click();
@@ -83,7 +90,7 @@ test('el operador crea una organización; su Propietaria administra las sedes', 
   await dialog.getByRole('button', { name: /Zona horaria/ }).click();
   const zones = page.getByRole('dialog', { name: 'Zona horaria' });
   await zones.getByLabel('Buscar zona horaria').fill('los angeles');
-  expect(await axe(page)).toEqual([]);
+  await expectAccessible(page);
   await zones.getByRole('button', { name: 'America/Los_Angeles' }).click();
   await dialog.getByLabel('Dirección').fill('2 Calle Ficticia Oeste');
   await dialog.getByLabel('Teléfono').fill('(555) 010-0002');
@@ -117,7 +124,7 @@ test('el operador crea una organización; su Propietaria administra las sedes', 
   await page.getByRole('dialog', { name: '¿Desactivar Oeste Norte II?' }).getByRole('button', { name: 'Desactivar' }).click();
   await expect(card(page, 'OES2')).toContainText('Inactivo');
   await expect(page.getByTestId('location-current')).toContainText('OES1');
-  expect(await axe(page)).toEqual([]);
+  await expectAccessible(page);
 
   // La única activa no se desactiva.
   await card(page, 'OES1').getByRole('button', { name: /Más acciones/ }).click();
