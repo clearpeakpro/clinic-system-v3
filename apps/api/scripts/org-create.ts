@@ -2,7 +2,6 @@ import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { z } from 'zod';
 import { DEFAULTS } from '../src/config.ts';
-import { SmtpMailer } from '../src/mailer.ts';
 import { assertOperatorUrl, createOrganization } from '../src/platform.ts';
 
 // pnpm org:create (ADR 0024): da de alta una organización con su primera sede
@@ -38,8 +37,7 @@ const env = z
     DATABASE_OPERATOR_URL: z.url(),
     BASE_URL: z.url(),
     INVITATION_TTL_SECONDS: z.coerce.number().int().positive().default(DEFAULTS.invitationTtlSeconds),
-    SMTP_URL: z.url().default('smtp://127.0.0.1:1025'),
-    MAIL_FROM: z.string().default('Clinic System <no-reply@example.test>'),
+    OUTBOX_KEY: z.string().min(32),
   })
   .safeParse(process.env);
 if (!env.success) {
@@ -64,11 +62,11 @@ try {
         phone: values['sede-telefono'] ?? null,
       },
     },
-    { baseURL: env.data.BASE_URL, invitationTtlSeconds: env.data.INVITATION_TTL_SECONDS, mailer: new SmtpMailer(env.data.SMTP_URL, env.data.MAIL_FROM) },
+    { baseURL: env.data.BASE_URL, invitationTtlSeconds: env.data.INVITATION_TTL_SECONDS, outboxKey: env.data.OUTBOX_KEY },
   );
   console.log(`Organización creada: ${created.organizationId}`);
   console.log(`Primera sede: ${created.locationId}`);
-  console.log(created.mailSent ? 'Invitación enviada por correo al Propietario.' : 'No se pudo enviar el correo: entregue el enlace por un canal verificado.');
+  console.log('La invitación también se envía por correo al Propietario en unos segundos (la entrega el worker).');
   console.log(`Enlace de invitación (se muestra una sola vez; vence el ${created.expiresAt}):`);
   console.log(created.link);
 } catch (error) {

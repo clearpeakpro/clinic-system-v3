@@ -266,7 +266,8 @@ ALTER TABLE "app"."idempotency_keys" FORCE ROW LEVEL SECURITY;--> statement-brea
 CREATE POLICY "tenant_isolation" ON "app"."idempotency_keys"
   USING ("organization_id" = NULLIF(current_setting('app.org_id', true), '')::uuid)
   WITH CHECK ("organization_id" = NULLIF(current_setting('app.org_id', true), '')::uuid);--> statement-breakpoint
-GRANT SELECT, INSERT ON "app"."idempotency_keys" TO clinic_app;--> statement-breakpoint
+-- UPDATE: la reserva se completa con el estado y los ids en la misma transacción.
+GRANT SELECT, INSERT, UPDATE ON "app"."idempotency_keys" TO clinic_app;--> statement-breakpoint
 
 -- Purga diaria de las claves vencidas (24 h), de todas las organizaciones.
 -- clinic_app no recibe DELETE: solo puede purgar con esta función.

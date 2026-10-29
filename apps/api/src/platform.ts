@@ -1,11 +1,10 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { auditLog, createTenantDb, invitationRoles, invitations, locations, organizations } from '@clinic/db';
+import { auditLog, createTenantDb, enqueueMail, invitationRoles, invitations, locations, organizations } from '@clinic/db';
 import { createLocationSchema, displayNameSchema } from '@clinic/shared';
 import { sql } from 'drizzle-orm';
 import type pg from 'pg';
 import { z } from 'zod';
-import { encodeInvitationToken } from './invitations.ts';
-import type { Mailer } from './mailer.ts';
+import { encodeInvitationToken, invitationMail } from './invitations.ts';
 import { sha256Hex } from './principal.ts';
 
 // Operador de la plataforma (ADR 0024). Lo usan los comandos
@@ -36,24 +35,25 @@ export interface CreatedOrganization {
   /** Enlace /invitacion/<token> del Propietario. Se muestra una sola vez; solo se guarda su hash. */
   link: string;
   expiresAt: string;
-  mailSent: boolean;
 }
 
 /**
  * `pnpm org:create`: la organización, su primera sede y la invitación de su
  * Propietario (rol de toda la organización), en una transacción y bajo la RLS
- * de la organización nueva. El Propietario la acepta en /invitacion/<token>
+ * de la organización nueva, con el correo en el outbox. El Propietario la
+ * acepta en /invitacion/<token>
  * (S-GEN-09) y configura su MFA al entrar.
  */
 export async function createOrganization(
   pool: pg.Pool,
   rawInput: CreateOrganizationInput,
-  options: { baseURL: string; invitationTtlSeconds: number; mailer: Mailer },
+  options: { baseURL: string; invitationTtlSeconds: number; outboxKey: string },
 ): Promise<CreatedOrganization> {
   const input = createOrganizationSchema.parse(rawInput);
   const organizationId = randomUUID();
   const secret = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + options.invitationTtlSeconds * 1000);
+  const link = `${options.baseURL}/invitacion/${encodeInvitationToken(organizationId, secret)}`;
 
   const ids = await createTenantDb(pool).withTenant(organizationId, async (tx) => {
     await tx.insert(organizations).values({ id: organizationId, name: input.organizationName });
@@ -93,21 +93,18 @@ export async function createOrganization(
       // Sin el correo del Propietario: solo ids y el código de la sede.
       metadata: { locationCode: input.location.code, invitationId: invitation.id, dbUser: who[0]?.name ?? '' },
     });
+    // El correo del Propietario va al outbox en la misma transacción (T-008).
+    await enqueueMail(tx, options.outboxKey, {
+      organizationId,
+      kind: 'mail.invitation',
+      entityType: 'invitation',
+      entityId: invitation.id,
+      mail: invitationMail(input.ownerEmail, link, options.invitationTtlSeconds, input.organizationName),
+    });
     return { locationId: location.id, invitationId: invitation.id };
   });
 
-  const link = `${options.baseURL}/invitacion/${encodeInvitationToken(organizationId, secret)}`;
-  let mailSent = true;
-  try {
-    await options.mailer.send({
-      to: input.ownerEmail,
-      subject: 'Invitación a Clinic System',
-      text: `Le invitaron a Clinic System como Propietario de ${input.organizationName}. Abra este enlace para aceptar la invitación:\n\n${link}\n\nEl enlace sirve una sola vez y vence en ${String(Math.round(options.invitationTtlSeconds / 3600))} horas.`,
-    });
-  } catch {
-    mailSent = false;
-  }
-  return { organizationId, ...ids, link, expiresAt: expiresAt.toISOString(), mailSent };
+  return { organizationId, ...ids, link, expiresAt: expiresAt.toISOString() };
 }
 
 export interface PlatformAuditEvent {

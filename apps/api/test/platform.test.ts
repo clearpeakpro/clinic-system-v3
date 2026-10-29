@@ -1,8 +1,7 @@
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { MemoryMailer } from '../src/mailer.ts';
 import { assertOperatorUrl, createOrganization, readPlatformAudit } from '../src/platform.ts';
-import { Client, enrollTotp, readAudit, startApp, tokenOf, type TestApp } from './support.ts';
+import { Client, enrollTotp, queuedMails, readAudit, startApp, tokenOf, type TestApp } from './support.ts';
 
 // Operador de la plataforma (ADR 0024, T-007): pnpm org:create y pnpm
 // audit:platform, conectados como clinic_operator (el rol real).
@@ -26,7 +25,6 @@ describe('operador de la plataforma', () => {
   });
 
   it('org:create: organización, primera sede e invitación; el Propietario acepta, configura el MFA y administra sus sedes', async () => {
-    const mailer = new MemoryMailer();
     const created = await createOrganization(
       operator,
       {
@@ -35,10 +33,13 @@ describe('operador de la plataforma', () => {
         ownerName: 'Propietaria Este (ficticia)',
         location: { code: 'EST1', name: 'Este Centro', timezone: 'America/New_York', address: '1 Calle Ficticia Este', phone: null },
       },
-      { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, mailer },
+      { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, outboxKey: app.config.outboxKey },
     );
-    expect(created.mailSent).toBe(true);
-    expect(mailer.sent.at(-1)?.to).toBe('propietario.este@example.test');
+    // El correo del Propietario queda en el outbox de la organización nueva (T-008).
+    const [mail] = await queuedMails(app, 'propietario.este@example.test');
+    expect(mail).toMatchObject({ entityId: created.invitationId, status: 'pending' });
+    expect(mail?.text).toContain(created.link);
+    expect(mail?.text).toContain('como Propietario de Clínica Demo Este (ficticia)');
     expect(created.link).toMatch(/\/invitacion\/[\w-]+\.[\w-]+$/);
 
     // El Propietario acepta en S-GEN-09 y entra.
@@ -80,7 +81,7 @@ describe('operador de la plataforma', () => {
         createOrganization(
           operator,
           { organizationName: 'X', ownerEmail: 'x@example.test', ownerName: 'X', location },
-          { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, mailer: new MemoryMailer() },
+          { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, outboxKey: app.config.outboxKey },
         ),
       ).rejects.toThrow();
     }

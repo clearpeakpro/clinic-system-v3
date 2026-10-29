@@ -49,9 +49,11 @@ export interface AppConfig {
   secureCookies: boolean;
   /** Detrás de Caddy: confiar en X-Forwarded-For para la IP del cliente. */
   trustProxy: boolean;
-  /** smtp://host:puerto. En local, Mailpit. */
-  smtpUrl: string;
-  mailFrom: string;
+  /**
+   * Clave del cifrado del payload del outbox (T-008): la comparten la API, el
+   * worker y org:create. Al menos 32 caracteres.
+   */
+  outboxKey: string;
 }
 
 /** Margen del servidor sobre el límite de inactividad del cliente (S-GEN-20). */
@@ -95,8 +97,7 @@ const envSchema = z.object({
   TWO_FACTOR_MAX_FAILURES: seconds.default(DEFAULTS.twoFactorMaxFailures),
   TWO_FACTOR_LOCK_SECONDS: seconds.default(DEFAULTS.twoFactorLockSeconds),
   TRUST_PROXY: bool.default(false),
-  SMTP_URL: z.url().default('smtp://127.0.0.1:1025'),
-  MAIL_FROM: z.string().default('Clinic System <no-reply@example.test>'),
+  OUTBOX_KEY: z.string().min(32),
 });
 
 /**
@@ -131,8 +132,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     twoFactorLockSeconds: e.TWO_FACTOR_LOCK_SECONDS,
     secureCookies: e.NODE_ENV === 'production',
     trustProxy: e.TRUST_PROXY,
-    smtpUrl: e.SMTP_URL,
-    mailFrom: e.MAIL_FROM,
+    outboxKey: e.OUTBOX_KEY,
   };
   assertConfig(config, e.NODE_ENV === 'production');
   return config;

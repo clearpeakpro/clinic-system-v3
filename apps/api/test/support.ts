@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { createTenantDb, DEMO, membershipRoles, memberships } from '@clinic/db';
+import { createTenantDb, decryptPayload, DEMO, membershipRoles, memberships } from '@clinic/db';
 import { eq } from 'drizzle-orm';
 import type { Role } from '@clinic/shared';
 import { generate } from 'otplib';
@@ -8,14 +8,12 @@ import { inject } from 'vitest';
 import { createApp, type ClinicApp } from '../src/app.ts';
 import { DEFAULTS, type AppConfig } from '../src/config.ts';
 import { MemoryLogSink } from '../src/logging.ts';
-import { MemoryMailer } from '../src/mailer.ts';
 import { createOrganization } from '../src/platform.ts';
 
 export const NORTE = DEMO.norte;
 export const SUR = DEMO.sur;
 
 export interface TestApp extends ClinicApp {
-  mailer: MemoryMailer;
   logs: MemoryLogSink;
   config: AppConfig;
 }
@@ -29,15 +27,13 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
     auditHmacKey: randomBytes(32).toString('hex'),
     secureCookies: false,
     trustProxy: false,
-    smtpUrl: 'smtp://127.0.0.1:1025',
-    mailFrom: 'Pruebas <no-reply@example.test>',
+    outboxKey: randomBytes(32).toString('hex'),
     ...DEFAULTS,
     ...overrides,
   };
-  const mailer = new MemoryMailer();
   const logs = new MemoryLogSink();
-  const app = await createApp({ config, mailer, logs });
-  return { ...app, mailer, logs, config };
+  const app = await createApp({ config, logs });
+  return { ...app, logs, config };
 }
 
 export function randomTestIp(): string {
@@ -213,9 +209,59 @@ export async function signedInWithContext(
   return client;
 }
 
-/** Enlace de invitación del último correo enviado a `to` (o del último correo). */
-export function lastInvitationLink(app: TestApp, to?: string): URL {
-  const mail = [...app.mailer.sent].reverse().find((m) => to === undefined || m.to === to);
+export interface QueuedMail {
+  eventId: string;
+  status: string;
+  entityId: string | null;
+  to: string;
+  subject: string;
+  text: string;
+}
+
+/**
+ * Correos que la API dejó en el outbox (T-008), descifrados con la clave de
+ * la prueba, del más reciente al más antiguo. Se leen con el superusuario de
+ * la base desechable; los entrega el worker (sus pruebas, en apps/worker).
+ */
+export async function queuedMails(app: TestApp, to?: string): Promise<QueuedMail[]> {
+  const client = new pg.Client({ connectionString: inject('operatorUrl') });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ id: string; organization_id: string; status: string; entity_id: string | null; payload: string | null }>(
+      'select id, organization_id, status, entity_id, payload from app.outbox where payload is not null order by created_at desc, id desc',
+    );
+    // Cada TestApp tiene su propia OUTBOX_KEY: los correos de otras pruebas
+    // (misma base) no se pueden descifrar con esta y se descartan.
+    return rows
+      .flatMap((r) => {
+        try {
+          const mail = decryptPayload(app.config.outboxKey, { organizationId: r.organization_id, eventId: r.id }, r.payload ?? '');
+          return [{ eventId: r.id, status: r.status, entityId: r.entity_id, ...mail }];
+        } catch {
+          return [];
+        }
+      })
+      .filter((m) => to === undefined || m.to === to);
+  } finally {
+    await client.end();
+  }
+}
+
+/** Payload tal como está guardado (cifrado). */
+export async function readOutboxRaw(eventId: string): Promise<string> {
+  const client = new pg.Client({ connectionString: inject('operatorUrl') });
+  await client.connect();
+  try {
+    const { rows } = await client.query<{ payload: string | null }>('select payload from app.outbox where id = $1', [eventId]);
+    return rows[0]?.payload ?? '';
+  } finally {
+    await client.end();
+  }
+}
+
+/** Enlace de invitación del último correo en el outbox para `to`. */
+export async function lastInvitationLink(app: TestApp, to?: string): Promise<URL> {
+  const [mail] = await queuedMails(app, to);
   const match = mail?.text.match(/https?:\/\/\S+/);
   if (!match) throw new Error('sin enlace de invitación');
   return new URL(match[0]);
@@ -264,7 +310,7 @@ export async function newOrganization(app: TestApp, code: string): Promise<{ org
         ownerName: `Propietario ${code}`,
         location: { code, name: `Sede ${code}`, timezone: 'America/Chicago', address: null, phone: null },
       },
-      { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, mailer: new MemoryMailer() },
+      { baseURL: app.config.baseURL, invitationTtlSeconds: 3600, outboxKey: app.config.outboxKey },
     );
     const owner = new Client(app);
     const password = `Ficticia-${randomBytes(9).toString('base64url')}`;
