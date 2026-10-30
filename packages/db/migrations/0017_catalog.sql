@@ -43,11 +43,12 @@ CREATE TABLE "app"."prices" (
 	"location_id" uuid,
 	"procedure_id" uuid,
 	"lab_test_id" uuid,
-	"amount_cents" integer NOT NULL,
+	"amount_cents" integer,
 	"effective_from" date NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "prices_organization_id_id_key" UNIQUE("organization_id","id"),
 	CONSTRAINT "prices_amount_check" CHECK ("app"."prices"."amount_cents" >= 0),
+	CONSTRAINT "prices_general_amount_check" CHECK ("app"."prices"."location_id" is not null or "app"."prices"."amount_cents" is not null),
 	CONSTRAINT "prices_one_item_check" CHECK (num_nonnulls("app"."prices"."procedure_id", "app"."prices"."lab_test_id") = 1)
 );
 --> statement-breakpoint

@@ -120,6 +120,17 @@ describe('catálogo', () => {
     );
   });
 
+  it('una fila de sede sin importe es «Usa el precio general desde»; el general siempre tiene importe', async () => {
+    const norte = await procedureId(NORTE.id, 'PROC-LAVOT');
+    await db.withTenant(NORTE.id, (tx) =>
+      tx.insert(prices).values({ organizationId: NORTE.id, locationId: NORTE.locations[1].id, procedureId: norte, amountCents: null, effectiveFrom: '2026-05-01' }),
+    );
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.insert(prices).values({ organizationId: NORTE.id, locationId: null, procedureId: norte, amountCents: null, effectiveFrom: '2026-05-01' })),
+      CHECK_VIOLATION,
+    );
+  });
+
   it('un precio es de un solo ítem, no negativo, y nunca se modifica ni se borra', async () => {
     const norte = await procedureId(NORTE.id, 'INJ-B12');
     const lab = (await db.withTenant(NORTE.id, (tx) => tx.select({ id: labTests.id }).from(labTests).where(eq(labTests.code, 'LAB-STREP'))))[0]?.id;

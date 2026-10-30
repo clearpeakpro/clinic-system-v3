@@ -1,6 +1,6 @@
 {
-  "id": "c6f46c48-ba1c-417a-a56e-e0d3c21339ad",
-  "prevId": "7aa7a885-b2d1-4c68-9be9-73eccba90db1",
+  "id": "d4333551-eee6-4432-8476-b0ca05ebb9a3",
+  "prevId": "dc63fefa-aa07-4f66-8b0b-9d9637cb1a14",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2112,7 +2112,7 @@
           "name": "amount_cents",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "effective_from": {
           "name": "effective_from",
@@ -2276,6 +2276,10 @@
         "prices_amount_check": {
           "name": "prices_amount_check",
           "value": "\"app\".\"prices\".\"amount_cents\" >= 0"
+        },
+        "prices_general_amount_check": {
+          "name": "prices_general_amount_check",
+          "value": "\"app\".\"prices\".\"location_id\" is not null or \"app\".\"prices\".\"amount_cents\" is not null"
         },
         "prices_one_item_check": {
           "name": "prices_one_item_check",

@@ -99,14 +99,16 @@ export const referralSources = appSchema.table(
 
 /**
  * Precio de venta (lo que paga el paciente) de un procedimiento o una prueba,
- * desde una fecha. `location_id` nulo: precio general de la organización, que
- * vale en todas las sedes; con sede: excepción que lo reemplaza solo en ella.
- * Nunca se modifica ni se borra: un cambio es una fila nueva.
+ * desde una fecha (ADR 0029). `location_id` nulo: precio general de la
+ * organización, que vale en todas las sedes; con sede: excepción que lo
+ * reemplaza solo en ella. Una fila de sede sin importe es «Usa el precio
+ * general desde {fecha}». Nunca se modifica ni se borra: un cambio es una
+ * fila nueva.
  *
- * Precio vigente en una sede un día (la fecha de la sede): el propio de la
- * sede si tiene alguno vigente; si no, el general. En cada uno, el de fecha
- * más reciente que no sea posterior a ese día; con la misma fecha, el último
- * creado.
+ * Precio vigente en una sede un día (la fecha de la sede): la última fila de
+ * la sede vigente ese día; si tiene importe, ese; si no tiene importe o la
+ * sede no tiene ninguna, el general. En cada caso, la de fecha más reciente
+ * que no sea posterior a ese día; con la misma fecha, la última creada.
  */
 export const prices = appSchema.table(
   'prices',
@@ -119,14 +121,16 @@ export const prices = appSchema.table(
     locationId: uuid('location_id'),
     procedureId: uuid('procedure_id'),
     labTestId: uuid('lab_test_id'),
-    /** Centavos de USD (regla 4). */
-    amountCents: integer('amount_cents').notNull(),
+    /** Centavos de USD (regla 4). Nulo solo en una sede: «Usa el precio general desde». */
+    amountCents: integer('amount_cents'),
     effectiveFrom: date('effective_from').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
   },
   (t) => [
     unique('prices_organization_id_id_key').on(t.organizationId, t.id),
     check('prices_amount_check', sql`${t.amountCents} >= 0`),
+    // El precio general siempre tiene importe.
+    check('prices_general_amount_check', sql`${t.locationId} is not null or ${t.amountCents} is not null`),
     check('prices_one_item_check', sql`num_nonnulls(${t.procedureId}, ${t.labTestId}) = 1`),
     foreignKey({ name: 'prices_location_fk', columns: [t.organizationId, t.locationId], foreignColumns: [locations.organizationId, locations.id] }),
     foreignKey({ name: 'prices_procedure_fk', columns: [t.organizationId, t.procedureId], foreignColumns: [procedures.organizationId, procedures.id] }),
