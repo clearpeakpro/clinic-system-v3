@@ -25,6 +25,8 @@
 5. Auditoría: crear, editar, desactivar y cambiar precios. En los precios se guardan el importe anterior y el nuevo, porque son datos financieros, no clínicos.
 6. Semilla: un catálogo básico ficticio para cada clínica (por ejemplo, Consulta general, Seguimiento, Inyección de vitamina B12 y Prueba rápida de estreptococo), con precios distintos por sede.
 
+**Cambio decidido durante la tarea (2026-10-30):** el precio de venta (lo que paga el paciente) es un **precio general de la organización**, con fecha de vigencia, que vale en todas las sedes. Una sede puede tener **su propio precio**, también con vigencia, que reemplaza al general solo en ella. El precio vigente de una sede es su precio propio si existe; si no, el general. El historial se conserva igual. En la pantalla: «Precio general» y, por sede, «Precio en {sede}» opcional, con «Usa el precio general» cuando la sede no tiene precio propio. Los costos de laboratorio van aparte ([ADR 0028](../decisions/0028-laboratorios-costos.md), [T-011b](T-011b-laboratorios-costos.md)).
+
 **No incluye:** laboratorios proveedores ni sus precios (S-ADM-16, 17), planes de membresía ni reglas de bono. Llegan con las órdenes y la cobertura, en la fase 3 o 5.
 
 **Terminada cuando:**
