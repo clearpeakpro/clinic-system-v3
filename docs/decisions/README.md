@@ -30,3 +30,4 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0024. Operador de la plataforma](0024-operador-plataforma.md) | Aceptada |
 | [0025. Sin rol de contabilidad en V1](0025-contabilidad-fuera-v1.md) | Aceptada |
 | [0026. Cifrado de campos frente a búsqueda de pacientes](0026-cifrado-campos-busqueda.md) | Aceptada |
+| [0027. Propietario y Administrador sin acceso clínico implícito](0027-acceso-clinico-propietario-administrador.md) | Aceptada |

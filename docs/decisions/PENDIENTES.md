@@ -18,6 +18,7 @@ Cuando una se resuelva, crear su ADR y quitarla de esta lista.
 
 | # | Decisión | Resolución |
 | --- | --- | --- |
+| P-14 | Acceso del Propietario y el Administrador sin rol clínico a Pacientes y Citas | **Resuelta:** no los ven; solo con un rol de Recepción, Enfermería o Proveedor en esa sede, y asignarse ese rol queda auditado. Única excepción a «nadie cambia sus propios roles»: el Propietario puede asignarse y quitarse roles clínicos en sedes activas de su organización, con motivo, auditado y con aviso a los Administradores. [ADR 0027](0027-acceso-clinico-propietario-administrador.md). |
 | P-01 | Cifrado de campos frente a búsqueda parcial | **Resuelta:** nombre, apellidos, fecha de nacimiento y teléfono sin cifrado de aplicación (búsqueda con `pg_trgm` + `unaccent`, por acción explícita); seguro, identificación y notas de cobertura cifrados con KMS, con HMAC solo si hace falta coincidencia exacta. [ADR 0026](0026-cifrado-campos-busqueda.md). |
 | P-04 | Rol de solo lectura para contabilidad | **Resuelta:** no entra en V1. [ADR 0025](0025-contabilidad-fuera-v1.md). |
 | P-11 | Rol de base de datos del operador de la plataforma | **Resuelta:** `clinic_operator`, el dueño del sistema; da de alta organizaciones con `pnpm org:create` y es el único que lee la auditoría sin organización, con lecturas auditadas. [ADR 0024](0024-operador-plataforma.md). |
