@@ -6,7 +6,8 @@ import { E2E } from './global-setup.ts';
 // T-011: Administración › Catálogos y precios (S-ADM-13 a 20) con datos
 // ficticios. El Administrador de Sur (sin uso en las demás pruebas) crea un
 // procedimiento con su precio general, le pone un precio propio en SUR2
-// (SUR1 sigue con el general), programa un cambio del general desde mañana
+// (SUR1 sigue con el general) y la devuelve al general desde mañana (P-15),
+// programa un cambio del general desde mañana
 // (hoy sigue el anterior), lo desactiva con motivo y lo reactiva. El caso de
 // NOR1/NOR2 y el aislamiento completo están en las pruebas de la API y de la
 // base de datos.
@@ -90,12 +91,22 @@ test('el Administrador gestiona el catálogo y los precios por sede', async ({ p
 
   await expect(row(page, 'PROC-CURA')).not.toContainText('Usa el precio general');
 
+  // P-15: SUR2 vuelve al precio general desde mañana; hoy sigue su precio propio.
+  const tomorrow = tomorrowInChicago();
+  await row(page, 'PROC-CURA').getByRole('button', { name: 'Volver al precio general en SUR2: Curación ficticia' }).click();
+  const revert = page.getByRole('dialog', { name: '¿Volver al precio general en Sur Este?' });
+  await revert.getByLabel('Vigente desde').fill(tomorrow.iso);
+  await expectAccessible(page);
+  await revert.getByRole('button', { name: 'Volver al precio general' }).click();
+  await expect(row(page, 'PROC-CURA')).toContainText('$45.00');
+  await expect(row(page, 'PROC-CURA')).toContainText(`Desde ${tomorrow.short}: usa el precio general`);
+  await page.locator('main').screenshot({ path: 'test-results/catalogo-sur2.png' });
+
   // En SUR1 sigue el general. Un cambio del general desde mañana: hoy rige el anterior y se ve el programado.
   await page.getByLabel('Sede de los precios').selectOption({ label: 'SUR1 · Sur Centro' });
   await expect(row(page, 'PROC-CURA')).toContainText('$40.00');
   await expect(row(page, 'PROC-CURA')).toContainText('Usa el precio general');
   await row(page, 'PROC-CURA').getByRole('button', { name: 'Editar Curación ficticia' }).click();
-  const tomorrow = tomorrowInChicago();
   const change = page.getByRole('dialog', { name: 'Editar procedimiento' });
   const generalSection = change.getByRole('group', { name: 'Precio general' });
   await generalSection.getByLabel('Precio general (opcional)').fill('50');
