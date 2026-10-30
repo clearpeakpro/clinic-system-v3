@@ -108,7 +108,7 @@ Cada una de esas salidas tiene su control propio.
 ### Permisos
 
 - Los permisos efectivos son la unión de los roles del usuario en la sede activa más sus roles de toda la organización. Se definen en `packages/shared/src/permissions.ts`.
-- Propietario y Administrador son roles administrativos. Ver datos clínicos requiere un rol clínico explícito en la sede.
+- Propietario y Administrador son roles administrativos. Ver datos clínicos, incluidos Pacientes y Citas, requiere un rol clínico explícito (Recepción, Enfermería o Proveedor) en la sede ([ADR 0027](decisions/0027-acceso-clinico-propietario-administrador.md)).
 - En cada petición, la API valida que la sede pertenece a la organización y que el usuario tiene membresía activa allí.
 
 ### Roles de base de datos
