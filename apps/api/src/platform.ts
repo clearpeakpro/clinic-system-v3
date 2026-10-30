@@ -19,6 +19,40 @@ export function assertOperatorUrl(databaseUrl: string): void {
   }
 }
 
+/** Código de un error de Postgres o de red (drizzle lo envuelve en `cause`; en Windows llega como AggregateError). */
+function errorCode(error: unknown): string | undefined {
+  const e = error as { cause?: unknown; code?: unknown; errors?: unknown[] } | null;
+  if (!e) return undefined;
+  if (typeof e.code === 'string') return e.code;
+  if (e.cause) return errorCode(e.cause);
+  if (Array.isArray(e.errors) && e.errors.length > 0) return errorCode(e.errors[0]);
+  return undefined;
+}
+
+const OPERATOR_ERRORS: Record<string, string> = {
+  '28P01': 'La contraseña del operador en .env no coincide con la de la base de datos; ejecute pnpm db:bootstrap y vuelva a intentarlo.',
+  '28000': 'El usuario clinic_operator no existe o no puede conectarse; ejecute pnpm db:bootstrap y vuelva a intentarlo.',
+  '3D000': 'La base de datos no existe; ejecute pnpm demo:reset (o pnpm dev) y vuelva a intentarlo.',
+  ECONNREFUSED: 'No se pudo conectar con la base de datos: abra Docker Desktop, ejecute pnpm dev y vuelva a intentarlo.',
+  '42P01': 'Faltan migraciones en la base de datos; ejecute pnpm db:migrate y vuelva a intentarlo.',
+  '42883': 'Faltan migraciones en la base de datos; ejecute pnpm db:migrate y vuelva a intentarlo.',
+  '42501': 'El operador no tiene permiso para esta operación; ejecute pnpm db:bootstrap y pnpm db:migrate y vuelva a intentarlo.',
+  '23505': 'Ya existe un registro con esos datos; revise los valores y vuelva a intentarlo.',
+  '23514': 'Algún dato no es válido; revise los valores y vuelva a intentarlo.',
+};
+
+/**
+ * Mensaje claro para los comandos del operador (org:create, audit:platform).
+ * Nunca repite el mensaje de Postgres, que podría llevar los datos: solo
+ * explica qué hacer, con el código al final para soporte.
+ */
+export function operatorErrorMessage(error: unknown, action: string): string {
+  const code = errorCode(error);
+  const advice = code ? OPERATOR_ERRORS[code] : undefined;
+  const suffix = code ? ` (código ${code})` : '';
+  return advice ? `No se pudo ${action}. ${advice}${suffix}` : `No se pudo ${action}. Inténtelo de nuevo; si se repite, avise al soporte${suffix}.`;
+}
+
 export const createOrganizationSchema = z.object({
   organizationName: z.string().trim().min(1).max(120),
   ownerEmail: z.email().max(254).transform((v) => v.trim().toLowerCase()),

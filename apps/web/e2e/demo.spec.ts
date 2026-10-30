@@ -47,17 +47,35 @@ async function signOut(page: Page, everywhere = false) {
   await expect(page).toHaveURL(/\/login/);
 }
 
-/** Paso del MFA: en la demo, con el teléfono; aquí, con el mismo secreto. */
-async function enrollMfa(page: Page) {
+/** Códigos ya usados por secreto: un código no se repite dentro de su ventana de 30 s. */
+const usedCodes = new Map<string, Set<string>>();
+
+/** Un código TOTP que todavía no se usó (espera, si hace falta, al siguiente). */
+async function freshCode(secret: string): Promise<string> {
+  const used = usedCodes.get(secret) ?? new Set<string>();
+  usedCodes.set(secret, used);
+  for (;;) {
+    const code = await generate({ secret });
+    if (!used.has(code)) {
+      used.add(code);
+      return code;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
+
+/** Paso del MFA: en la demo, con el teléfono; aquí, con el mismo secreto. Devuelve el secreto. */
+async function enrollMfa(page: Page): Promise<string> {
   await expect(page.getByRole('heading', { name: 'Configurar la verificación en dos pasos' })).toBeVisible();
   await expect(page.getByTestId('totp-secret')).toHaveText(/\w{4}/);
   const secret = (await page.getByTestId('totp-secret').innerText()).replace(/\s/g, '');
-  await page.getByLabel('Código de verificación').fill(await generate({ secret }));
+  await page.getByLabel('Código de verificación').fill(await freshCode(secret));
   await page.getByRole('button', { name: 'Confirmar' }).click();
   await expect(page.getByRole('heading', { name: 'Guarde sus códigos de recuperación' })).toBeVisible();
   await expect(page.getByTestId('recovery-codes').getByRole('listitem')).toHaveCount(10);
   await page.getByText('Guardé estos códigos').click();
   await page.getByRole('button', { name: 'Continuar' }).click();
+  return secret;
 }
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Navegación principal' }).first();
@@ -83,9 +101,10 @@ test('guion de la demo de la fase 1 (docs/DEMO-FASE-1.md)', async ({ browser }) 
     await signOut(normal);
   });
 
+  let ownerSecret = '';
   await test.step('Paso 2: la Propietaria configura el MFA y entra en NOR1', async () => {
     await signIn(normal, 'propietario.norte@example.test');
-    await enrollMfa(normal);
+    ownerSecret = await enrollMfa(normal);
     // La ventana recuerda la última sede usada (NOR1, la de Recepción).
     await expect(normal).toHaveURL(/\/admin\/usuarios$/);
     await expect(normal.getByTestId('location-selector')).toContainText('NOR1');
@@ -209,9 +228,27 @@ test('guion de la demo de la fase 1 (docs/DEMO-FASE-1.md)', async ({ browser }) 
   });
 
   await test.step('Paso 10: cerrar sesión en todos los dispositivos', async () => {
+    // La misma Propietaria entra también en la ventana de incógnito, con el código de su teléfono.
+    await incognito.getByRole('link', { name: 'Atrás' }).click();
+    await expect(incognito).toHaveURL(/\/admin\/usuarios$/);
+    await signOut(incognito);
+    await signIn(incognito, 'propietario.norte@example.test');
+    await expect(incognito.getByRole('heading', { name: 'Verificación en dos pasos' })).toBeVisible();
+    await incognito.getByLabel('Código de verificación').fill(await freshCode(ownerSecret));
+    // La ventana recuerda SUR1, que no es suya: elige la sede.
+    await expect(incognito.getByRole('heading', { name: 'Seleccionar sede' })).toBeVisible();
+    await incognito.getByRole('button', { name: /NOR1/ }).click();
+    await expect(incognito).toHaveURL(/\/admin\/usuarios$/);
+    await expect(live(incognito)).toHaveText(/En vivo/);
+
+    // En la ventana normal: cierre voluntario, sin mensaje (S-GEN-17).
     await signOut(normal, true);
-    await signIn(normal, 'recepcion.norte@example.test');
-    await expect(normal).toHaveURL(/\/app\/NOR1\/panel$/);
+    await expect(normal.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
+    await expect(normal.getByText('Su sesión terminó.')).toHaveCount(0);
+    // En la otra ventana, sin tocar nada: «Su sesión terminó.» (S-GEN-03, S-GEN-14).
+    await expect(incognito).toHaveURL(/\/login/, { timeout: 10_000 });
+    await expect(incognito.getByText('Su sesión terminó.')).toBeVisible();
+    await expect(incognito.getByText('Inicie sesión de nuevo para continuar.')).toBeVisible();
   });
 
   await test.step('Paso opcional: el operador crea una clínica con pnpm org:create', async () => {
@@ -223,7 +260,7 @@ test('guion de la demo de la fase 1 (docs/DEMO-FASE-1.md)', async ({ browser }) 
         '--propietario-nombre', arg('Propietaria Este (ficticia)'),
         '--sede-codigo', 'EST1',
         '--sede-nombre', arg('Este Centro'),
-        '--zona-horaria', 'America/New_York',
+        '--zona-horaria', 'America/Chicago',
       ],
       { DATABASE_OPERATOR_URL: process.env.E2E_OPERATOR_URL, BASE_URL: process.env.E2E_BASE_URL, OUTBOX_KEY: process.env.E2E_OUTBOX_KEY },
     );

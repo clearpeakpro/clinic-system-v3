@@ -1,6 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { loadConfig } from '../src/config.ts';
-import { assertLocalDatabase, DemoBusyError, resetDemo } from '../src/demo.ts';
+import { assertLocalDatabase, assertOperatorPassword, DemoBusyError, resetDemo } from '../src/demo.ts';
 import { DEV_USERS } from '../src/dev-seed.ts';
 
 // pnpm demo:reset (T-010): deja la base de datos LOCAL como recién instalada,
@@ -18,13 +18,18 @@ const missing = [
   'DATABASE_SUPERUSER_URL',
   'CLINIC_MIGRATOR_PASSWORD',
   'CLINIC_APP_PASSWORD',
+  'CLINIC_OPERATOR_PASSWORD',
+  'DATABASE_OPERATOR_URL',
   'DEV_SEED_PASSWORD',
 ].filter((name) => !process.env[name]);
 if (missing.length > 0) fail(`Faltan variables en su archivo .env: ${missing.join(', ')} (ver .env.example).`);
 
 const superuserUrl = process.env.DATABASE_SUPERUSER_URL ?? '';
+const operatorUrl = process.env.DATABASE_OPERATOR_URL ?? '';
+const operatorPassword = process.env.CLINIC_OPERATOR_PASSWORD ?? '';
 try {
   assertLocalDatabase(superuserUrl);
+  assertOperatorPassword(operatorUrl, operatorPassword);
 } catch (error) {
   fail((error as Error).message);
 }
@@ -57,12 +62,14 @@ try {
     superuserUrl,
     migratorPassword: process.env.CLINIC_MIGRATOR_PASSWORD ?? '',
     appPassword: process.env.CLINIC_APP_PASSWORD ?? '',
-    operatorPassword: process.env.CLINIC_OPERATOR_PASSWORD,
+    operatorPassword,
+    operatorUrl,
     config,
     seedPassword: process.env.DEV_SEED_PASSWORD ?? '',
   });
 } catch (error) {
   if (error instanceof DemoBusyError) fail(error.message);
+  if (error instanceof Error && error.message.startsWith('No se pudo comprobar el acceso del operador')) fail(error.message);
   throw error;
 }
 
@@ -70,5 +77,6 @@ console.log(`
 ✔ Listo. Base de datos de demostración recién creada.
   Usuarios (contraseña: la de DEV_SEED_PASSWORD en su .env):
 ${DEV_USERS.map((u) => `    - ${u.email}`).join('\n')}
+  El operador de la plataforma (clinic_operator) está listo para «pnpm org:create».
   Ahora ejecute «pnpm dev» y abra http://localhost:5173
 `);

@@ -207,10 +207,23 @@ Nadie tiene el MFA activado. Propietarios y Administradores tendrán que activar
 
 ## Paso 10. Cerrar sesión en todos los dispositivos
 
-**Ventana:** normal (Propietaria Norte).
+**Ventanas:** normal e incógnito, una al lado de la otra. La Propietaria Norte entra en las dos, como si usara dos computadoras.
 
-- **Haga:** pulse su nombre → «Cerrar sesión en todos los dispositivos» → confirme.
-- **Debe ver:** «Iniciar sesión». Todas sus sesiones abiertas se cerraron.
+**Ventana de incógnito:**
+- **Haga:** pulse «Atrás» para salir de «Página no encontrada» y cierre la sesión del Propietario Sur (su nombre → «Cerrar sesión» → confirmar).
+- **Usuario:** `propietario.norte@example.test`
+- **Haga:** inicie sesión.
+- **Debe ver:** «Verificación en dos pasos». Como ya activó el MFA, ahora solo pide el código.
+- **Haga:** escriba el código de 6 dígitos de la entrada «Clinic System» de **propietario.norte** en su teléfono. Tiene dos entradas: use la de Norte. Al escribir el sexto dígito, entra sola.
+- **Debe ver:** «Seleccionar sede», porque esta ventana recordaba SUR1, que no es suya. **Haga:** elija **NOR1**.
+- **Debe ver:** Administración › Usuarios, con «En vivo».
+
+**Ventana normal:**
+- **Haga:** pulse su nombre → «Cerrar sesión en todos los dispositivos» → confirme con «Cerrar sesión en todos los dispositivos».
+- **Debe ver:** la pantalla «Iniciar sesión», **sin ningún aviso**. Usted cerró la sesión a propósito, en esta ventana.
+
+**Ventana de incógnito, sin tocar nada:**
+- **Debe ver:** en pocos segundos vuelve **sola** a «Iniciar sesión», con el aviso **«Su sesión terminó.»** y «Inicie sesión de nuevo para continuar.». Su sesión en la otra «computadora» también se cerró.
 
 **Fin del guion.** Si llegó hasta aquí viendo lo que dice cada paso, la fase 1 funciona en su computadora.
 
@@ -222,9 +235,10 @@ Así se da de alta una clínica cliente en producción: desde la terminal, como 
 
 - **Haga:** en la segunda terminal, copie y pegue este comando completo y pulse Enter:
   ```
-  pnpm org:create --organizacion "Clínica Demo Este" --propietario-correo propietaria.este@example.test --propietario-nombre "Propietaria Este (ficticia)" --sede-codigo EST1 --sede-nombre "Este Centro" --zona-horaria America/New_York
+  pnpm org:create --organizacion "Clínica Demo Este" --propietario-correo propietaria.este@example.test --propietario-nombre "Propietaria Este (ficticia)" --sede-codigo EST1 --sede-nombre "Este Centro" --zona-horaria America/Chicago
   ```
 - **Debe ver:** que la clínica se creó, el enlace de la invitación de su Propietaria y «La invitación también se envía por correo». En Mailpit (http://localhost:8025) está ese correo.
+- **Si sale un error**, el comando explica qué hacer. Por ejemplo: «La contraseña del operador en .env no coincide…; ejecute pnpm db:bootstrap». Haga lo que indica y repita el comando.
 - **Haga:** abra el enlace en la ventana de incógnito, acepte la invitación con una contraseña larga y active el MFA con su teléfono.
 - **Debe ver:**
   - Administración › Usuarios de **EST1 · Este Centro**;
