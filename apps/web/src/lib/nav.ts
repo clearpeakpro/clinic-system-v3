@@ -45,7 +45,7 @@ export const NAV: readonly NavItem[] = [
   { id: 'reportes', label: 'Reportes', segment: 'reportes', section: 'clinic', permission: 'reports.location', icon: BarChart3 },
   { id: 'usuarios', label: 'Usuarios', segment: 'usuarios', section: 'admin', permission: 'admin.access', icon: Users },
   { id: 'sedes', label: 'Sedes', segment: 'sedes', section: 'admin', permission: 'locations.manage', icon: Building2 },
-  { id: 'catalogos', label: 'Catálogos', segment: 'catalogos', section: 'admin', permission: 'admin.access', icon: BookOpen },
+  { id: 'catalogos', label: 'Catálogos', segment: 'catalogos', section: 'admin', permission: 'catalog.manage', icon: BookOpen },
   { id: 'planes', label: 'Planes de membresía', segment: 'planes', section: 'admin', permission: 'admin.access', icon: BadgePercent },
   { id: 'bonos', label: 'Reglas de bono', segment: 'bonos', section: 'admin', permission: 'admin.access', icon: Gift },
   { id: 'reportes-compania', label: 'Reportes de la compañía', segment: 'reportes', section: 'admin', permission: 'admin.access', icon: LineChart },

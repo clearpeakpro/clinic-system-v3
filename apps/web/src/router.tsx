@@ -3,6 +3,7 @@ import { Frame } from './components/frame.tsx';
 import { IdleGuard } from './components/idle-guard.tsx';
 import { useMe } from './lib/session.ts';
 import { AcceptInvitationPage } from './pages/accept-invitation.tsx';
+import { AdminCatalogPage, catalogKindOf } from './pages/admin-catalog.tsx';
 import { AdminLocationsPage } from './pages/admin-locations.tsx';
 import { AdminUsersPage } from './pages/admin-users.tsx';
 import { BootPage } from './pages/boot.tsx';
@@ -137,6 +138,27 @@ const adminLocationsRoute = createRoute({
   },
 });
 
+// T-011: /admin/catalogos/<pestaña> (S-ADM-13 a 20); /admin/catalogos abre Tipos de cita.
+const adminCatalogIndexRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'catalogos',
+  beforeLoad: () => {
+    redirect({ to: '/admin/catalogos/$pestana', params: { pestana: 'tipos-de-cita' }, throw: true });
+  },
+});
+
+const adminCatalogRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'catalogos/$pestana',
+  component: function AdminCatalog() {
+    const me = useMe();
+    const { pestana } = adminCatalogRoute.useParams();
+    const kind = catalogKindOf(pestana);
+    if (!kind || (me.data && !me.data.permissions.includes('catalog.manage'))) return <NotFoundPage />;
+    return <AdminCatalogPage key={kind} kind={kind} />;
+  },
+});
+
 const adminDestinationRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '$destino',
@@ -159,7 +181,7 @@ const routeTree = rootRoute.addChildren([
   resetRoute,
   selectRoute,
   appRoute.addChildren([appIndexRoute, appProfileRoute, appDestinationRoute]),
-  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminDestinationRoute]),
+  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminCatalogIndexRoute, adminCatalogRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);
 

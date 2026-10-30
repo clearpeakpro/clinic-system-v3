@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { argbFromHex, Contrast, Hct } from '@material/material-color-utilities';
 import { describe, expect, it } from 'vitest';
-import { readStitchDesign, render, STATUS_LIGHT } from '../scripts/derive-dark.ts';
+import { AGENDA_LIGHT, readStitchDesign, render, STATUS_LIGHT } from '../scripts/derive-dark.ts';
 
 // T-004. Los tokens no se desvían de Stitch, el archivo generado está al día y
 // los pares de texto cumplen contraste WCAG AA (4.5:1) en claro y oscuro.
@@ -61,6 +61,19 @@ describe('tokens de diseño', () => {
       }
       for (const name of Object.keys(STATUS_LIGHT)) {
         expect(ratio(c[`status-${name}`], c[`status-${name}-container`]), `estado ${name}`).toBeGreaterThanOrEqual(4.5);
+      }
+    });
+  }
+
+  // T-011: la franja de color de la agenda es un elemento gráfico (WCAG 1.4.11):
+  // 3:1 contra las superficies de las tarjetas, en claro y en oscuro.
+  for (const mode of [':root', '.dark'] as const) {
+    it(`contraste 3:1 de los colores de la agenda (${mode === ':root' ? 'claro' : 'oscuro'})`, () => {
+      const c = blockOf(mode);
+      for (const name of Object.keys(AGENDA_LIGHT)) {
+        for (const surface of ['surface-container-lowest', 'surface-container-low', 'surface']) {
+          expect(ratio(c[`agenda-${name}`], c[`md-${surface}`]), `${name} sobre ${surface}`).toBeGreaterThanOrEqual(3);
+        }
       }
     });
   }
