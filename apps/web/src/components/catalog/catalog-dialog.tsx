@@ -14,13 +14,16 @@ import {
   type CatalogItem,
   type CatalogKind,
   type CatalogPrice,
+  type LabCostChange,
+  type LabProvider,
+  type LabTestLab,
   type ProcedureKind,
 } from '@clinic/shared';
-import { Banner, Button, cn, Dialog, DiscardChangesDialog, Field, formatMoneyInput, MoneyField, parseMoney, SelectField } from '@clinic/ui';
+import { Banner, Button, Checkbox, cn, Dialog, DiscardChangesDialog, Field, formatMoneyInput, MoneyField, parseMoney, SelectField } from '@clinic/ui';
 import { BookOpen, CalendarDays, Hash } from 'lucide-react';
 import { useState, type SubmitEvent } from 'react';
 import { api, ApiError } from '../../lib/api.ts';
-import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS, withAmount } from '../../lib/catalog.ts';
+import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS, nextLabCostText, withAmount } from '../../lib/catalog.ts';
 
 // S-ADM-19 «Nuevo / Editar» de los catálogos. Sin captura de Stitch: diálogo
 // de la hoja S-GEN-30, con los campos del manual (S-ADM-13 a 18). En
@@ -28,7 +31,10 @@ import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS, withAmount } from '
 // opcional, «Precio en {sede}» para la sede elegida, cada uno con su fecha de
 // vigencia. Sin precio propio, la sede usa el general. El código solo se
 // escribe al crear; los opcionales dicen «(opcional)»; no se cierra tocando
-// fuera y, con cambios, pregunta antes de descartarlos.
+// fuera y, con cambios, pregunta antes de descartarlos. En Pruebas (T-011b,
+// ADR 0028; S-ADM-16): «Laboratorios que la realizan», cada laboratorio
+// activo con su costo para la clínica y su fecha de vigencia; desmarcarlo es
+// «No la realiza desde {fecha}».
 
 interface Values {
   code: string;
@@ -46,6 +52,21 @@ interface Values {
 
 type Errors = Partial<Record<keyof Values, string>>;
 
+/** Un laboratorio en «Laboratorios que la realizan». */
+interface LabValues {
+  checked: boolean;
+  amount: string;
+  from: string;
+}
+type LabErrors = Record<string, { amount?: string; from?: string }>;
+
+const MONEY_ERROR = 'Ingrese un monto válido con hasta dos decimales (p. ej. 25.00).';
+
+function dateError(value: string, min: string): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Ingrese una fecha como AAAA-MM-DD.';
+  return value < min ? 'La fecha de vigencia no puede ser anterior a hoy.' : undefined;
+}
+
 const INTEGER = /^\d+$/;
 
 function integerError(text: string, min: number, max: number): string | undefined {
@@ -60,6 +81,7 @@ export function CatalogDialog({
   location,
   today,
   generalToday,
+  labProviders,
   onClose,
   onSaved,
   onConflict,
@@ -71,8 +93,10 @@ export function CatalogDialog({
   location: { id: string; name: string };
   /** Hoy en esa sede (`AAAA-MM-DD`): mínimo de la vigencia de su precio propio. */
   today: string;
-  /** El día más adelantado de las sedes activas: mínimo de la vigencia del precio general. */
+  /** El día más adelantado de las sedes activas: mínimo de la vigencia del precio general y de los costos. */
   generalToday: string;
+  /** Laboratorios de la organización (solo se usan en Pruebas). */
+  labProviders: readonly LabProvider[];
   onClose: () => void;
   onSaved: () => void;
   onConflict: () => void;
@@ -96,6 +120,25 @@ export function CatalogDialog({
     locationFrom: today,
   };
   const [values, setValues] = useState(initial);
+  // Pruebas: los laboratorios activos, marcados si la realizan hoy.
+  const labRows = kind === 'lab-tests' ? labProviders.filter((p) => p.active) : [];
+  const labOf = (providerId: string): LabTestLab | undefined => item?.labs?.find((l) => l.labProviderId === providerId);
+  const initialLabs: Record<string, LabValues> = Object.fromEntries(
+    labRows.map((p) => {
+      const current = withAmount(labOf(p.id)?.current);
+      return [p.id, { checked: current !== null, amount: current ? formatMoneyInput(current.amountCents) : '', from: generalToday }];
+    }),
+  );
+  const [labs, setLabs] = useState(initialLabs);
+  const setLab = (providerId: string, patch: Partial<LabValues>) => {
+    setLabs((all) => ({ ...all, [providerId]: { ...(all[providerId] ?? { checked: false, amount: '', from: generalToday }), ...patch } }));
+  };
+  const labChanged = (providerId: string) => {
+    const v = labs[providerId];
+    const i = initialLabs[providerId];
+    if (!v || !i) return false;
+    return v.checked !== i.checked || (v.checked && (v.amount !== i.amount || v.from !== i.from));
+  };
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -122,18 +165,26 @@ export function CatalogDialog({
     if (durationError) errors.duration = durationError;
   }
   if (priced) {
-    const MONEY = 'Ingrese un monto válido con hasta dos decimales (p. ej. 25.00).';
     if (!editing && values.generalPrice.trim() === '') errors.generalPrice = 'Este campo es obligatorio.';
-    else if (values.generalPrice.trim() !== '' && generalCents === null) errors.generalPrice = MONEY;
-    if (values.locationPrice.trim() !== '' && locationCents === null) errors.locationPrice = MONEY;
-    const dateError = (value: string, min: string) =>
-      !/^\d{4}-\d{2}-\d{2}$/.test(value) ? 'Ingrese una fecha como AAAA-MM-DD.' : value < min ? 'La fecha de vigencia no puede ser anterior a hoy.' : undefined;
+    else if (values.generalPrice.trim() !== '' && generalCents === null) errors.generalPrice = MONEY_ERROR;
+    if (values.locationPrice.trim() !== '' && locationCents === null) errors.locationPrice = MONEY_ERROR;
     const generalDate = changed('generalPrice', 'generalFrom') ? dateError(values.generalFrom, generalToday) : undefined;
     const locationDate = changed('locationPrice', 'locationFrom') ? dateError(values.locationFrom, today) : undefined;
     if (generalDate) errors.generalFrom = generalDate;
     if (locationDate) errors.locationFrom = locationDate;
   }
-  const dirty = (Object.keys(initial) as (keyof Values)[]).some((key) => values[key] !== initial[key]);
+  const labErrors: LabErrors = {};
+  for (const p of labRows) {
+    const v = labs[p.id];
+    if (!v || !labChanged(p.id)) continue;
+    const e: { amount?: string; from?: string } = {};
+    if (v.checked && v.amount.trim() === '') e.amount = 'Este campo es obligatorio.';
+    else if (v.checked && parseMoney(v.amount) === null) e.amount = MONEY_ERROR;
+    const fromError = dateError(v.from, generalToday);
+    if (fromError) e.from = fromError;
+    if (e.amount ?? e.from) labErrors[p.id] = e;
+  }
+  const dirty = (Object.keys(initial) as (keyof Values)[]).some((key) => values[key] !== initial[key]) || labRows.some((p) => labChanged(p.id));
   const shown = (key: keyof Values) => (submitted ? (errors[key] ?? null) : null);
 
   const requestClose = () => {
@@ -145,7 +196,7 @@ export function CatalogDialog({
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitted(true);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0 || Object.keys(labErrors).length > 0) return;
     setBusy(true);
     setServerError(null);
     const fields: Record<string, unknown> = {
@@ -165,6 +216,14 @@ export function CatalogDialog({
     if (priced && locationCents !== null && changed('locationPrice', 'locationFrom')) {
       prices.locationPrice = { locationId: location.id, amountCents: locationCents, effectiveFrom: values.locationFrom };
     }
+    // Solo los laboratorios que cambian; desmarcar es «No la realiza desde».
+    const labCosts: LabCostChange[] = labRows
+      .filter((p) => labChanged(p.id))
+      .map((p) => {
+        const v = labs[p.id] ?? { checked: false, amount: '', from: generalToday };
+        return { labProviderId: p.id, amountCents: v.checked ? parseMoney(v.amount) : null, effectiveFrom: v.from };
+      });
+    if (labCosts.length > 0) prices.labCosts = labCosts;
     try {
       if (item) await api.updateCatalogItem(kind, item.id, { ...fields, expectedVersion: item.version, ...prices });
       else await api.createCatalogItem(kind, { ...fields, code: values.code, ...prices });
@@ -329,6 +388,74 @@ export function CatalogDialog({
                 onFrom={(day) => { set('locationFrom', day); }}
               />
             </>
+          ) : null}
+
+          {kind === 'lab-tests' ? (
+            <fieldset className="flex flex-col gap-space-sm rounded-lg bg-surface-container-low p-space-md dark:bg-surface-container">
+              <legend className="sr-only">Laboratorios que la realizan</legend>
+              <p aria-hidden className="text-body-md-medium text-on-surface">
+                Laboratorios que la realizan
+              </p>
+              <p className="text-caption text-on-surface-variant">
+                Marque cada laboratorio que hace esta prueba y escriba su costo para la clínica. No es el precio que paga el paciente.
+              </p>
+              {labRows.length === 0 ? (
+                <p className="text-body-md text-on-surface-variant">No hay laboratorios activos. Dé de alta los laboratorios en la pestaña Proveedores de laboratorio.</p>
+              ) : (
+                labRows.map((p) => {
+                  const v = labs[p.id] ?? { checked: false, amount: '', from: generalToday };
+                  const was = initialLabs[p.id]?.checked ?? false;
+                  const lab = labOf(p.id);
+                  const current = withAmount(lab?.current);
+                  const shownLab = (key: 'amount' | 'from') => (submitted ? (labErrors[p.id]?.[key] ?? null) : null);
+                  return (
+                    <div key={p.id} className="flex flex-col gap-space-xs border-t border-outline-variant pt-space-sm first-of-type:border-t-0">
+                      <Checkbox label={p.name} checked={v.checked} onCheckedChange={(checked) => { setLab(p.id, { checked }); }} />
+                      {current || lab?.next ? (
+                        <p className="text-caption text-on-surface-variant">
+                          {current ? `Hoy cuesta ${formatMoneyInput(current.amountCents)} USD desde el ${formatDay(current.effectiveFrom)}.` : ''}
+                          {lab?.next ? ` ${nextLabCostText(lab.next)}.` : ''}
+                        </p>
+                      ) : null}
+                      {v.checked ? (
+                        <div className="grid gap-space-sm tab:grid-cols-2">
+                          <MoneyField
+                            label={`Costo para la clínica en ${p.name}`}
+                            value={v.amount}
+                            disabled={busy}
+                            error={shownLab('amount')}
+                            onValueChange={(text) => { setLab(p.id, { amount: text }); }}
+                          />
+                          <Field
+                            label={`Vigente desde (${p.name})`}
+                            type="date"
+                            min={generalToday}
+                            icon={<CalendarDays className="size-5" />}
+                            value={v.from}
+                            disabled={busy}
+                            error={shownLab('from')}
+                            onChange={(e) => { setLab(p.id, { from: e.target.value }); }}
+                          />
+                        </div>
+                      ) : was ? (
+                        <div className="tab:w-1/2">
+                          <Field
+                            label={`No la realiza desde (${p.name})`}
+                            type="date"
+                            min={generalToday}
+                            icon={<CalendarDays className="size-5" />}
+                            value={v.from}
+                            disabled={busy}
+                            error={shownLab('from')}
+                            onChange={(e) => { setLab(p.id, { from: e.target.value }); }}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </fieldset>
           ) : null}
         </form>
       </Dialog>
