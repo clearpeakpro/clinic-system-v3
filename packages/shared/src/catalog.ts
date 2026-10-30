@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { labCostChangesSchema, type LabTestLab } from './labs.ts';
+import { labCostChangesSchema, type LabProvider, type LabTestLab } from './labs.ts';
 import { reasonSchema } from './schemas.ts';
 import { VISIT_ROUTES } from './visit.ts';
 
@@ -164,4 +164,6 @@ export interface CatalogList {
   /** El día más adelantado entre las sedes activas: la vigencia mínima de un precio general. */
   generalToday: string;
   items: Record<CatalogKind, CatalogItem[]>;
+  /** Solo en Administración (`catalog.manage`): los laboratorios de la organización (T-011b). */
+  labProviders?: LabProvider[];
 }
