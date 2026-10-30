@@ -250,10 +250,11 @@ Ningún dato real entra al sistema sin tres cosas: **el BAA de AWS firmado**, **
 
 ## Datos y operaciones críticas
 
-1. **Búsqueda frente a cifrado de campos** *(pendiente de aprobar)*. Propuesta:
+1. **Búsqueda frente a cifrado de campos** ([ADR 0026](decisions/0026-cifrado-campos-busqueda.md)):
    - Cifrado de disco y respaldos con KMS.
    - **Sin cifrado de aplicación** en nombre, apellidos, fecha de nacimiento y teléfono, para permitir búsqueda parcial sin tildes (`pg_trgm` + `unaccent`).
-   - Cifrado de aplicación con KMS en los campos que no se buscan: número de miembro del seguro, identificación y notas de cobertura. Si alguno necesita búsqueda exacta, se usa un índice HMAC.
+   - Cifrado de aplicación con KMS en los campos que no se buscan: número de miembro del seguro, identificación y notas de cobertura. Si alguno necesita coincidencia exacta, se usa un índice HMAC.
+   - La búsqueda se lanza siempre por acción explícita (botón o Enter), nunca en vivo por tecla ([ADR 0007](decisions/0007-busqueda-pacientes.md)).
 2. **Códigos humanos:** se generan con `code_counters` en la misma transacción que el registro (`UPDATE … SET next = next + 1 RETURNING`). Restricción `UNIQUE (organization_id, code)`.
 
    | Tipo | Formato | Contador |

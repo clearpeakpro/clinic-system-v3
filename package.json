@@ -14,6 +14,8 @@
     "db:seed": "pnpm --filter @clinic/db db:seed && pnpm --filter @clinic/api seed:dev",
     "org:create": "pnpm --filter @clinic/api org:create",
     "audit:platform": "pnpm --filter @clinic/api audit:platform",
+    "demo:reset": "docker compose up -d --wait && pnpm --filter @clinic/api demo:reset",
+    "demo:aviso": "pnpm --filter @clinic/api demo:aviso",
     "check:rls-context": "node packages/db/scripts/check-rls-context.ts",
     "dev": "docker compose up -d --wait && pnpm db:bootstrap && pnpm db:migrate && turbo run dev",
     "test:e2e": "pnpm --filter @clinic/web test:e2e"

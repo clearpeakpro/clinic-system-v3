@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 // E2E de los flujos de rol (T-004). `pnpm test:e2e` compila la web antes.
 export default defineConfig({
   testDir: './e2e',
+  // El guion de la demo va aparte, con su propia base (playwright.demo.config.ts).
+  testIgnore: 'demo.spec.ts',
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,

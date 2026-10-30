@@ -41,6 +41,7 @@ jobs:
       - name: Navegador de Playwright
         run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
       # Flujos de rol de T-004: Postgres (Testcontainers) + API real + web compilada.
+      # Después, el guion de la demo de la fase 1 (T-010) con pnpm demo:reset.
       - run: pnpm test:e2e
       # Accesibilidad de /dev/ui (T-005): axe con el servidor de desarrollo de Vite.
       - run: pnpm --filter @clinic/web test:a11y
@@ -51,4 +52,5 @@ jobs:
           path: |
             apps/web/playwright-report/
             apps/web/playwright-report-a11y/
+            apps/web/playwright-report-demo/
           retention-days: 7

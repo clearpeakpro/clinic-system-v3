@@ -138,6 +138,14 @@ Detalle en el ADR 0023.
   - Solo los avisos propios de la organización activa.
   - No se auditan (ADR 0008).
 
+## Demo de la fase 1 (T-010)
+
+- **`pnpm demo:reset`** (`scripts/demo-reset.ts`, `src/demo.ts`): borra y vuelve a crear la base de datos local (solo `127.0.0.1`) con roles, migraciones, las dos organizaciones y los 11 usuarios de `src/dev-seed.ts`, ninguno con MFA ni sesiones.
+  - Pide escribir `BORRAR`; con `--si` no pregunta (lo usa la E2E del guion).
+  - Se niega si hay conexiones abiertas (`pnpm dev` en marcha).
+- **`pnpm demo:aviso <correo>`** (`scripts/demo-aviso.ts`): escribe en el outbox un aviso ficticio «Cita actualizada» para esa persona. Lo entrega el worker.
+- Guion para probarlo: [`docs/DEMO-FASE-1.md`](../../docs/DEMO-FASE-1.md). Su E2E: `apps/web/e2e/demo.spec.ts` (`playwright.demo.config.ts`).
+
 ## Al actualizar Better Auth
 
 Better Auth está fijado en **1.7.7** (publicada el 2026-09-30), sin `^`. Para cualquier actualización:

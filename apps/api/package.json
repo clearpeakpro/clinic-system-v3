@@ -10,7 +10,9 @@
     "dev": "tsx watch --env-file-if-exists=../../.env src/main.ts",
     "seed:dev": "tsx --env-file-if-exists=../../.env scripts/seed-dev-users.ts",
     "org:create": "tsx --env-file-if-exists=../../.env scripts/org-create.ts",
-    "audit:platform": "tsx --env-file-if-exists=../../.env scripts/audit-platform.ts"
+    "audit:platform": "tsx --env-file-if-exists=../../.env scripts/audit-platform.ts",
+    "demo:reset": "tsx --env-file-if-exists=../../.env scripts/demo-reset.ts",
+    "demo:aviso": "tsx --env-file-if-exists=../../.env scripts/demo-aviso.ts"
   },
   "dependencies": {
     "@clinic/db": "workspace:*",

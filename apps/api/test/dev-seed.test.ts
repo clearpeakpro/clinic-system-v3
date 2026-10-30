@@ -1,3 +1,4 @@
+import { ROLES } from '@clinic/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEV_OWNERS, DEV_USERS, seedDevUsers } from '../src/dev-seed.ts';
 import { Client, enrollTotp, NORTE, selectContext, signIn, startApp, SUR, type TestApp } from './support.ts';
@@ -43,5 +44,19 @@ describe('semilla de desarrollo: Propietarios ficticios', () => {
       [DEV_USERS.map((u) => u.email)],
     );
     expect(rows[0]?.n).toBe(DEV_USERS.length);
+  });
+
+  it('los cinco roles en cada organización, una persona de las dos y nadie con MFA (T-010)', async () => {
+    for (const org of [NORTE, SUR]) {
+      const roles = new Set(DEV_USERS.flatMap((u) => u.roles.filter((r) => r.org.id === org.id).map((r) => r.role)));
+      expect([...roles].sort()).toEqual([...ROLES].sort());
+    }
+    expect(DEV_USERS.filter((u) => new Set(u.roles.map((r) => r.org.id)).size === 2)).toHaveLength(1);
+    expect(new Set(DEV_USERS.map((u) => u.email)).size).toBe(DEV_USERS.length);
+    const { rows } = await app.pool.query<{ n: number }>(
+      `select count(*)::int as n from auth."user" where email = any($1) and two_factor_enabled`,
+      [DEV_USERS.filter((u) => !DEV_OWNERS.some((o) => o.email === u.email)).map((u) => u.email)],
+    );
+    expect(rows[0]?.n).toBe(0);
   });
 });

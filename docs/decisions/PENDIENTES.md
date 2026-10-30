@@ -4,7 +4,6 @@ Cuando una se resuelva, crear su ADR y quitarla de esta lista.
 
 | # | Decisión | Propuesta actual | Se necesita antes de |
 | --- | --- | --- | --- |
-| P-01 | Cifrado de campos frente a búsqueda parcial | Sin cifrado de aplicación en nombre, apellidos, fecha de nacimiento y teléfono (búsqueda con `pg_trgm` + `unaccent`). Cifrado con KMS en datos de seguro e identificación; HMAC si hace falta coincidencia exacta. | Esquema de pacientes (fase 2) |
 | P-03 | Reportes por rango para Recepción | Solo el resumen diario de su sede, o también rango y CSV | Fase 5 |
 | P-05 | Modelo de precio del SaaS | Por sede, por usuario o por volumen (el cobro es manual en V1) | Fase 6 |
 | P-06 | Kiosco: idioma, consentimientos y tabla motivo → ruta | ¿Ofrecerlo en inglés? ¿Dónde se firman los consentimientos? ¿Qué director médico aprueba, o no, las sugerencias de ruta? | Fase 3 |
@@ -19,6 +18,7 @@ Cuando una se resuelva, crear su ADR y quitarla de esta lista.
 
 | # | Decisión | Resolución |
 | --- | --- | --- |
+| P-01 | Cifrado de campos frente a búsqueda parcial | **Resuelta:** nombre, apellidos, fecha de nacimiento y teléfono sin cifrado de aplicación (búsqueda con `pg_trgm` + `unaccent`, por acción explícita); seguro, identificación y notas de cobertura cifrados con KMS, con HMAC solo si hace falta coincidencia exacta. [ADR 0026](0026-cifrado-campos-busqueda.md). |
 | P-04 | Rol de solo lectura para contabilidad | **Resuelta:** no entra en V1. [ADR 0025](0025-contabilidad-fuera-v1.md). |
 | P-11 | Rol de base de datos del operador de la plataforma | **Resuelta:** `clinic_operator`, el dueño del sistema; da de alta organizaciones con `pnpm org:create` y es el único que lee la auditoría sin organización, con lecturas auditadas. [ADR 0024](0024-operador-plataforma.md). |
 | P-02 | Resultado de la prueba de Better Auth | **Resuelta:** se adopta Better Auth con condiciones. [Informe de la prueba](../spikes/T-002-better-auth.md) · [ADR 0023](0023-autenticacion.md) (aceptada con condiciones). |

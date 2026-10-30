@@ -141,6 +141,25 @@ describe('worker', () => {
     }
   });
 
+  it('un aviso que llega durante un barrido no se pierde: se barre otra vez', async () => {
+    const mailer = new MemoryMailer();
+    const worker = await startWorker(
+      { ...loadWorkerConfig({ DATABASE_APP_URL: inject('appUrl'), OUTBOX_KEY: KEY }), outboxSweepSeconds: 3600 },
+      mailer,
+    );
+    try {
+      // Un barrido en curso; el evento se confirma mientras tanto y su aviso
+      // (y esta llamada) llegan durante ese barrido.
+      const running = worker.sweep();
+      const id = await enqueue('durante@example.test');
+      void worker.sweep();
+      await running;
+      await expect.poll(() => mailer.sent.some((m) => m.messageId === id), { timeout: 20_000 }).toBe(true);
+    } finally {
+      await worker.stop();
+    }
+  });
+
   it('verifica las cadenas, deja el resultado en cada una y detecta una alteración', async () => {
     await tenantDb.withTenant(NORTE.id, (tx) => enqueueMail(tx, KEY, { organizationId: NORTE.id, kind: 'x', mail: { to: 'a@example.test', subject: 'S', text: 'T' } }));
     const ok = await verifyAuditChains(pool, tenantDb);

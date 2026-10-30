@@ -1,6 +1,6 @@
 # 0019. Códigos, transacciones, idempotencia y outbox
 
-- **Estado:** Aceptada (excepto cifrado de campos, pendiente)
+- **Estado:** Aceptada (el cifrado de campos se decidió en el [ADR 0026](0026-cifrado-campos-busqueda.md))
 - **Fecha:** 2026-10-24
 
 ## Contexto
