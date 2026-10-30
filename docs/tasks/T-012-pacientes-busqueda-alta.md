@@ -1,6 +1,6 @@
 # T-012 — Pacientes: modelo, búsqueda y alta
 
-**Tamaño:** 3–4 días · **Depende de:** T-011 y P-14 · **Pantallas:** S-PAC-01, 02, 03, 04 · **ADR:** 0026, 0019, 0007
+**Tamaño:** 3–4 días · **Depende de:** T-011 y P-14 · **Pantallas:** S-PAC-01, 02, 03, 04 · **ADR:** 0026, 0019, 0007, 0027
 
 **Incluye**
 1. Tabla `patients`, con RLS y claves compuestas:
@@ -18,6 +18,15 @@
 5. «¿Descartar cambios sin guardar?» (S-PAC-04), con el componente de T-005.
 6. **«Buscar pacientes» en la cabecera** (pendiente desde T-004): abre la búsqueda de S-PAC-01. Solo lo ve quien tiene permiso.
 7. Semilla: unos 20 pacientes ficticios por clínica, con nombres hispanos variados, tildes, homónimos y algún par de posibles duplicados para la demo.
+8. **El Propietario se asigna roles clínicos** (excepción del ADR 0027):
+   - el Propietario puede asignarse y quitarse a sí mismo solo Recepción, Enfermería/MA o Proveedor, en sedes activas de su organización, con motivo obligatorio;
+   - nunca puede asignarse Administrador ni Propietario;
+   - la regla «nadie cambia sus propios roles» sigue igual en todos los demás casos;
+   - cada cambio queda auditado y genera un aviso para los Administradores de esa organización, por el outbox.
+   - Pruebas:
+     - el Propietario se asigna Recepción en NOR1 y ya ve Pacientes;
+     - no puede asignarse Administrador;
+     - un Administrador no puede usar esta excepción.
 
 **Terminada cuando:**
 - buscar «maria», «MARÍA» o «Lopez» encuentra a «María López»;
