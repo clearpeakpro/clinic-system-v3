@@ -3,7 +3,8 @@ import { decryptNotificationPayload, NOTIFICATION_EVENT } from '@clinic/db';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { DEFAULTS, type AppConfig } from '../src/config.ts';
-import { assertLocalDatabase, DemoBusyError, DemoUserError, resetDemo, sendDemoNotification } from '../src/demo.ts';
+import { assertLocalDatabase, assertOperatorPassword, DemoBusyError, DemoUserError, resetDemo, sendDemoNotification } from '../src/demo.ts';
+import { operatorErrorMessage } from '../src/platform.ts';
 import { DEV_USERS } from '../src/dev-seed.ts';
 import { createStaff, NORTE, startApp, type TestApp } from './support.ts';
 
@@ -38,14 +39,17 @@ describe('pnpm demo:reset', () => {
     trustProxy: false,
     outboxKey: randomBytes(32).toString('hex'),
   };
-  const reset = () =>
+  const operatorUrl = withDatabase(superuser, DATABASE, 'clinic_operator', operatorPassword);
+  const reset = (overrides: { operatorUrl?: string } = {}) =>
     resetDemo({
       superuserUrl,
       migratorPassword: randomBytes(16).toString('hex'),
       appPassword,
       operatorPassword,
+      operatorUrl,
       config,
       seedPassword: SEED_PASSWORD,
+      ...overrides,
     });
   let db: pg.Pool;
   const query = async <T extends pg.QueryResultRow>(sql: string, params: unknown[] = []) => (await db.query<T>(sql, params)).rows;
@@ -85,7 +89,35 @@ describe('pnpm demo:reset', () => {
     expect(await query(`select 1 from app.audit_log where metadata::text like '%extra@example.test%'`)).toEqual([]);
   });
 
+  it('deja al operador listo con la contraseña de .env, aunque tuviera otra', async () => {
+    const admin = new pg.Client({ connectionString: superuser });
+    await admin.connect();
+    await admin.query(`ALTER ROLE clinic_operator PASSWORD 'otra-contrasena-anterior'`);
+    await admin.end();
+    await db.end();
+    await reset();
+    db = new pg.Pool({ connectionString: superuserUrl, max: 1 });
+    const operator = new pg.Client({ connectionString: operatorUrl });
+    await operator.connect();
+    expect((await operator.query<{ u: string }>('select current_user as u')).rows[0]?.u).toBe('clinic_operator');
+    await operator.end();
+  });
+
+  it('si la conexión del operador de .env no entra, lo explica en lenguaje claro', async () => {
+    await db.end();
+    const wrong = withDatabase(superuser, DATABASE, 'clinic_operator', 'no-es-la-contrasena');
+    await expect(reset({ operatorUrl: wrong })).rejects.toThrow(/contraseña del operador en \.env no coincide.*pnpm db:bootstrap.*28P01/);
+    db = new pg.Pool({ connectionString: superuserUrl, max: 1 });
+    expect(() => {
+      assertOperatorPassword(wrong, operatorPassword);
+    }).toThrow(/DATABASE_OPERATOR_URL/);
+    expect(() => {
+      assertOperatorPassword(operatorUrl, operatorPassword);
+    }).not.toThrow();
+  });
+
   it('se niega si hay conexiones abiertas (pnpm dev en marcha) y no borra nada', async () => {
+    await query('select 1');
     await expect(reset()).rejects.toBeInstanceOf(DemoBusyError);
     expect((await query<{ n: number }>('select count(*)::int as n from auth."user"'))[0]?.n).toBe(DEV_USERS.length);
   });
@@ -135,5 +167,26 @@ describe('pnpm demo:aviso', () => {
 
   it('un correo que no existe da un mensaje claro', async () => {
     await expect(sendDemoNotification(app, app.config.outboxKey, 'nadie@example.test')).rejects.toBeInstanceOf(DemoUserError);
+  });
+});
+
+describe('mensajes de los comandos del operador', () => {
+  it('explican qué hacer en lugar de mostrar solo el código', async () => {
+    const wrong = new URL(inject('platformOperatorUrl'));
+    wrong.password = 'no-es-la-contrasena';
+    const client = new pg.Client({ connectionString: wrong.toString() });
+    const error: unknown = await client.connect().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    await client.end().catch(() => undefined);
+    expect(operatorErrorMessage(error, 'crear la organización')).toBe(
+      'No se pudo crear la organización. La contraseña del operador en .env no coincide con la de la base de datos; ejecute pnpm db:bootstrap y vuelva a intentarlo. (código 28P01)',
+    );
+    expect(operatorErrorMessage({ cause: { code: '3D000' } }, 'crear la organización')).toMatch(/pnpm demo:reset/);
+    expect(operatorErrorMessage({ errors: [{ code: 'ECONNREFUSED' }] }, 'crear la organización')).toMatch(/Docker Desktop/);
+    expect(operatorErrorMessage(new Error('otro'), 'crear la organización')).toBe(
+      'No se pudo crear la organización. Inténtelo de nuevo; si se repite, avise al soporte.',
+    );
   });
 });

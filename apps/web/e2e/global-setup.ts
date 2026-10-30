@@ -128,6 +128,7 @@ export async function startStack(options: { demoReset?: boolean } = {}) {
         CLINIC_MIGRATOR_PASSWORD: migratorPassword,
         CLINIC_APP_PASSWORD: appPassword,
         CLINIC_OPERATOR_PASSWORD: operatorPassword,
+        DATABASE_OPERATOR_URL: urlFor(superuserUrl, 'clinic_operator', operatorPassword),
       }),
     );
   } else {

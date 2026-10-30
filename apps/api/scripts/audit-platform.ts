@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { z } from 'zod';
-import { assertOperatorUrl, readPlatformAudit } from '../src/platform.ts';
+import { assertOperatorUrl, operatorErrorMessage, readPlatformAudit } from '../src/platform.ts';
 
 // pnpm audit:platform (ADR 0024): eventos de auditoría sin organización
 // (inicios de sesión fallidos, bloqueos, lecturas del operador…). Solo el
@@ -57,6 +57,9 @@ try {
   const events = await readPlatformAudit(pool, args.data);
   for (const event of events) console.log(JSON.stringify(event));
   console.error(`${String(events.length)} eventos. Esta lectura quedó registrada en la auditoría.`);
+} catch (error) {
+  console.error(operatorErrorMessage(error, 'leer la auditoría de la plataforma'));
+  process.exitCode = 1;
 } finally {
   await pool.end();
 }

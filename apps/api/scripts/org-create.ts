@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { z } from 'zod';
 import { DEFAULTS } from '../src/config.ts';
-import { assertOperatorUrl, createOrganization } from '../src/platform.ts';
+import { assertOperatorUrl, createOrganization, operatorErrorMessage } from '../src/platform.ts';
 
 // pnpm org:create (ADR 0024): da de alta una organización con su primera sede
 // y la invitación de su Propietario. Lo ejecuta el operador de la plataforma,
@@ -74,9 +74,8 @@ try {
     console.error(`Datos inválidos: ${[...new Set(error.issues.map((i) => i.path.join('.')))].join(', ')}`);
     console.error(USAGE);
   } else {
-    // Solo el código de Postgres: el mensaje podría repetir los datos.
-    const code = ((error as { cause?: { code?: string } }).cause ?? (error as { code?: string })).code;
-    console.error(`No se creó la organización${code ? ` (código ${code})` : ''}.`);
+    // Nunca el mensaje de Postgres, que podría repetir los datos.
+    console.error(operatorErrorMessage(error, 'crear la organización'));
   }
   process.exitCode = 1;
 } finally {

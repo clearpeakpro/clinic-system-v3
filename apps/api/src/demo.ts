@@ -7,6 +7,7 @@ import { createApp, type ClinicApp } from './app.ts';
 import type { AppConfig } from './config.ts';
 import { seedDevUsers } from './dev-seed.ts';
 import { MemoryLogSink } from './logging.ts';
+import { operatorErrorMessage } from './platform.ts';
 
 // Demo de la fase 1 (T-010), solo en desarrollo:
 //  - resetDemo: deja la base de datos local como recién instalada, con las dos
@@ -35,7 +36,12 @@ export interface ResetOptions {
   superuserUrl: string;
   migratorPassword: string;
   appPassword: string;
-  operatorPassword?: string | undefined;
+  operatorPassword: string;
+  /**
+   * Conexión del operador (DATABASE_OPERATOR_URL). Al terminar se comprueba
+   * que entra con ella: así `pnpm org:create` funciona sin pasos extra.
+   */
+  operatorUrl: string;
   /** Configuración de la API (conexión como clinic_app a esa misma base). */
   config: AppConfig;
   /** Contraseña de todos los usuarios ficticios. */
@@ -88,6 +94,30 @@ export async function resetDemo(options: ResetOptions): Promise<void> {
     await seedDevUsers(app, options.seedPassword);
   } finally {
     await app.close();
+  }
+  await verifyOperator(options.operatorUrl);
+}
+
+/** La contraseña de DATABASE_OPERATOR_URL debe ser la de CLINIC_OPERATOR_PASSWORD. */
+export function assertOperatorPassword(operatorUrl: string, operatorPassword: string): void {
+  const url = new URL(operatorUrl);
+  if (url.username !== 'clinic_operator' || decodeURIComponent(url.password) !== operatorPassword) {
+    throw new Error(
+      'En su .env, DATABASE_OPERATOR_URL debe usar el usuario clinic_operator con la misma contraseña que CLINIC_OPERATOR_PASSWORD (ver .env.example).',
+    );
+  }
+}
+
+/** Entra como clinic_operator con la conexión de .env, como lo hará org:create. */
+async function verifyOperator(operatorUrl: string): Promise<void> {
+  const client = new pg.Client({ connectionString: operatorUrl });
+  try {
+    await client.connect();
+    await client.query('select 1');
+  } catch (error) {
+    throw new Error(operatorErrorMessage(error, 'comprobar el acceso del operador (clinic_operator)'), { cause: error });
+  } finally {
+    await client.end().catch(() => undefined);
   }
 }
 
