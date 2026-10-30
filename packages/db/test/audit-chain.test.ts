@@ -121,14 +121,24 @@ describe('cadena de hash de la auditoría', () => {
 
   it('los eventos sin organización van en la cadena de plataforma, también las lecturas del operador', async () => {
     const before = await verify('platform');
-    await app.query(`insert into app.audit_log (id, organization_id, actor_type, action) values ($1, null, 'anonymous', 'prueba.plataforma')`, [randomUUID()]);
+    const id = randomUUID();
+    await app.query(`insert into app.audit_log (id, organization_id, actor_type, action) values ($1, null, 'anonymous', 'prueba.plataforma')`, [id]);
     const { rows } = await operator.query<{ action: string; seq: string; hash: string }>('select * from app.read_platform_audit(now() - interval \'1 hour\')');
     expect(rows.some((r) => r.action === 'prueba.plataforma')).toBe(true);
     expect(rows.every((r) => /^[0-9a-f]{64}$/.test(r.hash))).toBe(true);
     const after = await verify('platform');
     expect(after).toMatchObject({ ok: true });
-    // El evento y la lectura del operador (platform.audit_read).
-    expect(Number(after?.row_count)).toBe(Number(before?.row_count ?? 0) + 2);
+    // El evento y la lectura del operador (platform.audit_read) entran en la
+    // cadena de plataforma después de la cabeza anterior. Otras pruebas, en
+    // paralelo, también escriben en ella: por eso no se cuenta el total.
+    const head = Number(before?.head_seq ?? 0);
+    const { rows: mine } = await superuser.query<{ seq: string }>(`select seq from app.audit_log where id = $1 and chain = 'platform'`, [id]);
+    expect(Number(mine[0]?.seq)).toBeGreaterThan(head);
+    const { rows: reads } = await superuser.query<{ n: number }>(
+      `select count(*)::int as n from app.audit_log where chain = 'platform' and action = 'platform.audit_read' and seq > $1`,
+      [mine[0]?.seq],
+    );
+    expect(reads[0]?.n).toBeGreaterThanOrEqual(1);
   });
 
   it('la lista de cadenas incluye las dos organizaciones ficticias y la plataforma', async () => {

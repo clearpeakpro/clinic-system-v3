@@ -40,6 +40,29 @@ export const STATUS_LIGHT = {
   departed: { fg: '#667085', bg: '#f8f9fa', border: '#eaecf0' },
 } as const;
 
+/**
+ * Colores de la agenda (T-011; AGENDA_COLORS de @clinic/shared): franja
+ * lateral de la tarjeta de una cita, nunca chip. Sin rojo, ámbar ni verde,
+ * que ya significan peligro, espera y completada.
+ */
+export const AGENDA_LIGHT = {
+  teal: '#0f766e',
+  cyan: '#0e7490',
+  blue: '#1d4ed8',
+  indigo: '#4338ca',
+  violet: '#6d28d9',
+  fuchsia: '#a21caf',
+  slate: '#475569',
+  stone: '#78716c',
+} as const;
+
+/** En oscuro, el tono 70 de cada color: claro sobre las superficies oscuras. */
+export function deriveAgendaDark(): Record<keyof typeof AGENDA_LIGHT, string> {
+  return Object.fromEntries(
+    Object.entries(AGENDA_LIGHT).map(([name, hex]) => [name, hexFromArgb(TonalPalette.fromInt(argbFromHex(hex)).tone(70))]),
+  ) as Record<keyof typeof AGENDA_LIGHT, string>;
+}
+
 interface TypeStyle {
   fontFamily: string;
   fontSize: string;
@@ -128,11 +151,17 @@ export function deriveStatusDark() {
   ) as Record<keyof typeof STATUS_LIGHT, { fg: string; bg: string; border: string }>;
 }
 
-function block(selector: string, colors: Record<string, string>, status: Record<string, { fg: string; bg: string; border: string }>) {
+function block(
+  selector: string,
+  colors: Record<string, string>,
+  status: Record<string, { fg: string; bg: string; border: string }>,
+  agenda: Record<string, string>,
+) {
   const lines = Object.entries(colors).map(([role, hex]) => `  --md-${role}: ${hex};`);
   for (const [name, c] of Object.entries(status)) {
     lines.push(`  --status-${name}: ${c.fg};`, `  --status-${name}-container: ${c.bg};`, `  --status-${name}-border: ${c.border};`);
   }
+  for (const [name, hex] of Object.entries(agenda)) lines.push(`  --agenda-${name}: ${hex};`);
   return `${selector} {\n${lines.join('\n')}\n}`;
 }
 
@@ -143,6 +172,7 @@ function themeBlock(design: StitchDesign): string {
   for (const name of Object.keys(STATUS_LIGHT)) {
     for (const suffix of ['', '-container', '-border']) lines.push(`  --color-status-${name}${suffix}: var(--status-${name}${suffix});`);
   }
+  for (const name of Object.keys(AGENDA_LIGHT)) lines.push(`  --color-agenda-${name}: var(--agenda-${name});`);
   for (const [name, t] of Object.entries(design.typography)) {
     lines.push(`  --text-${name}: ${t.fontSize};`, `  --text-${name}--line-height: ${t.lineHeight};`, `  --text-${name}--font-weight: ${t.fontWeight};`);
     if (t.letterSpacing) lines.push(`  --text-${name}--letter-spacing: ${t.letterSpacing};`);
@@ -160,9 +190,9 @@ export function render(): string {
     '/* Claro: YAML de design/stitch/.../DESIGN.md. Oscuro: DERIVADO (no de Stitch), */',
     `/* esquema Material «${dark.variant}» desde ${SEED} (ajuste al claro: ${dark.scores.join(', ')}). */`,
     '',
-    block(':root', design.colors, STATUS_LIGHT),
+    block(':root', design.colors, STATUS_LIGHT, AGENDA_LIGHT),
     '',
-    block('.dark', dark.colors, statusDark),
+    block('.dark', dark.colors, statusDark, deriveAgendaDark()),
     '',
     '/* Tipografía y espaciado: YAML de DESIGN.md. */',
     themeBlock(design),

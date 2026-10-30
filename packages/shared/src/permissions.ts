@@ -11,6 +11,9 @@ export const PERMISSIONS = [
   'members.manage',
   // Administración › Sedes (S-ADM-10 a 12, T-007).
   'locations.manage',
+  // Administración › Catálogos y precios (S-ADM-13 a 20, T-011). Leer lo
+  // activo no necesita permiso: lo usan las citas y las órdenes.
+  'catalog.manage',
   // Acceso a cada destino del menú (T-004). Salen de la tabla «Destinos del
   // menú» del manual (docs/manual/README.md, «Los cuatro roles»). Cada fase
   // los afinará en permisos de acción.
@@ -37,8 +40,8 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 // clínica necesitan además un rol clínico en la sede. Por eso, a diferencia del
 // manual, su menú es solo «Administración».
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  propietario: ['members.invite', 'members.manage', 'locations.manage', 'admin.access'],
-  administrador: ['members.invite', 'members.manage', 'locations.manage', 'admin.access'],
+  propietario: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access'],
+  administrador: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access'],
   recepcion: ['panel.view', 'patients.access', 'appointments.access', 'checkout.access', 'reports.location'],
   enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
   proveedor: [

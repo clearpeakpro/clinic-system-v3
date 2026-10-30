@@ -1,4 +1,4 @@
-import type { NotificationKind, Permission, Role } from '@clinic/shared';
+import type { CatalogKind, CatalogList, GeneralPriceInput, LocationPriceInput, NotificationKind, Permission, Role } from '@clinic/shared';
 
 // Cliente de la API (mismo origen: /api). Las cookies de sesión son httpOnly:
 // la web nunca ve ni guarda tokens. Nada de lo que devuelve se persiste
@@ -212,6 +212,23 @@ export const api = {
     request<null>('POST', `/api/locations/${locationId}`, { ...input, expectedVersion }),
   setLocationActive: (locationId: string, active: boolean, expectedVersion: number) =>
     request<null>('POST', `/api/locations/${locationId}/${active ? 'activate' : 'deactivate'}`, { expectedVersion }),
+
+  // Administración › Catálogos y precios (S-ADM-13 a 20)
+  adminCatalog: (locationId: string) => request<CatalogList>('GET', `/api/admin/catalog?locationId=${encodeURIComponent(locationId)}`),
+  createCatalogItem: (kind: CatalogKind, input: Record<string, unknown> & { code: string; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput }) =>
+    request<{ id: string }>('POST', `/api/admin/catalog/${kind}`, input),
+  updateCatalogItem: (
+    kind: CatalogKind,
+    id: string,
+    input: Record<string, unknown> & { expectedVersion: number; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput },
+  ) =>
+    request<null>('POST', `/api/admin/catalog/${kind}/${id}`, input),
+  deactivateCatalogItem: (kind: CatalogKind, id: string, reason: string, expectedVersion: number) =>
+    request<null>('POST', `/api/admin/catalog/${kind}/${id}/deactivate`, { reason, expectedVersion }),
+  useGeneralPrice: (kind: CatalogKind, id: string, locationId: string, effectiveFrom: string) =>
+    request<null>('POST', `/api/admin/catalog/${kind}/${id}/use-general`, { locationId, effectiveFrom }),
+  reactivateCatalogItem: (kind: CatalogKind, id: string, expectedVersion: number) =>
+    request<null>('POST', `/api/admin/catalog/${kind}/${id}/reactivate`, { expectedVersion }),
 
   // Centro de notificaciones (S-GEN-15)
   notifications: () => request<NotificationsList>('GET', '/api/notifications'),

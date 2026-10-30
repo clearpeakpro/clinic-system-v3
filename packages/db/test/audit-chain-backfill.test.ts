@@ -64,7 +64,8 @@ describe('migración 0014: encadenar la auditoría existente', () => {
 
   it('las filas anteriores quedan encadenadas por organización y verificables', async () => {
     await migrateAsOwner(migratorUrl, partial);
-    await seed(migratorUrl);
+    // Semilla de entonces: sin el catálogo de T-011.
+    await seed(migratorUrl, { catalog: false });
     // Eventos «históricos», insertados como superusuario con fechas pasadas.
     const db = new pg.Client({ connectionString: withDatabase(inject('superuserUrl'), DB) });
     await db.connect();

@@ -157,7 +157,9 @@ describe('operador de la plataforma (clinic_operator)', () => {
         [since, 'platform.audit_read'],
       );
       expect(reads.rows.length).toBeGreaterThanOrEqual(2);
-      expect(reads.rows[0]).toMatchObject({ actor_type: 'operator', metadata: { dbUser: 'clinic_operator', action: marker, limit: 500 } });
+      // Su propia lectura (otras pruebas también leen la auditoría de plataforma).
+      const own = reads.rows.find((r) => r.metadata.action === marker);
+      expect(own).toMatchObject({ actor_type: 'operator', metadata: { dbUser: 'clinic_operator', action: marker, limit: 500 } });
     });
 
     it('rechaza un límite fuera de rango', async () => {

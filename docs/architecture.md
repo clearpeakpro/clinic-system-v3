@@ -182,7 +182,8 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | `encounters` / `encounter_events` | sede, paciente, cita?, ruta, estado, version; transiciones | Índice único parcial: una sola visita abierta por cita |
 | `coverages` | visita, tipo de pagador, plan o membresía | |
 | `vitals` / `nursing_assessments` / `patient_allergies` | valores, autor, versión | Versionados |
-| `catalog_*` / `prices` | tipos de cita, procedimientos, pruebas; precio por sede con vigencia | Se desactivan, no se borran |
+| `appointment_types` / `procedures` / `lab_tests` / `referral_sources` / `prices` | código único por organización, nombre, orden, activo, `version`; precio de venta en centavos con fecha de vigencia: general de la organización y, opcional, propio de una sede | Se desactivan, no se borran. Un precio nunca se modifica: un cambio es una fila nueva desde hoy o después. En una sede rige su precio propio si tiene uno vigente; si no, el general. Una fila de sede sin importe es «Usa el precio general desde». Lo calcula el servidor ([ADR 0029](decisions/0029-precio-general-excepcion-sede.md)) |
+| laboratorios / costos por prueba y laboratorio | nombre, activo, preferencia; costo para la clínica en centavos con vigencia | Solo los ven el Propietario y el Administrador; no tocan el precio de venta ([ADR 0028](decisions/0028-laboratorios-costos.md), T-011b) |
 | `orders` / `charges` / `payments` / `receipts` | centavos, estado, anulado_por, motivo | |
 | `documents` | paciente, visita?, categoría, s3_key | |
 | `code_counters` | org, sede?, tipo, año?, siguiente | |

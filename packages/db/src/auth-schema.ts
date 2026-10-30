@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgSchema, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 // Tablas de identidad global de Better Auth 1.7.14 (núcleo + plugin twoFactor),
 // según `getAuthTables` de better-auth/db. Sin RLS de organización (ADR 0002:
@@ -95,7 +95,9 @@ export const twoFactor = authSchema.table(
     failedVerificationCount: integer('failed_verification_count'),
     lockedUntil: ts('locked_until'),
   },
-  (t) => [index('two_factor_secret_idx').on(t.secret), index('two_factor_user_id_idx').on(t.userId)],
+  // Un solo registro por persona (migración 0019): dos inscripciones a la vez
+  // creaban dos, con secretos distintos, y ningún código era válido.
+  (t) => [index('two_factor_secret_idx').on(t.secret), uniqueIndex('two_factor_user_id_key').on(t.userId)],
 );
 
 /**

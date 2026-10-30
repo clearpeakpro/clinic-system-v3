@@ -1,0 +1,141 @@
+import { sql } from 'drizzle-orm';
+import { boolean, check, date, foreignKey, index, integer, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { v7 as uuidv7 } from 'uuid';
+import { appSchema, locations, organizations } from './schema.ts';
+
+// Catálogo mínimo y precios por sede (T-011; S-ADM-13 a 20). Se desactiva,
+// nunca se borra; los precios no se modifican: cada cambio es una fila nueva
+// con su fecha de vigencia. RLS, FORCE y GRANT en
+// migrations/0018_catalog_rls.sql. Los valores permitidos (rutas, tipos,
+// colores) son los de @clinic/shared (catalog.ts); una prueba los compara.
+
+/** Código de un ítem: empieza por letra; A–Z, dígitos, `_` y `-`; de 2 a 41 caracteres. */
+export const CATALOG_CODE_PATTERN = '^[A-Z][A-Z0-9_-]{1,40}$';
+
+export const VISIT_ROUTE_VALUES = ['STANDARD', 'INJECTION_ONLY', 'LAB_ONLY', 'PROCEDURE_ONLY'] as const;
+export const PROCEDURE_KIND_VALUES = ['procedure', 'injection'] as const;
+export const AGENDA_COLOR_VALUES = ['teal', 'cyan', 'blue', 'indigo', 'violet', 'fuchsia', 'slate', 'stone'] as const;
+
+const inList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(', '));
+
+/** Columnas comunes a los cuatro catálogos. */
+const common = () => ({
+  id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id),
+  code: text('code').notNull(),
+  name: text('name').notNull(),
+  /** «Orden (opcional)»: 0 a 100000; las listas se ordenan por él y por código. */
+  sortOrder: integer('sort_order'),
+  active: boolean('active').notNull().default(true),
+  version: integer('version').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+});
+
+export const appointmentTypes = appSchema.table(
+  'appointment_types',
+  {
+    ...common(),
+    /** Duración por defecto de la cita: de 5 a 480 minutos, como una cita. */
+    defaultDurationMinutes: integer('default_duration_minutes'),
+    /** Ruta sugerida de la visita (orienta el registro de llegada, fase 3). */
+    suggestedRoute: text('suggested_route'),
+    /** Color de la agenda: solo franja lateral de la tarjeta (T-014). */
+    color: text('color').notNull().default('teal'),
+  },
+  (t) => [
+    unique('appointment_types_organization_id_id_key').on(t.organizationId, t.id),
+    unique('appointment_types_organization_id_code_key').on(t.organizationId, t.code),
+    check('appointment_types_code_format', sql`${t.code} ~ ${sql.raw(`'${CATALOG_CODE_PATTERN}'`)}`),
+    check('appointment_types_name_length', sql`char_length(${t.name}) between 1 and 120`),
+    check('appointment_types_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
+    check('appointment_types_duration_range', sql`${t.defaultDurationMinutes} between 5 and 480`),
+    check('appointment_types_route_check', sql`${t.suggestedRoute} in (${inList(VISIT_ROUTE_VALUES)})`),
+    check('appointment_types_color_check', sql`${t.color} in (${inList(AGENDA_COLOR_VALUES)})`),
+  ],
+);
+
+export const procedures = appSchema.table(
+  'procedures',
+  {
+    ...common(),
+    /** Procedimiento o Inyección. */
+    kind: text('kind').notNull(),
+  },
+  (t) => [
+    unique('procedures_organization_id_id_key').on(t.organizationId, t.id),
+    unique('procedures_organization_id_code_key').on(t.organizationId, t.code),
+    check('procedures_code_format', sql`${t.code} ~ ${sql.raw(`'${CATALOG_CODE_PATTERN}'`)}`),
+    check('procedures_name_length', sql`char_length(${t.name}) between 1 and 120`),
+    check('procedures_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
+    check('procedures_kind_check', sql`${t.kind} in (${inList(PROCEDURE_KIND_VALUES)})`),
+  ],
+);
+
+export const labTests = appSchema.table(
+  'lab_tests',
+  { ...common() },
+  (t) => [
+    unique('lab_tests_organization_id_id_key').on(t.organizationId, t.id),
+    unique('lab_tests_organization_id_code_key').on(t.organizationId, t.code),
+    check('lab_tests_code_format', sql`${t.code} ~ ${sql.raw(`'${CATALOG_CODE_PATTERN}'`)}`),
+    check('lab_tests_name_length', sql`char_length(${t.name}) between 1 and 120`),
+    check('lab_tests_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
+  ],
+);
+
+export const referralSources = appSchema.table(
+  'referral_sources',
+  { ...common() },
+  (t) => [
+    unique('referral_sources_organization_id_id_key').on(t.organizationId, t.id),
+    unique('referral_sources_organization_id_code_key').on(t.organizationId, t.code),
+    check('referral_sources_code_format', sql`${t.code} ~ ${sql.raw(`'${CATALOG_CODE_PATTERN}'`)}`),
+    check('referral_sources_name_length', sql`char_length(${t.name}) between 1 and 120`),
+    check('referral_sources_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
+  ],
+);
+
+/**
+ * Precio de venta (lo que paga el paciente) de un procedimiento o una prueba,
+ * desde una fecha (ADR 0029). `location_id` nulo: precio general de la
+ * organización, que vale en todas las sedes; con sede: excepción que lo
+ * reemplaza solo en ella. Una fila de sede sin importe es «Usa el precio
+ * general desde {fecha}». Nunca se modifica ni se borra: un cambio es una
+ * fila nueva.
+ *
+ * Precio vigente en una sede un día (la fecha de la sede): la última fila de
+ * la sede vigente ese día; si tiene importe, ese; si no tiene importe o la
+ * sede no tiene ninguna, el general. En cada caso, la de fecha más reciente
+ * que no sea posterior a ese día; con la misma fecha, la última creada.
+ */
+export const prices = appSchema.table(
+  'prices',
+  {
+    id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    /** Nulo: precio general de la organización. */
+    locationId: uuid('location_id'),
+    procedureId: uuid('procedure_id'),
+    labTestId: uuid('lab_test_id'),
+    /** Centavos de USD (regla 4). Nulo solo en una sede: «Usa el precio general desde». */
+    amountCents: integer('amount_cents'),
+    effectiveFrom: date('effective_from').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  (t) => [
+    unique('prices_organization_id_id_key').on(t.organizationId, t.id),
+    check('prices_amount_check', sql`${t.amountCents} >= 0`),
+    // El precio general siempre tiene importe.
+    check('prices_general_amount_check', sql`${t.locationId} is not null or ${t.amountCents} is not null`),
+    check('prices_one_item_check', sql`num_nonnulls(${t.procedureId}, ${t.labTestId}) = 1`),
+    foreignKey({ name: 'prices_location_fk', columns: [t.organizationId, t.locationId], foreignColumns: [locations.organizationId, locations.id] }),
+    foreignKey({ name: 'prices_procedure_fk', columns: [t.organizationId, t.procedureId], foreignColumns: [procedures.organizationId, procedures.id] }),
+    foreignKey({ name: 'prices_lab_test_fk', columns: [t.organizationId, t.labTestId], foreignColumns: [labTests.organizationId, labTests.id] }),
+    index('prices_procedure_idx').on(t.organizationId, t.locationId, t.procedureId, t.effectiveFrom),
+    index('prices_lab_test_idx').on(t.organizationId, t.locationId, t.labTestId, t.effectiveFrom),
+  ],
+);

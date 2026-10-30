@@ -1,5 +1,13 @@
 import {
   acceptInvitationSchema,
+  createCatalogItemSchema,
+  deactivateCatalogItemSchema,
+  isCatalogKind,
+  reactivateCatalogItemSchema,
+  updateCatalogItemSchema,
+  useGeneralPriceSchema,
+  PRICED_KINDS,
+  type CatalogKind,
   changeRolesSchema,
   createInvitationSchema,
   credentialResetSchema,
@@ -25,6 +33,7 @@ import {
   Module,
   Param,
   Post,
+  Query,
   Req,
   Res,
   SetMetadata,
@@ -37,6 +46,7 @@ import { Reflector } from '@nestjs/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AuditService } from './audit.ts';
+import { CatalogService } from './catalog.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
 import { LocationService } from './locations.ts';
@@ -417,6 +427,87 @@ export class NotificationsController {
   }
 }
 
+const catalogKind = (value: string): CatalogKind => {
+  if (!isCatalogKind(value)) throw new HttpError(404, 'catalog_not_found');
+  return value;
+};
+
+/** Administración › Catálogos y precios (S-ADM-13 a 20, T-011). */
+@Controller('admin/catalog')
+export class AdminCatalogController {
+  readonly #catalog: CatalogService;
+  constructor(@Inject(CatalogService) catalog: CatalogService) {
+    this.#catalog = catalog;
+  }
+
+  /** Los cuatro catálogos, también lo inactivo, con los precios de la sede elegida (por defecto, la activa). */
+  @Get()
+  @RequirePermission('catalog.manage')
+  list(@Req() request: FastifyRequest, @Query('locationId') locationId?: string) {
+    const principal = principalOf(request);
+    const sede = locationId ? id(locationId) : principal.context?.locationId;
+    if (!sede) throw new HttpError(403, 'no_active_context');
+    return this.#catalog.list(principal, sede, { activeOnly: false });
+  }
+
+  @Post(':kind')
+  @RequirePermission('catalog.manage')
+  create(@Req() request: FastifyRequest, @Param('kind') kind: string, @Body() body: unknown) {
+    const k = catalogKind(kind);
+    return this.#catalog.create(principalOf(request), k, parse(createCatalogItemSchema(k), body), metaOf(request));
+  }
+
+  @Post(':kind/:id')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async update(@Req() request: FastifyRequest, @Param('kind') kind: string, @Param('id') itemId: string, @Body() body: unknown) {
+    const k = catalogKind(kind);
+    await this.#catalog.update(principalOf(request), k, id(itemId), parse(updateCatalogItemSchema(k), body), metaOf(request));
+  }
+
+  @Post(':kind/:id/deactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async deactivate(@Req() request: FastifyRequest, @Param('kind') kind: string, @Param('id') itemId: string, @Body() body: unknown) {
+    const input = parse(deactivateCatalogItemSchema, body);
+    await this.#catalog.setActive(principalOf(request), catalogKind(kind), id(itemId), false, input, metaOf(request));
+  }
+
+  /** «Volver al precio general» en una sede (P-15): procedimientos y pruebas. */
+  @Post(':kind/:id/use-general')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async useGeneral(@Req() request: FastifyRequest, @Param('kind') kind: string, @Param('id') itemId: string, @Body() body: unknown) {
+    const k = catalogKind(kind);
+    if (!PRICED_KINDS.includes(k)) throw new HttpError(404, 'catalog_not_found');
+    await this.#catalog.useGeneralPrice(principalOf(request), k, id(itemId), parse(useGeneralPriceSchema, body), metaOf(request));
+  }
+
+  @Post(':kind/:id/reactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async reactivate(@Req() request: FastifyRequest, @Param('kind') kind: string, @Param('id') itemId: string, @Body() body: unknown) {
+    const input = parse(reactivateCatalogItemSchema, body);
+    await this.#catalog.setActive(principalOf(request), catalogKind(kind), id(itemId), true, input, metaOf(request));
+  }
+}
+
+/** Lo activo del catálogo, con los precios de la sede activa: lo usan las citas y las órdenes. */
+@Controller('catalog')
+export class CatalogController {
+  readonly #catalog: CatalogService;
+  constructor(@Inject(CatalogService) catalog: CatalogService) {
+    this.#catalog = catalog;
+  }
+
+  @Get()
+  list(@Req() request: FastifyRequest) {
+    const principal = principalOf(request);
+    if (!principal.context) throw new HttpError(403, 'no_active_context');
+    return this.#catalog.list(principal, principal.context.locationId, { activeOnly: true });
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -424,6 +515,7 @@ export interface ApiProviders {
   profile: ProfileService;
   locations: LocationService;
   notifications: NotificationService;
+  catalog: CatalogService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -439,6 +531,8 @@ export function createApiModule(providers: ApiProviders) {
       MembershipsController,
       LocationsController,
       NotificationsController,
+      AdminCatalogController,
+      CatalogController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -447,6 +541,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: ProfileService, useValue: providers.profile },
       { provide: LocationService, useValue: providers.locations },
       { provide: NotificationService, useValue: providers.notifications },
+      { provide: CatalogService, useValue: providers.catalog },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

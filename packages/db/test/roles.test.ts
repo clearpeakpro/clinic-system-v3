@@ -20,6 +20,12 @@ const TABLES = [
   'idempotency_keys',
   // T-009
   'notifications',
+  // T-011
+  'appointment_types',
+  'procedures',
+  'lab_tests',
+  'referral_sources',
+  'prices',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {

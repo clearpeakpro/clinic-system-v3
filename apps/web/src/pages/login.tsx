@@ -369,8 +369,14 @@ export function MfaEnroll({
     }
   };
 
+  // Una sola inscripción aunque React monte dos veces la pantalla (modo
+  // estricto en desarrollo): dos a la vez creaban dos registros con secretos
+  // distintos y ningún código era válido. El servidor también lo impide.
+  const started = useRef(false);
   useEffect(() => {
-    if (initialPassword) void enable(initialPassword);
+    if (!initialPassword || started.current) return;
+    started.current = true;
+    void enable(initialPassword);
     // Solo al montar: la contraseña inicial no cambia.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

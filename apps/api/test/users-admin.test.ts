@@ -385,6 +385,6 @@ describe('Administración › Usuarios', () => {
   it('el Propietario tiene permisos administrativos y ningún permiso clínico', async () => {
     const me = (await owner.get('/api/me')).json<{ roles: string[]; permissions: string[] }>();
     expect(me.roles).toEqual(['propietario']);
-    expect(me.permissions).toEqual(['admin.access', 'locations.manage', 'members.invite', 'members.manage']);
+    expect(me.permissions).toEqual(['admin.access', 'catalog.manage', 'locations.manage', 'members.invite', 'members.manage']);
   });
 });

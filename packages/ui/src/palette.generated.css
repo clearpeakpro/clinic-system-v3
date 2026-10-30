@@ -68,6 +68,14 @@
   --status-departed: #667085;
   --status-departed-container: #f8f9fa;
   --status-departed-border: #eaecf0;
+  --agenda-teal: #0f766e;
+  --agenda-cyan: #0e7490;
+  --agenda-blue: #1d4ed8;
+  --agenda-indigo: #4338ca;
+  --agenda-violet: #6d28d9;
+  --agenda-fuchsia: #a21caf;
+  --agenda-slate: #475569;
+  --agenda-stone: #78716c;
 }
 
 .dark {
@@ -136,6 +144,14 @@
   --status-departed: #bdc7de;
   --status-departed-container: #273143;
   --status-departed-border: #495366;
+  --agenda-teal: #64bab0;
+  --agenda-cyan: #65b6d4;
+  --agenda-blue: #91a7ff;
+  --agenda-indigo: #a5a1ff;
+  --agenda-violet: #bb99ff;
+  --agenda-fuchsia: #f878ff;
+  --agenda-slate: #9eacc3;
+  --agenda-stone: #b2aaa4;
 }
 
 /* Tipografía y espaciado: YAML de DESIGN.md. */
@@ -205,6 +221,14 @@
   --color-status-departed: var(--status-departed);
   --color-status-departed-container: var(--status-departed-container);
   --color-status-departed-border: var(--status-departed-border);
+  --color-agenda-teal: var(--agenda-teal);
+  --color-agenda-cyan: var(--agenda-cyan);
+  --color-agenda-blue: var(--agenda-blue);
+  --color-agenda-indigo: var(--agenda-indigo);
+  --color-agenda-violet: var(--agenda-violet);
+  --color-agenda-fuchsia: var(--agenda-fuchsia);
+  --color-agenda-slate: var(--agenda-slate);
+  --color-agenda-stone: var(--agenda-stone);
   --text-display-md: 28px;
   --text-display-md--line-height: 36px;
   --text-display-md--font-weight: 600;
