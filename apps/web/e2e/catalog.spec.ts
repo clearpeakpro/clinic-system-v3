@@ -5,10 +5,11 @@ import { E2E } from './global-setup.ts';
 
 // T-011: Administración › Catálogos y precios (S-ADM-13 a 20) con datos
 // ficticios. El Administrador de Sur (sin uso en las demás pruebas) crea un
-// procedimiento con precio en SUR1 y SUR2, programa un cambio en SUR1 desde
-// mañana (hoy sigue el anterior), lo desactiva con motivo y lo reactiva. El
-// caso de NOR1/NOR2 y el aislamiento completo están en las pruebas de la API
-// y de la base de datos.
+// procedimiento con su precio general, le pone un precio propio en SUR2
+// (SUR1 sigue con el general), programa un cambio del general desde mañana
+// (hoy sigue el anterior), lo desactiva con motivo y lo reactiva. El caso de
+// NOR1/NOR2 y el aislamiento completo están en las pruebas de la API y de la
+// base de datos.
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const axe = async (page: Page) =>
@@ -54,13 +55,15 @@ test('el Administrador gestiona el catálogo y los precios por sede', async ({ p
   await expectAccessible(page);
   await page.locator('main').screenshot({ path: 'test-results/catalogo-tipos-de-cita.png' });
 
-  // Procedimientos: el precio es el de la sede elegida (Sur, no Norte).
+  // Procedimientos: el precio general de Sur (no el de Norte); SUR1 no tiene precio propio.
   await page.getByRole('navigation', { name: 'Catálogos' }).getByRole('link', { name: /Procedimientos/ }).click();
   await expect(page).toHaveURL(/\/admin\/catalogos\/procedimientos$/);
+  await expect(page.getByRole('columnheader', { name: 'Precio en SUR1' })).toBeVisible();
   await expect(row(page, 'INJ-B12')).toContainText('$18.00');
+  await expect(row(page, 'INJ-B12')).toContainText('Usa el precio general');
   await expect(row(page, 'INJ-B12')).toContainText('Inyección');
 
-  // Nuevo procedimiento con su precio en SUR1.
+  // Nuevo procedimiento con su precio general.
   await page.getByRole('button', { name: 'Nuevo procedimiento' }).click();
   const form = page.getByRole('dialog', { name: 'Nuevo procedimiento' });
   await form.getByRole('button', { name: 'Crear' }).click();
@@ -68,29 +71,35 @@ test('el Administrador gestiona el catálogo y los precios por sede', async ({ p
   await form.getByLabel('Código').fill('proc-cura');
   await expect(form.getByLabel('Código')).toHaveValue('PROC-CURA');
   await form.getByLabel('Nombre', { exact: true }).fill('Curación ficticia');
-  await form.getByLabel('Precio en Sur Centro').fill('40');
+  await form.getByLabel('Precio general', { exact: true }).fill('40');
   await expectAccessible(page);
   await form.getByRole('button', { name: 'Crear' }).click();
   await expect(page.getByText('Guardado.')).toBeVisible();
   await expect(row(page, 'PROC-CURA')).toContainText('$40.00');
+  await expect(row(page, 'PROC-CURA')).toContainText('Usa el precio general');
 
-  // En SUR2 aún no tiene precio; se le pone.
+  // SUR2 tiene su propio precio, que reemplaza al general solo allí.
   await page.getByLabel('Sede de los precios').selectOption({ label: 'SUR2 · Sur Este' });
-  await expect(row(page, 'PROC-CURA')).toContainText('Sin precio');
+  await expect(page.getByRole('columnheader', { name: 'Precio en SUR2' })).toBeVisible();
+  await expect(row(page, 'PROC-CURA')).toContainText('Usa el precio general');
   await row(page, 'PROC-CURA').getByRole('button', { name: 'Editar Curación ficticia' }).click();
   const edit = page.getByRole('dialog', { name: 'Editar procedimiento' });
-  await edit.getByLabel('Precio en Sur Este (opcional)').fill('45');
+  await edit.getByLabel('Precio en Sur Este', { exact: true }).fill('45');
   await edit.getByRole('button', { name: 'Guardar' }).click();
   await expect(row(page, 'PROC-CURA')).toContainText('$45.00');
 
-  // En SUR1, un cambio desde mañana: hoy sigue el anterior y se ve el programado.
+  await expect(row(page, 'PROC-CURA')).not.toContainText('Usa el precio general');
+
+  // En SUR1 sigue el general. Un cambio del general desde mañana: hoy rige el anterior y se ve el programado.
   await page.getByLabel('Sede de los precios').selectOption({ label: 'SUR1 · Sur Centro' });
   await expect(row(page, 'PROC-CURA')).toContainText('$40.00');
+  await expect(row(page, 'PROC-CURA')).toContainText('Usa el precio general');
   await row(page, 'PROC-CURA').getByRole('button', { name: 'Editar Curación ficticia' }).click();
   const tomorrow = tomorrowInChicago();
   const change = page.getByRole('dialog', { name: 'Editar procedimiento' });
-  await change.getByLabel('Precio en Sur Centro (opcional)').fill('50');
-  await change.getByLabel('Vigente desde').fill(tomorrow.iso);
+  const generalSection = change.getByRole('group', { name: 'Precio general' });
+  await generalSection.getByLabel('Precio general (opcional)').fill('50');
+  await generalSection.getByLabel('Vigente desde').fill(tomorrow.iso);
   await change.getByRole('button', { name: 'Guardar' }).click();
   await expect(row(page, 'PROC-CURA')).toContainText('$40.00');
   await expect(row(page, 'PROC-CURA')).toContainText(`Desde ${tomorrow.short}: $50.00`);
