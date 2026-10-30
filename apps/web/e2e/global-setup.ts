@@ -28,7 +28,15 @@ function run(command: string, args: string[], cwd: string, env: NodeJS.ProcessEn
   // La salida estándar (logs de peticiones) se descarta: una tubería que
   // nadie lee se llena y, en Windows, bloquea al proceso que escribe (la API
   // dejaba de responder al final de la E2E completa). Los errores se muestran.
-  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ['ignore', 'ignore', 'pipe'], shell: process.platform === 'win32' });
+  // detached (fuera de Windows): el proceso encabeza su grupo, y al detenerlo
+  // se detienen también sus hijos (pnpm → tsx/vite).
+  const child = spawn(command, args, {
+    cwd,
+    env: { ...process.env, ...env },
+    stdio: ['ignore', 'ignore', 'pipe'],
+    shell: process.platform === 'win32',
+    detached: process.platform !== 'win32',
+  });
   child.stderr.on('data', (chunk: Buffer) => process.stderr.write(chunk));
   return child;
 }
@@ -57,15 +65,26 @@ async function stop(child: ChildProcess): Promise<void> {
       spawn('taskkill', ['/pid', String(child.pid), '/t', '/f']).once('exit', () => { resolve(); });
     });
   } else {
-    child.kill('SIGTERM');
+    try {
+      process.kill(-child.pid, 'SIGTERM');
+    } catch {
+      child.kill('SIGTERM');
+    }
   }
   await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 10_000))]);
 }
 
-/** Antes de arrancar: si el puerto ya está ocupado (otra ejecución), se falla con un mensaje claro. */
+/**
+ * Antes de arrancar: si el puerto sigue ocupado (otra ejecución, o la anterior
+ * aún cerrándose), se espera hasta 15 s y después se falla con un mensaje claro.
+ */
 async function assertFree(port: number): Promise<void> {
-  const busy = await fetch(`http://127.0.0.1:${String(port)}`).then(() => true, () => false);
-  if (busy) throw new Error(`El puerto ${String(port)} ya está en uso: cierre la ejecución anterior.`);
+  const busy = () => fetch(`http://127.0.0.1:${String(port)}`).then(() => true, () => false);
+  const deadline = Date.now() + 15_000;
+  while (await busy()) {
+    if (Date.now() > deadline) throw new Error(`El puerto ${String(port)} ya está en uso: cierre la ejecución anterior.`);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
 }
 
 function finished(child: ChildProcess): Promise<void> {
