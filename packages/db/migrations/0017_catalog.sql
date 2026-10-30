@@ -40,7 +40,7 @@ CREATE TABLE "app"."lab_tests" (
 CREATE TABLE "app"."prices" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
-	"location_id" uuid NOT NULL,
+	"location_id" uuid,
 	"procedure_id" uuid,
 	"lab_test_id" uuid,
 	"amount_cents" integer NOT NULL,

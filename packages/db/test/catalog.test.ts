@@ -30,7 +30,7 @@ describe('catálogo', () => {
   const procedureId = async (orgId: string, code: string) =>
     (await db.withTenant(orgId, (tx) => tx.select({ id: procedures.id }).from(procedures).where(eq(procedures.code, code))))[0]?.id ?? '';
 
-  it('la semilla deja el catálogo básico en cada organización, con precios distintos por sede', async () => {
+  it('la semilla deja el catálogo básico en cada organización: precio general y, en Norte, excepciones en NOR2', async () => {
     for (const org of [NORTE, SUR]) {
       const rows = await db.withTenant(org.id, async (tx) => ({
         types: await tx.select().from(appointmentTypes),
@@ -43,9 +43,10 @@ describe('catálogo', () => {
       expect(rows.procedures).toHaveLength(DEMO_CATALOG.procedures.length);
       expect(rows.labs).toHaveLength(DEMO_CATALOG.labTests.length);
       expect(rows.sources).toHaveLength(DEMO_CATALOG.referralSources.length);
-      // Tres ítems con precio, en las dos sedes.
-      expect(rows.prices).toHaveLength(3 * org.locations.length);
-      expect(new Set(rows.prices.map((p) => p.amountCents)).size).toBeGreaterThan(1);
+      // Tres ítems con precio general; en Norte, dos con excepción en NOR2.
+      expect(rows.prices.filter((p) => p.locationId === null)).toHaveLength(3);
+      const exceptions = rows.prices.filter((p) => p.locationId !== null);
+      expect(exceptions.map((p) => p.locationId)).toEqual(org === NORTE ? [NORTE.locations[1].id, NORTE.locations[1].id] : []);
     }
   });
 
@@ -107,6 +108,15 @@ describe('catálogo', () => {
     await expectPgError(
       db.withTenant(NORTE.id, (tx) => tx.insert(procedures).values({ organizationId: NORTE.id, code: 'P-KIND', name: 'X', kind: 'otro' })),
       CHECK_VIOLATION,
+    );
+  });
+
+  it('un precio general (sin sede) vale para la organización; una excepción no puede ser de una sede de otra', async () => {
+    const norte = await procedureId(NORTE.id, 'PROC-LAVOT');
+    await db.withTenant(NORTE.id, (tx) => tx.insert(prices).values({ organizationId: NORTE.id, locationId: null, procedureId: norte, amountCents: 3100, effectiveFrom: '2026-04-01' }));
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.insert(prices).values({ organizationId: NORTE.id, locationId: SUR.locations[1].id, procedureId: norte, amountCents: 3100, effectiveFrom: '2026-04-01' })),
+      SQLSTATE.foreignKeyViolation,
     );
   });
 

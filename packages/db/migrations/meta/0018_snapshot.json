@@ -1,6 +1,6 @@
 {
-  "id": "2a3844b3-7eca-4701-a515-e7240c1530fa",
-  "prevId": "52ef18c4-9ea7-46f8-96ad-c77060991f58",
+  "id": "c6f46c48-ba1c-417a-a56e-e0d3c21339ad",
+  "prevId": "7aa7a885-b2d1-4c68-9be9-73eccba90db1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2094,7 +2094,7 @@
           "name": "location_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "procedure_id": {
           "name": "procedure_id",

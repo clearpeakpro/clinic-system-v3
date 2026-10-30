@@ -98,10 +98,15 @@ export const referralSources = appSchema.table(
 );
 
 /**
- * Precio de un procedimiento o de una prueba en una sede, desde una fecha (en
- * la zona horaria de la sede). Nunca se modifica ni se borra: un cambio es una
- * fila nueva. El vigente es el de fecha más reciente que no sea posterior a
- * hoy en la sede; con la misma fecha, el último creado.
+ * Precio de venta (lo que paga el paciente) de un procedimiento o una prueba,
+ * desde una fecha. `location_id` nulo: precio general de la organización, que
+ * vale en todas las sedes; con sede: excepción que lo reemplaza solo en ella.
+ * Nunca se modifica ni se borra: un cambio es una fila nueva.
+ *
+ * Precio vigente en una sede un día (la fecha de la sede): el propio de la
+ * sede si tiene alguno vigente; si no, el general. En cada uno, el de fecha
+ * más reciente que no sea posterior a ese día; con la misma fecha, el último
+ * creado.
  */
 export const prices = appSchema.table(
   'prices',
@@ -110,7 +115,8 @@ export const prices = appSchema.table(
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id),
-    locationId: uuid('location_id').notNull(),
+    /** Nulo: precio general de la organización. */
+    locationId: uuid('location_id'),
     procedureId: uuid('procedure_id'),
     labTestId: uuid('lab_test_id'),
     /** Centavos de USD (regla 4). */

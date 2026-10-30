@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import pg from 'pg';
 import { appointmentTypes, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
 import { locations, organizations, patients } from './schema.ts';
@@ -40,8 +40,9 @@ export const DEMO = {
 } as const;
 
 /**
- * Catálogo básico ficticio (T-011), el mismo en las dos organizaciones, con
- * precios distintos por sede (en centavos, vigentes desde el 1 de enero de 2026).
+ * Catálogo básico ficticio (T-011), el mismo en las dos organizaciones. Cada
+ * ítem con precio tiene su precio general (en centavos, vigente desde el 1 de
+ * enero de 2026); en Norte, algunos tienen además una excepción en NOR2.
  */
 export const DEMO_CATALOG = {
   appointmentTypes: [
@@ -58,17 +59,29 @@ export const DEMO_CATALOG = {
     { code: 'REDES', name: 'Redes sociales', sortOrder: 20 },
     { code: 'LETRERO', name: 'Vio el letrero de la clínica', sortOrder: 30 },
   ],
-  /** Precio por código de ítem y código de sede. */
+  /** Por organización y código de ítem: `general` y, opcional, la excepción por código de sede. */
   prices: {
-    'INJ-B12': { NOR1: 2000, NOR2: 2200, SUR1: 1800, SUR2: 1900 },
-    'PROC-LAVOT': { NOR1: 3000, NOR2: 3200, SUR1: 2800, SUR2: 2900 },
-    'LAB-STREP': { NOR1: 2800, NOR2: 3000, SUR1: 2500, SUR2: 2600 },
-  } as Record<string, Record<string, number>>,
+    norte: {
+      'INJ-B12': { general: 2000, NOR2: 2200 },
+      'PROC-LAVOT': { general: 3000 },
+      'LAB-STREP': { general: 2800, NOR2: 3000 },
+    },
+    sur: {
+      'INJ-B12': { general: 1800 },
+      'PROC-LAVOT': { general: 2800 },
+      'LAB-STREP': { general: 2500 },
+    },
+  } as Record<'norte' | 'sur', Record<string, Record<string, number>>>,
   pricesEffectiveFrom: '2026-01-01',
 } as const;
 
 /** Catálogo y precios de una organización (idempotente: no toca lo que ya existe). */
-async function seedCatalog(tx: Tx, organizationId: string, sites: readonly { id: string; code: string }[]): Promise<void> {
+async function seedCatalog(
+  tx: Tx,
+  organizationId: string,
+  sites: readonly { id: string; code: string }[],
+  orgPrices: Record<string, Record<string, number>>,
+): Promise<void> {
   const c = DEMO_CATALOG;
   await tx.insert(appointmentTypes).values(c.appointmentTypes.map((a) => ({ ...a, organizationId }))).onConflictDoNothing();
   await tx.insert(procedures).values(c.procedures.map((p) => ({ ...p, organizationId }))).onConflictDoNothing();
@@ -79,19 +92,21 @@ async function seedCatalog(tx: Tx, organizationId: string, sites: readonly { id:
     ...(await tx.select({ id: labTests.id, code: labTests.code }).from(labTests)).map((l) => ({ ...l, column: 'labTestId' as const })),
   ];
   for (const item of items) {
-    for (const site of sites) {
-      const amountCents = c.prices[item.code]?.[site.code];
+    const itemColumn = item.column === 'procedureId' ? prices.procedureId : prices.labTestId;
+    // null: precio general; con sede: excepción.
+    const targets = [{ id: null, code: 'general' }, ...sites];
+    for (const target of targets) {
+      const amountCents = orgPrices[item.code]?.[target.code];
       if (amountCents === undefined) continue;
-      const itemColumn = item.column === 'procedureId' ? prices.procedureId : prices.labTestId;
       const existing = await tx
         .select({ id: prices.id })
         .from(prices)
-        .where(and(eq(prices.locationId, site.id), eq(itemColumn, item.id)))
+        .where(and(target.id === null ? isNull(prices.locationId) : eq(prices.locationId, target.id), eq(itemColumn, item.id)))
         .limit(1);
       if (existing.length > 0) continue;
       await tx.insert(prices).values({
         organizationId,
-        locationId: site.id,
+        locationId: target.id,
         [item.column]: item.id,
         amountCents,
         effectiveFrom: c.pricesEffectiveFrom,
@@ -143,7 +158,9 @@ export async function seed(
             })),
           )
           .onConflictDoNothing();
-        if (options.catalog !== false) await seedCatalog(tx, org.id, org.locations);
+        if (options.catalog !== false) {
+          await seedCatalog(tx, org.id, org.locations, DEMO_CATALOG.prices[org.id === DEMO.norte.id ? 'norte' : 'sur']);
+        }
       });
     }
   } finally {
