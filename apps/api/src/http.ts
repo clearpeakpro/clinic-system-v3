@@ -5,6 +5,8 @@ import {
   isCatalogKind,
   reactivateCatalogItemSchema,
   updateCatalogItemSchema,
+  useGeneralPriceSchema,
+  PRICED_KINDS,
   type CatalogKind,
   changeRolesSchema,
   createInvitationSchema,
@@ -469,6 +471,16 @@ export class AdminCatalogController {
   async deactivate(@Req() request: FastifyRequest, @Param('kind') kind: string, @Param('id') itemId: string, @Body() body: unknown) {
     const input = parse(deactivateCatalogItemSchema, body);
     await this.#catalog.setActive(principalOf(request), catalogKind(kind), id(itemId), false, input, metaOf(request));
+  }
+
+  /** «Volver al precio general» en una sede (P-15): procedimientos y pruebas. */
+  @Post(':kind/:id/use-general')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async useGeneral(@Req() request: FastifyRequest, @Param('kind') kind: string, @Param('id') itemId: string, @Body() body: unknown) {
+    const k = catalogKind(kind);
+    if (!PRICED_KINDS.includes(k)) throw new HttpError(404, 'catalog_not_found');
+    await this.#catalog.useGeneralPrice(principalOf(request), k, id(itemId), parse(useGeneralPriceSchema, body), metaOf(request));
   }
 
   @Post(':kind/:id/reactivate')

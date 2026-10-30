@@ -1,4 +1,4 @@
-import { AGENDA_COLOR_VALUES, CATALOG_CODE_PATTERN, PROCEDURE_KIND_VALUES, VISIT_ROUTE_VALUES } from '@clinic/db';
+import { AGENDA_COLOR_VALUES, CATALOG_CODE_PATTERN, createTenantDb, prices, PROCEDURE_KIND_VALUES, VISIT_ROUTE_VALUES } from '@clinic/db';
 import { AGENDA_COLORS, CATALOG_CODE_REGEX, PROCEDURE_KINDS, VISIT_ROUTES, type CatalogItem, type CatalogList } from '@clinic/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createStaff, NORTE, readAudit, signedInWithContext, startApp, SUR, type Client, type TestApp } from './support.ts';
@@ -12,6 +12,12 @@ const NOR1 = NORTE.locations[0].id;
 const NOR2 = NORTE.locations[1].id;
 
 /** El día siguiente a `AAAA-MM-DD`. */
+function addDays(day: string, days: number): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function nextDay(day: string): string {
   const date = new Date(`${day}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + 1);
@@ -135,6 +141,75 @@ describe('T-011 catálogo y precios', () => {
     expect((await save(2900)).statusCode).toBe(204);
     expect((await save(3100)).statusCode).toBe(204);
     expect(find(await list(admin), 'LAB-STREP')?.price?.general.current).toEqual({ amountCents: 3100, effectiveFrom: before.generalToday });
+  });
+
+  it('P-15: NOR2 vuelve al precio general desde mañana; hoy sigue su precio propio', async () => {
+    const before = await list(admin, NOR2);
+    const b12 = find(before, 'INJ-B12');
+    expect(b12?.price?.effective?.amountCents).toBe(2200);
+    const tomorrow = nextDay(before.today);
+    const response = await admin.post(`/api/admin/catalog/procedures/${b12?.id ?? ''}/use-general`, { locationId: NOR2, effectiveFrom: tomorrow });
+    expect(response.statusCode, response.body).toBe(204);
+    const after = find(await list(admin, NOR2), 'INJ-B12')?.price;
+    expect(after?.effective).toEqual({ amountCents: 2200, effectiveFrom: '2026-01-01' });
+    expect(after?.location.next).toEqual({ amountCents: null, effectiveFrom: tomorrow });
+    const audit = await readAudit(`action = 'catalog.price_use_general' and entity_id = $1`, [b12?.id]);
+    expect(audit.map((a) => a.metadata)).toEqual([{ priceLocationId: NOR2, effectiveFrom: tomorrow, previousCents: 2200 }]);
+  });
+
+  it('P-15: propio → general → otra vez propio, sin borrar ni modificar nada', async () => {
+    const { today, generalToday } = await list(admin, NOR2);
+    const created = await admin.post('/api/admin/catalog/procedures', {
+      code: 'PROC-VUELTA',
+      name: 'Procedimiento ficticio de vuelta',
+      sortOrder: null,
+      kind: 'procedure',
+      generalPrice: { amountCents: 4000, effectiveFrom: generalToday },
+    });
+    const { id } = created.json<{ id: string }>();
+    // El pasado no se escribe por la API: se simula con filas de días anteriores.
+    await createTenantDb(app.pool).withTenant(NORTE.id, (tx) =>
+      tx.insert(prices).values([
+        { organizationId: NORTE.id, locationId: null, procedureId: id, amountCents: 3900, effectiveFrom: addDays(today, -5) },
+        { organizationId: NORTE.id, locationId: NOR2, procedureId: id, amountCents: 4500, effectiveFrom: addDays(today, -3) },
+        { organizationId: NORTE.id, locationId: NOR2, procedureId: id, amountCents: null, effectiveFrom: addDays(today, -1) },
+      ]),
+    );
+    // «Mañana» ya llegó: desde ayer NOR2 usa el general.
+    let price = find(await list(admin, NOR2), 'PROC-VUELTA')?.price;
+    expect(price?.location.current).toEqual({ amountCents: null, effectiveFrom: addDays(today, -1) });
+    expect(price?.effective?.amountCents).toBe(4000);
+    // Otra vez precio propio, desde hoy.
+    const version = find(await list(admin, NOR2), 'PROC-VUELTA')?.version;
+    expect(
+      (await admin.post(`/api/admin/catalog/procedures/${id}`, {
+        name: 'Procedimiento ficticio de vuelta',
+        sortOrder: null,
+        kind: 'procedure',
+        expectedVersion: version,
+        locationPrice: { locationId: NOR2, amountCents: 4800, effectiveFrom: today },
+      })).statusCode,
+    ).toBe(204);
+    price = find(await list(admin, NOR2), 'PROC-VUELTA')?.price;
+    expect(price?.effective).toEqual({ amountCents: 4800, effectiveFrom: today });
+    // NOR1 nunca tuvo precio propio: siempre el general.
+    expect(find(await list(admin, NOR1), 'PROC-VUELTA')?.price?.effective?.amountCents).toBe(4000);
+    // El historial de NOR2 se conserva completo.
+    const rows = await createTenantDb(app.pool).withTenant(NORTE.id, (tx) => tx.select().from(prices));
+    expect(rows.filter((r) => r.procedureId === id && r.locationId === NOR2).map((r) => r.amountCents)).toEqual([4500, null, 4800]);
+  });
+
+  it('P-15: «Volver al precio general» exige un precio propio, una fecha de hoy o después y un catálogo con precio', async () => {
+    const catalog = await list(admin);
+    const lavot = find(catalog, 'PROC-LAVOT');
+    const noOwn = await admin.post(`/api/admin/catalog/procedures/${lavot?.id ?? ''}/use-general`, { locationId: NOR1, effectiveFrom: catalog.today });
+    expect([noOwn.statusCode, noOwn.json<{ code: string }>().code]).toEqual([409, 'no_location_price']);
+    const strep = find(await list(admin, NOR2), 'LAB-STREP');
+    const past = await admin.post(`/api/admin/catalog/lab-tests/${strep?.id ?? ''}/use-general`, { locationId: NOR2, effectiveFrom: '2026-01-01' });
+    expect(past.json()).toEqual({ code: 'effective_from_past' });
+    const source = find(catalog, 'REDES');
+    expect((await admin.post(`/api/admin/catalog/referral-sources/${source?.id ?? ''}/use-general`, { locationId: NOR2, effectiveFrom: catalog.today })).statusCode).toBe(404);
+    expect((await recepcion.post(`/api/admin/catalog/lab-tests/${strep?.id ?? ''}/use-general`, { locationId: NOR2, effectiveFrom: catalog.today })).statusCode).toBe(403);
   });
 
   it('rechaza una vigencia pasada, un código repetido, una versión vieja y desactivar sin motivo', async () => {

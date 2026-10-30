@@ -70,7 +70,10 @@ const amountCents = z.number().int().min(0).max(PRICE_MAX_CENTS);
 export const generalPriceSchema = z.object({ amountCents, effectiveFrom: isoDate });
 /** Excepción de una sede: reemplaza al precio general solo en ella. */
 export const locationPriceSchema = z.object({ locationId: z.uuid(), amountCents, effectiveFrom: isoDate });
+/** «Volver al precio general» en una sede, desde una fecha (hoy o después en la sede). P-15, ADR 0029. */
+export const useGeneralPriceSchema = z.object({ locationId: z.uuid(), effectiveFrom: isoDate });
 export type GeneralPriceInput = z.infer<typeof generalPriceSchema>;
+export type UseGeneralPriceInput = z.infer<typeof useGeneralPriceSchema>;
 export type LocationPriceInput = z.infer<typeof locationPriceSchema>;
 
 const FIELDS = {
@@ -105,7 +108,11 @@ export const deactivateCatalogItemSchema = z.object({ reason: reasonSchema, expe
 export const reactivateCatalogItemSchema = z.object({ expectedVersion });
 
 export interface CatalogPrice {
-  amountCents: number;
+  /**
+   * Centavos. Nulo solo en el precio de una sede: «Usa el precio general»
+   * desde `effectiveFrom` (la sede vuelve al general).
+   */
+  amountCents: number | null;
   /** Fecha de vigencia, `AAAA-MM-DD`, en la zona horaria de la sede. */
   effectiveFrom: string;
 }

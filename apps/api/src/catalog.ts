@@ -9,6 +9,7 @@ import {
   type GeneralPriceInput,
   type LocationPriceInput,
   type PriceTimeline,
+  type UseGeneralPriceInput,
 } from '@clinic/shared';
 import { asc, eq, sql } from 'drizzle-orm';
 import type { AuditService } from './audit.ts';
@@ -114,7 +115,8 @@ export class CatalogService {
         for (const item of items[kind]) {
           const g = general(item.id);
           const l = own(item.id);
-          item.price = { general: g, location: l, effective: l.current ?? g.current };
+          // Sin importe, la sede «Usa el precio general» (P-15).
+          item.price = { general: g, location: l, effective: l.current && l.current.amountCents !== null ? l.current : g.current };
         }
       }
       return { locationId, today, generalToday, items };
@@ -237,7 +239,7 @@ export class CatalogService {
    */
   async #prices(tx: Tx, column: 'procedure_id' | 'lab_test_id', scope: string | null, today: string, which: 'current' | 'next') {
     const item = sql.raw(`"${column}"`);
-    const rows = await tx.execute<{ item_id: string; amount_cents: number; effective_from: string }>(sql`
+    const rows = await tx.execute<{ item_id: string; amount_cents: number | null; effective_from: string }>(sql`
       select distinct on (${item}) ${item} as item_id, amount_cents, effective_from::text as effective_from
         from app.prices
        where ${scope === null ? sql`location_id is null` : sql`location_id = ${scope}`} and ${item} is not null
@@ -311,20 +313,66 @@ export class CatalogService {
 
   /**
    * Importe que rige un ítem en una fecha: el general (`locationId` nulo) o,
-   * en una sede, su propio precio si tiene uno vigente y si no, el general.
+   * en una sede, su propio precio si la última fila de la sede tiene importe;
+   * si no tiene o es «Usa el precio general», el general.
    */
   async #priceOn(tx: Tx, column: 'procedure_id' | 'lab_test_id', itemId: string, locationId: string | null, date: string): Promise<number | undefined> {
     const item = sql.raw(`"${column}"`);
     const scopes = locationId === null ? [null] : [locationId, null];
     for (const scope of scopes) {
-      const rows = await tx.execute<{ amount_cents: number }>(sql`
+      const rows = await tx.execute<{ amount_cents: number | null }>(sql`
         select amount_cents from app.prices
          where ${scope === null ? sql`location_id is null` : sql`location_id = ${scope}`} and ${item} = ${itemId} and effective_from <= ${date}::date
          order by effective_from desc, created_at desc, id desc limit 1`);
       const amount = rows.rows[0]?.amount_cents;
-      if (amount !== undefined) return amount;
+      if (amount !== undefined && amount !== null) return amount;
     }
     return undefined;
+  }
+
+  /**
+   * «Volver al precio general» (P-15, ADR 0029): una fila de la sede sin
+   * importe, desde hoy o después en la sede, que no borra ni modifica nada.
+   * Solo si la sede tiene algún precio propio.
+   */
+  async useGeneralPrice(actor: Principal, kind: CatalogKind, itemId: string, input: UseGeneralPriceInput, meta: RequestMeta): Promise<void> {
+    const ctx = requireContext(actor);
+    const table = TABLES[kind];
+    await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const [exists] = await tx.select({ id: table.id }).from(table).where(eq(table.id, itemId));
+      if (!exists) throw new HttpError(404, 'catalog_item_not_found');
+      const [site] = await tx
+        .select({ active: locations.active, today: sql<string>`((now() at time zone ${locations.timezone})::date)::text` })
+        .from(locations)
+        .where(eq(locations.id, input.locationId));
+      if (!site) throw new HttpError(400, 'invalid_location');
+      if (!site.active) throw new HttpError(400, 'location_inactive');
+      if (input.effectiveFrom < site.today) throw new HttpError(400, 'effective_from_past');
+      const column = kind === 'procedures' ? 'procedure_id' : 'lab_test_id';
+      const item = sql.raw(`"${column}"`);
+      const own = await tx.execute<{ n: number }>(sql`
+        select count(*)::int as n from app.prices
+         where location_id = ${input.locationId} and ${item} = ${itemId} and amount_cents is not null`);
+      if ((own.rows[0]?.n ?? 0) === 0) throw new HttpError(409, 'no_location_price');
+      const before = await this.#priceOn(tx, column, itemId, input.locationId, input.effectiveFrom);
+      await tx.insert(prices).values({
+        organizationId: ctx.organizationId,
+        locationId: input.locationId,
+        ...(kind === 'procedures' ? { procedureId: itemId } : { labTestId: itemId }),
+        amountCents: null,
+        effectiveFrom: input.effectiveFrom,
+      });
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'catalog.price_use_general',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: ctx.locationId,
+        entityType: ENTITY[kind],
+        entityId: itemId,
+        ...meta,
+        metadata: { priceLocationId: input.locationId, effectiveFrom: input.effectiveFrom, previousCents: before ?? 'none' },
+      });
+    });
   }
 
   /** Bloquea la fila y comprueba la versión (409 version_conflict). */
