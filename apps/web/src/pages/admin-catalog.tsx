@@ -17,6 +17,7 @@ import {
   cn,
   ConfirmDialog,
   DataTable,
+  Dialog,
   EmptyState,
   Field,
   MoneyText,
@@ -43,12 +44,13 @@ import {
   Search,
   Share2,
   Syringe,
+  Undo2,
   type LucideIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AGENDA_STRIPE, CatalogDialog } from '../components/catalog/catalog-dialog.tsx';
 import { api, ApiError } from '../lib/api.ts';
-import { catalogMessage, formatDay, NEW_LABELS, nextPriceText } from '../lib/catalog.ts';
+import { catalogMessage, formatDay, NEW_LABELS, nextPriceText, withAmount } from '../lib/catalog.ts';
 import { flatten, useActiveLocation, useLocations } from '../lib/session.ts';
 import { isVersionConflict } from '../lib/users.ts';
 
@@ -80,7 +82,12 @@ const KIND_ICONS: Record<ProcedureKind, LucideIcon> = { procedure: BriefcaseMedi
 type StateFilter = 'all' | 'active' | 'inactive';
 type KindFilter = 'all' | ProcedureKind;
 
-type Dialogs = { kind: 'new' } | { kind: 'edit'; item: CatalogItem } | { kind: 'deactivate'; item: CatalogItem } | null;
+type Dialogs =
+  | { kind: 'new' }
+  | { kind: 'edit'; item: CatalogItem }
+  | { kind: 'deactivate'; item: CatalogItem }
+  | { kind: 'use-general'; item: CatalogItem }
+  | null;
 
 /** Pestaña de la URL (`/admin/catalogos/<pestaña>`). */
 export function catalogKindOf(segment: string): CatalogKind | undefined {
@@ -265,6 +272,7 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
                     onEdit: (item) => { setDialog({ kind: 'edit', item }); },
                     onDeactivate: (item) => { setDialog({ kind: 'deactivate', item }); },
                     onReactivate: (item) => void reactivate(item),
+                    onUseGeneral: (item) => { setDialog({ kind: 'use-general', item }); },
                   })}
                 />
               </>
@@ -282,6 +290,20 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
           generalToday={catalog.data.generalToday}
           onClose={() => { setDialog(null); }}
           onConflict={conflict}
+          onSaved={() => {
+            setDialog(null);
+            void reload();
+            snackbar({ message: 'Guardado.' });
+          }}
+        />
+      ) : null}
+      {dialog?.kind === 'use-general' && site && catalog.data ? (
+        <UseGeneralDialog
+          kind={kind}
+          item={dialog.item}
+          site={{ id: site.id, name: site.name }}
+          today={catalog.data.today}
+          onClose={() => { setDialog(null); }}
           onSaved={() => {
             setDialog(null);
             void reload();
@@ -331,14 +353,27 @@ function StateChip({ active }: { active: boolean }) {
  * muestra sin precio («Sin precio» en el general, «Usa el precio general» en
  * la sede).
  */
-function PriceCell({ timeline, active, empty }: { timeline: PriceTimeline | undefined; active: boolean; empty: string }) {
-  const current = timeline?.current ?? null;
+function PriceCell({
+  timeline,
+  active,
+  empty,
+  action,
+}: {
+  timeline: PriceTimeline | undefined;
+  active: boolean;
+  empty: string;
+  /** Junto al precio propio de la sede: «Volver al precio general». */
+  action?: ReactNode;
+}) {
+  // Sin importe, la sede «Usa el precio general» (P-15).
+  const current = withAmount(timeline?.current);
   const next = timeline?.next ?? null;
   return (
     <span className="flex flex-col items-end gap-0.5">
       {current ? (
         <>
           <span className="flex items-baseline gap-space-xs">
+            {action}
             <MoneyText cents={current.amountCents} emphasis={active} className={cn('text-body-lg', !active && 'line-through')} />
             <span className="text-caption text-on-surface-variant">USD</span>
           </span>
@@ -347,7 +382,7 @@ function PriceCell({ timeline, active, empty }: { timeline: PriceTimeline | unde
       ) : (
         <span className="text-body-md whitespace-nowrap text-on-surface-variant">{empty}</span>
       )}
-      {next ? <span className="text-caption whitespace-nowrap text-on-surface-variant">{nextPriceText(next)}</span> : null}
+      {next ? <span className="max-w-40 text-right text-caption text-on-surface-variant">{nextPriceText(next)}</span> : null}
     </span>
   );
 }
@@ -390,7 +425,12 @@ function RowActions({
 function columnsFor(
   kind: CatalogKind,
   siteCode: string,
-  actions: { onEdit: (item: CatalogItem) => void; onDeactivate: (item: CatalogItem) => void; onReactivate: (item: CatalogItem) => void },
+  actions: {
+    onEdit: (item: CatalogItem) => void;
+    onDeactivate: (item: CatalogItem) => void;
+    onReactivate: (item: CatalogItem) => void;
+    onUseGeneral: (item: CatalogItem) => void;
+  },
 ): Column<CatalogItem>[] {
   const code: Column<CatalogItem> = { key: 'code', header: 'Código', cell: (r) => <CodeBox code={r.code} /> };
   const name: Column<CatalogItem> = {
@@ -412,9 +452,31 @@ function columnsFor(
     key: 'site',
     header: `Precio en ${siteCode}`,
     align: 'end',
-    cell: (r) => <PriceCell timeline={r.price?.location} active={r.active} empty="Usa el precio general" />,
+    cell: (r) => (
+      <PriceCell
+        timeline={r.price?.location}
+        active={r.active}
+        empty="Usa el precio general"
+        action={
+          <Button
+            variant="text"
+            className="w-12 px-0 text-on-surface-variant"
+            title="Volver al precio general"
+            aria-label={`Volver al precio general en ${siteCode}: ${r.name}`}
+            onClick={() => { actions.onUseGeneral(r); }}
+          >
+            <Undo2 aria-hidden className="size-5" />
+          </Button>
+        }
+      />
+    ),
   };
-  const acts: Column<CatalogItem> = { key: 'actions', header: 'Acciones', align: 'end', cell: (r) => <RowActions item={r} {...actions} /> };
+  const acts: Column<CatalogItem> = {
+    key: 'actions',
+    header: 'Acciones',
+    align: 'end',
+    cell: (r) => <RowActions item={r} onEdit={actions.onEdit} onDeactivate={actions.onDeactivate} onReactivate={actions.onReactivate} />,
+  };
 
   switch (kind) {
     case 'appointment-types':
@@ -473,4 +535,80 @@ function columnsFor(
     case 'referral-sources':
       return [code, name, order, state, acts];
   }
+}
+
+/**
+ * «Volver al precio general» (P-15, ADR 0029): desde la fecha elegida (hoy o
+ * después en la sede), la sede cobra el precio general. El precio propio se
+ * conserva en el historial y la sede puede volver a tener uno.
+ */
+function UseGeneralDialog({
+  kind,
+  item,
+  site,
+  today,
+  onClose,
+  onSaved,
+}: {
+  kind: CatalogKind;
+  item: CatalogItem;
+  site: { id: string; name: string };
+  today: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [from, setFrom] = useState(today);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const confirm = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+      setError('Ingrese una fecha como AAAA-MM-DD.');
+      return;
+    }
+    if (from < today) {
+      setError('La fecha de vigencia no puede ser anterior a hoy.');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.useGeneralPrice(kind, item.id, site.id, from);
+      onSaved();
+    } catch (e) {
+      setError(catalogMessage(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog
+      open
+      onOpenChange={(next) => { if (!next && !busy) onClose(); }}
+      icon={<Undo2 className="size-7" />}
+      title={`¿Volver al precio general en ${site.name}?`}
+      description={`Desde la fecha elegida, ${site.name} cobra el precio general de «${item.name}». Su precio propio se conserva en el historial.`}
+      footer={
+        <>
+          <Button variant="tonal" className="text-on-surface" disabled={busy} onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button loading={busy} onClick={() => void confirm()}>
+            Volver al precio general
+          </Button>
+        </>
+      }
+    >
+      <Field
+        label="Vigente desde"
+        type="date"
+        min={today}
+        icon={<CalendarDays className="size-5" />}
+        value={from}
+        disabled={busy}
+        error={error}
+        onChange={(e) => {
+          setFrom(e.target.value);
+          setError(null);
+        }}
+      />
+    </Dialog>
+  );
 }

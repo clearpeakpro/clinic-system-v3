@@ -225,6 +225,8 @@ export const api = {
     request<null>('POST', `/api/admin/catalog/${kind}/${id}`, input),
   deactivateCatalogItem: (kind: CatalogKind, id: string, reason: string, expectedVersion: number) =>
     request<null>('POST', `/api/admin/catalog/${kind}/${id}/deactivate`, { reason, expectedVersion }),
+  useGeneralPrice: (kind: CatalogKind, id: string, locationId: string, effectiveFrom: string) =>
+    request<null>('POST', `/api/admin/catalog/${kind}/${id}/use-general`, { locationId, effectiveFrom }),
   reactivateCatalogItem: (kind: CatalogKind, id: string, expectedVersion: number) =>
     request<null>('POST', `/api/admin/catalog/${kind}/${id}/reactivate`, { expectedVersion }),
 

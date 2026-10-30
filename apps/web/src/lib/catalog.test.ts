@@ -12,6 +12,7 @@ describe('catálogo', () => {
 
   it('el precio programado: «Desde 31 oct: $40.00»', () => {
     expect(nextPriceText({ amountCents: 4000, effectiveFrom: '2026-10-31' })).toBe('Desde 31 oct: $40.00');
+    expect(nextPriceText({ amountCents: null, effectiveFrom: '2026-10-31' })).toBe('Desde 31 oct: usa el precio general');
   });
 
   it('mensajes de los errores del catálogo', () => {

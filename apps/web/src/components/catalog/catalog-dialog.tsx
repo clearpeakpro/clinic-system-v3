@@ -20,7 +20,7 @@ import { Banner, Button, cn, Dialog, DiscardChangesDialog, Field, formatMoneyInp
 import { BookOpen, CalendarDays, Hash } from 'lucide-react';
 import { useState, type SubmitEvent } from 'react';
 import { api, ApiError } from '../../lib/api.ts';
-import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS } from '../../lib/catalog.ts';
+import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS, withAmount } from '../../lib/catalog.ts';
 
 // S-ADM-19 «Nuevo / Editar» de los catálogos. Sin captura de Stitch: diálogo
 // de la hoja S-GEN-30, con los campos del manual (S-ADM-13 a 18). En
@@ -79,8 +79,9 @@ export function CatalogDialog({
 }) {
   const editing = item !== null;
   const priced = PRICED_KINDS.includes(kind);
-  const general = item?.price?.general.current ?? null;
-  const own = item?.price?.location.current ?? null;
+  const general = withAmount(item?.price?.general.current);
+  // Sin importe, la sede «Usa el precio general» (P-15).
+  const own = withAmount(item?.price?.location.current);
   const initial: Values = {
     code: item?.code ?? '',
     name: item?.name ?? '',
@@ -357,7 +358,7 @@ function PriceSection({
   amount: string;
   from: string;
   min: string;
-  current: CatalogPrice | null;
+  current: (CatalogPrice & { amountCents: number }) | null;
   busy: boolean;
   amountError: string | null;
   fromError: string | null;
