@@ -1,7 +1,8 @@
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import pg from 'pg';
+import { appointmentTypes, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
 import { locations, organizations, patients } from './schema.ts';
-import { createTenantDb } from './with-tenant.ts';
+import { createTenantDb, type Tx } from './with-tenant.ts';
 
 // Datos ficticios. Los ids son fijos para que las pruebas puedan referirse a ellos.
 // Las direcciones son de ejemplo (calles inventadas en ciudades de Texas).
@@ -39,11 +40,76 @@ export const DEMO = {
 } as const;
 
 /**
+ * Catálogo básico ficticio (T-011), el mismo en las dos organizaciones, con
+ * precios distintos por sede (en centavos, vigentes desde el 1 de enero de 2026).
+ */
+export const DEMO_CATALOG = {
+  appointmentTypes: [
+    { code: 'CONSULTA', name: 'Consulta general', defaultDurationMinutes: 20, suggestedRoute: 'STANDARD', color: 'teal', sortOrder: 10 },
+    { code: 'SEGUIMIENTO', name: 'Seguimiento', defaultDurationMinutes: 15, suggestedRoute: 'STANDARD', color: 'blue', sortOrder: 20 },
+  ],
+  procedures: [
+    { code: 'INJ-B12', name: 'Inyección de vitamina B12', kind: 'injection', sortOrder: 10 },
+    { code: 'PROC-LAVOT', name: 'Lavado ótico', kind: 'procedure', sortOrder: 20 },
+  ],
+  labTests: [{ code: 'LAB-STREP', name: 'Prueba rápida de estreptococo', sortOrder: 10 }],
+  referralSources: [
+    { code: 'RECOMENDACION', name: 'Recomendación de un conocido', sortOrder: 10 },
+    { code: 'REDES', name: 'Redes sociales', sortOrder: 20 },
+    { code: 'LETRERO', name: 'Vio el letrero de la clínica', sortOrder: 30 },
+  ],
+  /** Precio por código de ítem y código de sede. */
+  prices: {
+    'INJ-B12': { NOR1: 2000, NOR2: 2200, SUR1: 1800, SUR2: 1900 },
+    'PROC-LAVOT': { NOR1: 3000, NOR2: 3200, SUR1: 2800, SUR2: 2900 },
+    'LAB-STREP': { NOR1: 2800, NOR2: 3000, SUR1: 2500, SUR2: 2600 },
+  } as Record<string, Record<string, number>>,
+  pricesEffectiveFrom: '2026-01-01',
+} as const;
+
+/** Catálogo y precios de una organización (idempotente: no toca lo que ya existe). */
+async function seedCatalog(tx: Tx, organizationId: string, sites: readonly { id: string; code: string }[]): Promise<void> {
+  const c = DEMO_CATALOG;
+  await tx.insert(appointmentTypes).values(c.appointmentTypes.map((a) => ({ ...a, organizationId }))).onConflictDoNothing();
+  await tx.insert(procedures).values(c.procedures.map((p) => ({ ...p, organizationId }))).onConflictDoNothing();
+  await tx.insert(labTests).values(c.labTests.map((l) => ({ ...l, organizationId }))).onConflictDoNothing();
+  await tx.insert(referralSources).values(c.referralSources.map((r) => ({ ...r, organizationId }))).onConflictDoNothing();
+  const items = [
+    ...(await tx.select({ id: procedures.id, code: procedures.code }).from(procedures)).map((p) => ({ ...p, column: 'procedureId' as const })),
+    ...(await tx.select({ id: labTests.id, code: labTests.code }).from(labTests)).map((l) => ({ ...l, column: 'labTestId' as const })),
+  ];
+  for (const item of items) {
+    for (const site of sites) {
+      const amountCents = c.prices[item.code]?.[site.code];
+      if (amountCents === undefined) continue;
+      const itemColumn = item.column === 'procedureId' ? prices.procedureId : prices.labTestId;
+      const existing = await tx
+        .select({ id: prices.id })
+        .from(prices)
+        .where(and(eq(prices.locationId, site.id), eq(itemColumn, item.id)))
+        .limit(1);
+      if (existing.length > 0) continue;
+      await tx.insert(prices).values({
+        organizationId,
+        locationId: site.id,
+        [item.column]: item.id,
+        amountCents,
+        effectiveFrom: c.pricesEffectiveFrom,
+      });
+    }
+  }
+}
+
+/**
  * Carga la semilla como clinic_migrator con SET ROLE clinic_owner (solo en
  * desarrollo y pruebas). FORCE RLS aplica también al dueño, así que cada
  * organización se inserta dentro de su propio contexto. Es idempotente.
  */
-export async function seed(migratorUrl: string): Promise<void> {
+export async function seed(
+  migratorUrl: string,
+  /** `catalog: false`: sin catálogo, para una base con migraciones anteriores a T-011. */
+  options: { catalog?: boolean } = {},
+): Promise<void> {
   const client = new pg.Client({ connectionString: migratorUrl });
   await client.connect();
   try {
@@ -77,6 +143,7 @@ export async function seed(migratorUrl: string): Promise<void> {
             })),
           )
           .onConflictDoNothing();
+        if (options.catalog !== false) await seedCatalog(tx, org.id, org.locations);
       });
     }
   } finally {
