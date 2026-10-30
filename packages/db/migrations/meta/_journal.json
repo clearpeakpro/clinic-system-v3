@@ -134,6 +134,13 @@
       "when": 1793365609666,
       "tag": "0018_catalog_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793370150332,
+      "tag": "0019_two_factor_unique",
+      "breakpoints": true
     }
   ]
 }

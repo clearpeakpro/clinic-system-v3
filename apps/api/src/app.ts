@@ -86,6 +86,24 @@ export async function createApp({ config, logs }: AppDeps) {
     }
   });
 
+  // Inscripción del MFA, una a la vez por persona: Better Auth 1.7.7 busca si
+  // ya hay una y, si no, la crea; dos peticiones a la vez (React monta dos
+  // veces la pantalla en desarrollo) creaban dos registros con secretos
+  // distintos y ningún código era válido. Con una sola instancia de la API
+  // (entorno B) basta este turno; la base de datos además impide un segundo
+  // registro por persona (índice único en auth.two_factor.user_id).
+  const enrollTurns = new Map<string, Promise<unknown>>();
+  const oneEnrollmentAtATime = async <T>(userId: string, work: () => Promise<T>): Promise<T> => {
+    const previous = enrollTurns.get(userId) ?? Promise.resolve();
+    const turn = previous.catch(() => undefined).then(work);
+    enrollTurns.set(userId, turn);
+    try {
+      return await turn;
+    } finally {
+      if (enrollTurns.get(userId) === turn) enrollTurns.delete(userId);
+    }
+  };
+
   // Better Auth montado como en su integración oficial con Fastify.
   fastify.route({
     method: ['GET', 'POST'],
@@ -96,13 +114,16 @@ export async function createApp({ config, logs }: AppDeps) {
       // IP e id de petición los pone el servidor; nunca los que envíe el cliente.
       headers.set(CLIENT_IP_HEADER, request.ip);
       headers.set(REQUEST_ID_HEADER, request.id);
-      const response = await auth.handler(
-        new Request(url, {
-          method: request.method,
-          headers,
-          ...(request.body ? { body: JSON.stringify(request.body) } : {}),
-        }),
-      );
+      const call = () =>
+        auth.handler(
+          new Request(url, {
+            method: request.method,
+            headers,
+            ...(request.body ? { body: JSON.stringify(request.body) } : {}),
+          }),
+        );
+      const userId = request.principal?.userId;
+      const response = url.pathname === '/api/auth/two-factor/enable' && userId ? await oneEnrollmentAtATime(userId, call) : await call();
       // Fail-closed (T-008): si no se pudo auditar, ni la respuesta ni sus cookies salen.
       if (auth.consumeAuditFailure(request.id)) return reply.status(503).send({ code: 'audit_unavailable' });
       void reply.status(response.status);
