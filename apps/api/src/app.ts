@@ -16,6 +16,7 @@ import { hasSessionCookie, isMfaEnrollmentPath, toHeaders } from './request-cont
 import { InvitationService } from './invitations.ts';
 import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
+import { CatalogService } from './catalog.ts';
 import { ProfileService } from './profile.ts';
 import { RealtimeGateway } from './realtime.ts';
 import { ContextService } from './services.ts';
@@ -42,6 +43,7 @@ export async function createApp({ config, logs }: AppDeps) {
     profile: new ProfileService(pool, tenantDb, auth, audit, config),
     locations: new LocationService(tenantDb, audit),
     notifications: new NotificationService(tenantDb),
+    catalog: new CatalogService(tenantDb, audit),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;
