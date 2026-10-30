@@ -93,7 +93,7 @@ pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» 
 
 - **Tablas** (`src/catalog-schema.ts`, migraciones 0017 y 0018): `appointment_types`, `procedures`, `lab_tests`, `referral_sources` y `prices`, con RLS forzado y claves compuestas.
 - **Reglas en la base de datos:** código único por organización (`^[A-Z][A-Z0-9_-]{1,40}$`), duración de 5 a 480 min, ruta, color de agenda y tipo con CHECK, y un solo ítem por precio.
-- **Precios:** `location_id` nulo es el precio general de la organización; con sede, una excepción que lo reemplaza solo en ella.
+- **Precios** ([ADR 0029](../../docs/decisions/0029-precio-general-excepcion-sede.md)): `location_id` nulo es el precio general de la organización; con sede, una excepción que lo reemplaza solo en ella. Una fila de sede sin importe es «Usa el precio general desde» (el general siempre tiene importe).
 - **Permisos de `clinic_app`:** sin `DELETE` en ninguna; en `prices`, solo `SELECT` e `INSERT`: un cambio de precio es una fila nueva.
 - **Semilla:** un catálogo básico ficticio en las dos organizaciones, con precio general y, en Norte, excepciones en NOR2 (`DEMO_CATALOG`).
 

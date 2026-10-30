@@ -12,13 +12,13 @@ Cuando una se resuelva, crear su ADR y quitarla de esta lista.
 | P-09 | Región de AWS y dominio | us-east-1 o us-east-2; subdominio de clearpeak.pro u otro | Fase 4 |
 | P-10 | Precios de CloudWatch en el presupuesto B | Confirmar en la calculadora de AWS (estimados en $1.03/mes) | Fase 4 |
 | P-13 | Anclaje de la cadena de auditoría | Guardar cada día el hash de la cabeza de cada cadena en S3 con Object Lock (modo gobernanza), como pide el [ADR 0018](0018-auditoria.md). Hasta entonces queda en la propia auditoría (`audit.chain_verified`). Requiere el entorno B. | Fase 4 |
-| P-15 | Volver al precio general en una sede | Hoy una sede con precio propio no puede volver a usar el general: los precios no se modifican ni se borran (T-011). Propuesta: un registro de la sede «usa el precio general desde {fecha}», sin importe, que conserva el historial. | Antes de T-016 |
 | P-12 | Operador: cuentas globales | El operador debe poder desactivar una cuenta global y resolver los `409 account_shared` (nombre, MFA o contraseña de una cuenta con membresías activas en varias organizaciones). Comandos del operador, como `org:create` ([ADR 0024](0024-operador-plataforma.md)). | Piloto (fase 4) |
 
 ## Resueltas
 
 | # | Decisión | Resolución |
 | --- | --- | --- |
+| P-15 | Volver al precio general en una sede | **Resuelta:** la sede registra «Usa el precio general desde {fecha}», un registro sin importe con su vigencia que no borra ni modifica nada; después puede volver a tener precio propio. Acción «Volver al precio general», auditada. [ADR 0029](0029-precio-general-excepcion-sede.md). |
 | P-14 | Acceso del Propietario y el Administrador sin rol clínico a Pacientes y Citas | **Resuelta:** no los ven; solo con un rol de Recepción, Enfermería o Proveedor en esa sede, y asignarse ese rol queda auditado. Única excepción a «nadie cambia sus propios roles»: el Propietario puede asignarse y quitarse roles clínicos en sedes activas de su organización, con motivo, auditado y con aviso a los Administradores. [ADR 0027](0027-acceso-clinico-propietario-administrador.md). |
 | P-01 | Cifrado de campos frente a búsqueda parcial | **Resuelta:** nombre, apellidos, fecha de nacimiento y teléfono sin cifrado de aplicación (búsqueda con `pg_trgm` + `unaccent`, por acción explícita); seguro, identificación y notas de cobertura cifrados con KMS, con HMAC solo si hace falta coincidencia exacta. [ADR 0026](0026-cifrado-campos-busqueda.md). |
 | P-04 | Rol de solo lectura para contabilidad | **Resuelta:** no entra en V1. [ADR 0025](0025-contabilidad-fuera-v1.md). |
