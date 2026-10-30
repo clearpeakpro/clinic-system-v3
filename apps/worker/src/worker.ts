@@ -62,15 +62,26 @@ export async function startWorker(config: WorkerConfig, mailer: Mailer): Promise
   await boss.schedule(QUEUES.notificationsPurge, config.notificationsPurgeCron, null, { tz: 'UTC' });
 
   let sweeping: Promise<number> | null = null;
+  // Cuántas veces se pidió un barrido; si cambia durante uno, se repite.
+  let requests = 0;
   const sweep = (): Promise<number> => {
-    // Un barrido a la vez; los avisos que llegan mientras tanto se suman al siguiente.
-    sweeping ??= (async () => {
+    // Un barrido a la vez. Un aviso que llega durante un barrido puede ser de
+    // un evento que ese barrido ya no ve: se repite al terminar.
+    requests += 1;
+    if (sweeping) return sweeping;
+    sweeping = (async () => {
+      let total = 0;
       try {
-        const { rows } = await pool.query<{ organization_id: string; id: string }>('select * from app.outbox_due(100)');
-        for (const row of rows) {
-          await boss.send(QUEUES.outboxDeliver, { organizationId: row.organization_id, id: row.id }, { singletonKey: row.id });
-        }
-        return rows.length;
+        let seen: number;
+        do {
+          seen = requests;
+          const { rows } = await pool.query<{ organization_id: string; id: string }>('select * from app.outbox_due(100)');
+          for (const row of rows) {
+            await boss.send(QUEUES.outboxDeliver, { organizationId: row.organization_id, id: row.id }, { singletonKey: row.id });
+          }
+          total += rows.length;
+        } while (requests !== seen);
+        return total;
       } finally {
         sweeping = null;
       }
