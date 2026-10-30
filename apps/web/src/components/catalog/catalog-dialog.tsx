@@ -13,7 +13,7 @@ import {
   type AgendaColor,
   type CatalogItem,
   type CatalogKind,
-  type CatalogPriceInput,
+  type CatalogPrice,
   type ProcedureKind,
 } from '@clinic/shared';
 import { Banner, Button, cn, Dialog, DiscardChangesDialog, Field, formatMoneyInput, MoneyField, parseMoney, SelectField } from '@clinic/ui';
@@ -23,8 +23,10 @@ import { api, ApiError } from '../../lib/api.ts';
 import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS } from '../../lib/catalog.ts';
 
 // S-ADM-19 «Nuevo / Editar» de los catálogos. Sin captura de Stitch: diálogo
-// de la hoja S-GEN-30, con los campos del manual (S-ADM-13 a 18) y el precio
-// de la sede elegida en Procedimientos y Pruebas (T-011). El código solo se
+// de la hoja S-GEN-30, con los campos del manual (S-ADM-13 a 18). En
+// Procedimientos y Pruebas (T-011): «Precio general» de la organización y,
+// opcional, «Precio en {sede}» para la sede elegida, cada uno con su fecha de
+// vigencia. Sin precio propio, la sede usa el general. El código solo se
 // escribe al crear; los opcionales dicen «(opcional)»; no se cierra tocando
 // fuera y, con cambios, pregunta antes de descartarlos.
 
@@ -36,8 +38,10 @@ interface Values {
   route: string;
   color: AgendaColor;
   procedureKind: ProcedureKind;
-  price: string;
-  effectiveFrom: string;
+  generalPrice: string;
+  generalFrom: string;
+  locationPrice: string;
+  locationFrom: string;
 }
 
 type Errors = Partial<Record<keyof Values, string>>;
@@ -55,6 +59,7 @@ export function CatalogDialog({
   item,
   location,
   today,
+  generalToday,
   onClose,
   onSaved,
   onConflict,
@@ -64,15 +69,18 @@ export function CatalogDialog({
   item: CatalogItem | null;
   /** Sede de los precios (la elegida en la página). */
   location: { id: string; name: string };
-  /** Hoy en esa sede (`AAAA-MM-DD`): mínimo de «Vigente desde». */
+  /** Hoy en esa sede (`AAAA-MM-DD`): mínimo de la vigencia de su precio propio. */
   today: string;
+  /** El día más adelantado de las sedes activas: mínimo de la vigencia del precio general. */
+  generalToday: string;
   onClose: () => void;
   onSaved: () => void;
   onConflict: () => void;
 }) {
   const editing = item !== null;
   const priced = PRICED_KINDS.includes(kind);
-  const current = item?.price?.current ?? null;
+  const general = item?.price?.general.current ?? null;
+  const own = item?.price?.location.current ?? null;
   const initial: Values = {
     code: item?.code ?? '',
     name: item?.name ?? '',
@@ -81,8 +89,10 @@ export function CatalogDialog({
     route: item?.suggestedRoute ?? '',
     color: item?.color ?? 'teal',
     procedureKind: item?.kind ?? 'procedure',
-    price: current ? formatMoneyInput(current.amountCents) : '',
-    effectiveFrom: today,
+    generalPrice: general ? formatMoneyInput(general.amountCents) : '',
+    generalFrom: generalToday,
+    locationPrice: own ? formatMoneyInput(own.amountCents) : '',
+    locationFrom: today,
   };
   const [values, setValues] = useState(initial);
   const [submitted, setSubmitted] = useState(false);
@@ -93,8 +103,11 @@ export function CatalogDialog({
     setValues((v) => ({ ...v, [key]: value }));
   };
 
-  const cents = parseMoney(values.price);
-  const priceChanged = priced && (values.price !== initial.price || values.effectiveFrom !== initial.effectiveFrom) && values.price.trim() !== '';
+  const generalCents = parseMoney(values.generalPrice);
+  const locationCents = parseMoney(values.locationPrice);
+  // Un precio se envía solo si cambia el importe o la fecha (y no está vacío).
+  const changed = (amount: keyof Values, from: keyof Values) =>
+    values[amount].trim() !== '' && (!editing || values[amount] !== initial[amount] || values[from] !== initial[from]);
   const errors: Errors = {};
   if (!editing && !CATALOG_CODE_REGEX.test(values.code)) {
     errors.code = 'Use de 2 a 41 letras mayúsculas, dígitos, guiones o guiones bajos, empezando con una letra.';
@@ -108,10 +121,16 @@ export function CatalogDialog({
     if (durationError) errors.duration = durationError;
   }
   if (priced) {
-    if (!editing && values.price.trim() === '') errors.price = 'Este campo es obligatorio.';
-    else if (values.price.trim() !== '' && cents === null) errors.price = 'Ingrese un monto válido con hasta dos decimales (p. ej. 25.00).';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(values.effectiveFrom)) errors.effectiveFrom = 'Ingrese una fecha como AAAA-MM-DD.';
-    else if (values.effectiveFrom < today) errors.effectiveFrom = 'La fecha de vigencia no puede ser anterior a hoy en la sede.';
+    const MONEY = 'Ingrese un monto válido con hasta dos decimales (p. ej. 25.00).';
+    if (!editing && values.generalPrice.trim() === '') errors.generalPrice = 'Este campo es obligatorio.';
+    else if (values.generalPrice.trim() !== '' && generalCents === null) errors.generalPrice = MONEY;
+    if (values.locationPrice.trim() !== '' && locationCents === null) errors.locationPrice = MONEY;
+    const dateError = (value: string, min: string) =>
+      !/^\d{4}-\d{2}-\d{2}$/.test(value) ? 'Ingrese una fecha como AAAA-MM-DD.' : value < min ? 'La fecha de vigencia no puede ser anterior a hoy.' : undefined;
+    const generalDate = changed('generalPrice', 'generalFrom') ? dateError(values.generalFrom, generalToday) : undefined;
+    const locationDate = changed('locationPrice', 'locationFrom') ? dateError(values.locationFrom, today) : undefined;
+    if (generalDate) errors.generalFrom = generalDate;
+    if (locationDate) errors.locationFrom = locationDate;
   }
   const dirty = (Object.keys(initial) as (keyof Values)[]).some((key) => values[key] !== initial[key]);
   const shown = (key: keyof Values) => (submitted ? (errors[key] ?? null) : null);
@@ -138,11 +157,16 @@ export function CatalogDialog({
       fields.color = values.color;
     }
     if (kind === 'procedures') fields.kind = values.procedureKind;
-    const price: CatalogPriceInput | undefined =
-      priced && cents !== null && (!editing || priceChanged) ? { locationId: location.id, amountCents: cents, effectiveFrom: values.effectiveFrom } : undefined;
+    const prices: Record<string, unknown> = {};
+    if (priced && generalCents !== null && changed('generalPrice', 'generalFrom')) {
+      prices.generalPrice = { amountCents: generalCents, effectiveFrom: values.generalFrom };
+    }
+    if (priced && locationCents !== null && changed('locationPrice', 'locationFrom')) {
+      prices.locationPrice = { locationId: location.id, amountCents: locationCents, effectiveFrom: values.locationFrom };
+    }
     try {
-      if (item) await api.updateCatalogItem(kind, item.id, { ...fields, expectedVersion: item.version, ...(price ? { price } : {}) });
-      else await api.createCatalogItem(kind, { ...fields, code: values.code, ...(price ? { price } : {}) });
+      if (item) await api.updateCatalogItem(kind, item.id, { ...fields, expectedVersion: item.version, ...prices });
+      else await api.createCatalogItem(kind, { ...fields, code: values.code, ...prices });
       onSaved();
     } catch (error) {
       if (error instanceof ApiError && error.code === 'version_conflict') onConflict();
@@ -274,35 +298,96 @@ export function CatalogDialog({
           />
 
           {priced ? (
-            <div className="flex flex-col gap-space-md rounded-lg bg-surface-container-low p-space-md dark:bg-surface-container">
-              <MoneyField
-                label={`Precio en ${location.name}${editing ? ' (opcional)' : ''}`}
-                value={values.price}
-                disabled={busy}
-                error={shown('price')}
-                onValueChange={(text) => { set('price', text); }}
+            <>
+              <PriceSection
+                title="Precio general"
+                hint="Lo que paga el paciente en todas las sedes, salvo en las que tengan precio propio."
+                amountLabel={`Precio general${editing ? ' (opcional)' : ''}`}
+                amount={values.generalPrice}
+                from={values.generalFrom}
+                min={generalToday}
+                current={general}
+                busy={busy}
+                amountError={shown('generalPrice')}
+                fromError={shown('generalFrom')}
+                onAmount={(text) => { set('generalPrice', text); }}
+                onFrom={(day) => { set('generalFrom', day); }}
               />
-              <Field
-                label="Vigente desde"
-                type="date"
+              <PriceSection
+                title={`Precio en ${location.name} (opcional)`}
+                hint={own ? 'Esta sede tiene su propio precio, que reemplaza al general.' : 'Usa el precio general. Escriba un importe solo si esta sede cobra distinto.'}
+                amountLabel={`Precio en ${location.name}`}
+                amount={values.locationPrice}
+                from={values.locationFrom}
                 min={today}
-                icon={<CalendarDays className="size-5" />}
-                value={values.effectiveFrom}
-                disabled={busy}
-                error={shown('effectiveFrom')}
-                onChange={(e) => { set('effectiveFrom', e.target.value); }}
+                current={own}
+                busy={busy}
+                amountError={shown('locationPrice')}
+                fromError={shown('locationFrom')}
+                onAmount={(text) => { set('locationPrice', text); }}
+                onFrom={(day) => { set('locationFrom', day); }}
               />
-              <p className="text-caption text-on-surface-variant">
-                {editing && current
-                  ? `Hoy rige ${formatMoneyInput(current.amountCents)} USD desde el ${formatDay(current.effectiveFrom)}. Un precio nuevo no cambia los anteriores.`
-                  : 'Un precio nuevo no cambia los anteriores: se guarda con su fecha de vigencia.'}
-              </p>
-            </div>
+            </>
           ) : null}
         </form>
       </Dialog>
       <DiscardChangesDialog open={confirmDiscard} onOpenChange={setConfirmDiscard} onDiscard={onClose} />
     </>
+  );
+}
+
+/** Un precio con su fecha de vigencia («Precio general» o «Precio en {sede}»). */
+function PriceSection({
+  title,
+  hint,
+  amountLabel,
+  amount,
+  from,
+  min,
+  current,
+  busy,
+  amountError,
+  fromError,
+  onAmount,
+  onFrom,
+}: {
+  title: string;
+  hint: string;
+  amountLabel: string;
+  amount: string;
+  from: string;
+  min: string;
+  current: CatalogPrice | null;
+  busy: boolean;
+  amountError: string | null;
+  fromError: string | null;
+  onAmount: (text: string) => void;
+  onFrom: (day: string) => void;
+}) {
+  return (
+    <fieldset className="flex flex-col gap-space-sm rounded-lg bg-surface-container-low p-space-md dark:bg-surface-container">
+      <legend className="sr-only">{title}</legend>
+      <p aria-hidden className="text-body-md-medium text-on-surface">
+        {title}
+      </p>
+      <p className="text-caption text-on-surface-variant">
+        {hint}
+        {current ? ` Hoy rige ${formatMoneyInput(current.amountCents)} USD desde el ${formatDay(current.effectiveFrom)}.` : ''}
+      </p>
+      <div className="grid gap-space-sm tab:grid-cols-2">
+        <MoneyField label={amountLabel} value={amount} disabled={busy} error={amountError} onValueChange={(text) => { onAmount(text); }} />
+        <Field
+          label="Vigente desde"
+          type="date"
+          min={min}
+          icon={<CalendarDays className="size-5" />}
+          value={from}
+          disabled={busy}
+          error={fromError}
+          onChange={(e) => { onFrom(e.target.value); }}
+        />
+      </div>
+    </fieldset>
   );
 }
 

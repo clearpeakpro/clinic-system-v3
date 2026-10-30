@@ -1,4 +1,4 @@
-import type { CatalogKind, CatalogList, CatalogPriceInput, NotificationKind, Permission, Role } from '@clinic/shared';
+import type { CatalogKind, CatalogList, GeneralPriceInput, LocationPriceInput, NotificationKind, Permission, Role } from '@clinic/shared';
 
 // Cliente de la API (mismo origen: /api). Las cookies de sesión son httpOnly:
 // la web nunca ve ni guarda tokens. Nada de lo que devuelve se persiste
@@ -215,9 +215,13 @@ export const api = {
 
   // Administración › Catálogos y precios (S-ADM-13 a 20)
   adminCatalog: (locationId: string) => request<CatalogList>('GET', `/api/admin/catalog?locationId=${encodeURIComponent(locationId)}`),
-  createCatalogItem: (kind: CatalogKind, input: Record<string, unknown> & { code: string; price?: CatalogPriceInput }) =>
+  createCatalogItem: (kind: CatalogKind, input: Record<string, unknown> & { code: string; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput }) =>
     request<{ id: string }>('POST', `/api/admin/catalog/${kind}`, input),
-  updateCatalogItem: (kind: CatalogKind, id: string, input: Record<string, unknown> & { expectedVersion: number; price?: CatalogPriceInput }) =>
+  updateCatalogItem: (
+    kind: CatalogKind,
+    id: string,
+    input: Record<string, unknown> & { expectedVersion: number; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput },
+  ) =>
     request<null>('POST', `/api/admin/catalog/${kind}/${id}`, input),
   deactivateCatalogItem: (kind: CatalogKind, id: string, reason: string, expectedVersion: number) =>
     request<null>('POST', `/api/admin/catalog/${kind}/${id}/deactivate`, { reason, expectedVersion }),

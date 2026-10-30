@@ -8,6 +8,7 @@ import {
   type CatalogItem,
   type CatalogKind,
   type CatalogList,
+  type PriceTimeline,
   type ProcedureKind,
 } from '@clinic/shared';
 import {
@@ -53,11 +54,15 @@ import { isVersionConflict } from '../lib/users.ts';
 
 // S-ADM-13 a 20 Catálogos y precios (Stitch:
 // design/stitch/admin/S-ADM-14_catalogos_y_precios). Se toma la distribución:
-// encabezado con «+ Nuevo …», selector de sede de los precios y su aviso,
+// encabezado con «+ Nuevo …», selector de sede de los precios y su aviso
+// (adaptado al precio general con excepción por sede),
 // pestañas con su número de entradas, búsqueda por código o nombre, filtros
 // de tipo y de estado, «Actualizar», y la tabla con el código en recuadro,
-// el tipo, el precio en la sede, «Vigente desde», el estado y las acciones
-// «Editar» y «Desactivar»/«Reactivar» en la fila. No se construye lo que el
+// el tipo, los precios, el estado y las acciones «Editar» y
+// «Desactivar»/«Reactivar» en la fila. Los precios (T-011): «Precio general»
+// de la organización y «Precio en {sede}», el propio de la sede elegida o
+// «Usa el precio general»; cada uno con su fecha de vigencia («Vigente
+// desde» de Stitch) y el próximo programado. No se construye lo que el
 // sistema no tiene: «Exportar catálogo», paginación, versión del catálogo,
 // descripciones bajo el nombre ni el aviso de auditoría. Las pestañas sin
 // captura (Tipos de cita, Pruebas, Fuentes) siguen el mismo patrón con las
@@ -159,7 +164,7 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
             </SelectField>
           </div>
           <p className="flex items-center gap-space-xs rounded-md bg-primary/10 px-space-sm py-space-xs text-body-md text-primary">
-            <Info aria-hidden className="size-4 shrink-0" /> Los precios son independientes por cada sede.
+            <Info aria-hidden className="size-4 shrink-0" /> Cada sede usa el precio general, salvo que tenga su propio precio.
           </p>
         </div>
       </header>
@@ -256,7 +261,7 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
                   rowKey={(r) => r.id}
                   rowClassName={(r) => (r.active ? undefined : 'opacity-70')}
                   empty="Ninguna entrada coincide con la búsqueda."
-                  columns={columnsFor(kind, {
+                  columns={columnsFor(kind, site?.code ?? '', {
                     onEdit: (item) => { setDialog({ kind: 'edit', item }); },
                     onDeactivate: (item) => { setDialog({ kind: 'deactivate', item }); },
                     onReactivate: (item) => void reactivate(item),
@@ -274,6 +279,7 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
           item={dialog.kind === 'edit' ? dialog.item : null}
           location={{ id: site.id, name: site.name }}
           today={catalog.data.today}
+          generalToday={catalog.data.generalToday}
           onClose={() => { setDialog(null); }}
           onConflict={conflict}
           onSaved={() => {
@@ -320,18 +326,26 @@ function StateChip({ active }: { active: boolean }) {
   return <SemanticChip tone={active ? 'success' : 'neutral'} label={active ? 'Activo' : 'Inactivo'} />;
 }
 
-function PriceCell({ item }: { item: CatalogItem }) {
-  const current = item.price?.current ?? null;
-  const next = item.price?.next ?? null;
+/**
+ * Un precio con su vigencia y el próximo programado. `empty`: lo que se
+ * muestra sin precio («Sin precio» en el general, «Usa el precio general» en
+ * la sede).
+ */
+function PriceCell({ timeline, active, empty }: { timeline: PriceTimeline | undefined; active: boolean; empty: string }) {
+  const current = timeline?.current ?? null;
+  const next = timeline?.next ?? null;
   return (
     <span className="flex flex-col items-end gap-0.5">
       {current ? (
-        <span className="flex items-baseline gap-space-xs">
-          <MoneyText cents={current.amountCents} emphasis={item.active} className={cn('text-body-lg', !item.active && 'line-through')} />
-          <span className="text-caption text-on-surface-variant">USD</span>
-        </span>
+        <>
+          <span className="flex items-baseline gap-space-xs">
+            <MoneyText cents={current.amountCents} emphasis={active} className={cn('text-body-lg', !active && 'line-through')} />
+            <span className="text-caption text-on-surface-variant">USD</span>
+          </span>
+          <span className="text-caption whitespace-nowrap text-on-surface-variant">Vigente desde {formatDay(current.effectiveFrom)}</span>
+        </>
       ) : (
-        <span className="text-body-md text-on-surface-variant">Sin precio</span>
+        <span className="text-body-md whitespace-nowrap text-on-surface-variant">{empty}</span>
       )}
       {next ? <span className="text-caption whitespace-nowrap text-on-surface-variant">{nextPriceText(next)}</span> : null}
     </span>
@@ -375,6 +389,7 @@ function RowActions({
 
 function columnsFor(
   kind: CatalogKind,
+  siteCode: string,
   actions: { onEdit: (item: CatalogItem) => void; onDeactivate: (item: CatalogItem) => void; onReactivate: (item: CatalogItem) => void },
 ): Column<CatalogItem>[] {
   const code: Column<CatalogItem> = { key: 'code', header: 'Código', cell: (r) => <CodeBox code={r.code} /> };
@@ -382,16 +397,22 @@ function columnsFor(
     key: 'name',
     header: 'Nombre',
     primary: true,
-    className: 'min-w-48',
+    className: 'min-w-32',
     cell: (r) => <span className="text-body-lg-medium text-on-surface">{r.name}</span>,
   };
   const order: Column<CatalogItem> = { key: 'order', header: 'Orden', align: 'end', cell: (r) => (r.sortOrder === null ? '—' : r.sortOrder) };
   const state: Column<CatalogItem> = { key: 'state', header: 'Estado', cell: (r) => <StateChip active={r.active} /> };
-  const price: Column<CatalogItem> = { key: 'price', header: 'Precio en esta sede', align: 'end', cell: (r) => <PriceCell item={r} /> };
-  const since: Column<CatalogItem> = {
-    key: 'since',
-    header: 'Vigente desde',
-    cell: (r) => <span className="whitespace-nowrap">{r.price?.current ? formatDay(r.price.current.effectiveFrom) : '—'}</span>,
+  const general: Column<CatalogItem> = {
+    key: 'general',
+    header: 'Precio general',
+    align: 'end',
+    cell: (r) => <PriceCell timeline={r.price?.general} active={r.active} empty="Sin precio" />,
+  };
+  const site: Column<CatalogItem> = {
+    key: 'site',
+    header: `Precio en ${siteCode}`,
+    align: 'end',
+    cell: (r) => <PriceCell timeline={r.price?.location} active={r.active} empty="Usa el precio general" />,
   };
   const acts: Column<CatalogItem> = { key: 'actions', header: 'Acciones', align: 'end', cell: (r) => <RowActions item={r} {...actions} /> };
 
@@ -442,13 +463,13 @@ function columnsFor(
             );
           },
         },
-        price,
-        since,
+        general,
+        site,
         state,
         acts,
       ];
     case 'lab-tests':
-      return [code, name, price, since, state, acts];
+      return [code, name, general, site, state, acts];
     case 'referral-sources':
       return [code, name, order, state, acts];
   }
