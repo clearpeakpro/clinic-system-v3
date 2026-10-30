@@ -182,7 +182,7 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | `encounters` / `encounter_events` | sede, paciente, cita?, ruta, estado, version; transiciones | Índice único parcial: una sola visita abierta por cita |
 | `coverages` | visita, tipo de pagador, plan o membresía | |
 | `vitals` / `nursing_assessments` / `patient_allergies` | valores, autor, versión | Versionados |
-| `catalog_*` / `prices` | tipos de cita, procedimientos, pruebas; precio por sede con vigencia | Se desactivan, no se borran |
+| `appointment_types` / `procedures` / `lab_tests` / `referral_sources` / `prices` | código único por organización, nombre, orden, activo, `version`; precio por sede en centavos con fecha de vigencia | Se desactivan, no se borran. Un precio nunca se modifica: un cambio es una fila nueva desde hoy o después (en la sede); el vigente lo calcula el servidor (T-011) |
 | `orders` / `charges` / `payments` / `receipts` | centavos, estado, anulado_por, motivo | |
 | `documents` | paciente, visita?, categoría, s3_key | |
 | `code_counters` | org, sede?, tipo, año?, siguiente | |

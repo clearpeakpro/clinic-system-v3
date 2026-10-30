@@ -89,6 +89,13 @@ pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» 
   - `parseRealtimeMessage` valida lo recibido;
   - el trigger `session_revoked_notify` de `auth.session` avisa de cada sesión borrada.
 
+## Catálogo y precios por sede (T-011)
+
+- **Tablas** (`src/catalog-schema.ts`, migraciones 0017 y 0018): `appointment_types`, `procedures`, `lab_tests`, `referral_sources` y `prices`, con RLS forzado y claves compuestas.
+- **Reglas en la base de datos:** código único por organización (`^[A-Z][A-Z0-9_-]{1,40}$`), duración de 5 a 480 min, ruta, color de agenda y tipo con CHECK, y un solo ítem por precio.
+- **Permisos de `clinic_app`:** sin `DELETE` en ninguna; en `prices`, solo `SELECT` e `INSERT`: un cambio de precio es una fila nueva.
+- **Semilla:** un catálogo básico ficticio en las dos organizaciones, con precios distintos por sede (`DEMO_CATALOG`).
+
 ## Pruebas
 
 `pnpm test` levanta Postgres 16 con Testcontainers (Docker en ejecución), aplica bootstrap, migraciones y semilla, y ejecuta las pruebas conectando como `clinic_app` mediante `pg.Pool`. Las contraseñas de prueba se generan al azar en cada ejecución.
