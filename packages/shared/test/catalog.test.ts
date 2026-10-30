@@ -35,16 +35,21 @@ describe('catálogo', () => {
     expect(schema.safeParse({ ...base, defaultDurationMinutes: null, color: 'red' }).success).toBe(false);
   });
 
-  it('procedimientos y pruebas exigen precio al crear; al editar es opcional', () => {
-    const price = { locationId: NORTE_SEDE, amountCents: 2500, effectiveFrom: '2026-11-01' };
+  it('procedimientos y pruebas exigen el precio general al crear; el de la sede es opcional; al editar, los dos', () => {
+    const generalPrice = { amountCents: 2500, effectiveFrom: '2026-11-01' };
+    const locationPrice = { locationId: NORTE_SEDE, amountCents: 2700, effectiveFrom: '2026-11-01' };
     const create = createCatalogItemSchema('procedures');
-    expect(create.safeParse({ code: 'P-1', name: 'P', sortOrder: null, kind: 'procedure' }).success).toBe(false);
-    expect(create.safeParse({ code: 'P-1', name: 'P', sortOrder: null, kind: 'procedure', price }).success).toBe(true);
-    expect(create.safeParse({ code: 'P-1', name: 'P', sortOrder: null, kind: 'procedure', price: { ...price, amountCents: 12.5 } }).success).toBe(false);
+    const base = { code: 'P-1', name: 'P', sortOrder: null, kind: 'procedure' };
+    expect(create.safeParse(base).success).toBe(false);
+    expect(create.safeParse({ ...base, locationPrice }).success).toBe(false);
+    expect(create.safeParse({ ...base, generalPrice }).success).toBe(true);
+    expect(create.safeParse({ ...base, generalPrice, locationPrice }).success).toBe(true);
+    expect(create.safeParse({ ...base, generalPrice: { ...generalPrice, amountCents: 12.5 } }).success).toBe(false);
     const update = updateCatalogItemSchema('lab-tests');
     expect(update.safeParse({ name: 'L', sortOrder: 3, expectedVersion: 1 }).success).toBe(true);
+    expect(update.safeParse({ name: 'L', sortOrder: 3, expectedVersion: 1, locationPrice }).success).toBe(true);
     // Las fuentes de referido no tienen precio.
-    expect(createCatalogItemSchema('referral-sources').safeParse({ code: 'R-1', name: 'R', sortOrder: null, price }).data).not.toHaveProperty('price');
+    expect(createCatalogItemSchema('referral-sources').safeParse({ code: 'R-1', name: 'R', sortOrder: null, generalPrice }).data).not.toHaveProperty('generalPrice');
     expect(CATALOG_KINDS).toHaveLength(4);
   });
 

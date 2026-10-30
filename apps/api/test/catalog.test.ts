@@ -3,9 +3,10 @@ import { AGENDA_COLORS, CATALOG_CODE_REGEX, PROCEDURE_KINDS, VISIT_ROUTES, type 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createStaff, NORTE, readAudit, signedInWithContext, startApp, SUR, type Client, type TestApp } from './support.ts';
 
-// T-011: catálogo mínimo y precios por sede (S-ADM-13 a 20). El precio
-// vigente lo calcula el servidor para una sede y un día; un cambio «desde
-// mañana» no altera el de hoy; nada se borra; Sur no ve el catálogo de Norte.
+// T-011: catálogo mínimo y precios (S-ADM-13 a 20). Precio general de la
+// organización con excepción opcional por sede; el vigente lo calcula el
+// servidor para una sede y un día; un cambio «desde mañana» no altera el de
+// hoy; nada se borra; Sur no ve el catálogo de Norte.
 
 const NOR1 = NORTE.locations[0].id;
 const NOR2 = NORTE.locations[1].id;
@@ -55,50 +56,68 @@ describe('T-011 catálogo y precios', () => {
     expect(nor1.locationId).toBe(NOR1);
     expect(nor1.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(nor1.items['appointment-types'].map((t) => t.code)).toEqual(['CONSULTA', 'SEGUIMIENTO']);
-    expect(find(nor1, 'INJ-B12')?.price).toEqual({ current: { amountCents: 2000, effectiveFrom: '2026-01-01' }, next: null });
-    expect(find(await list(admin, NOR2), 'INJ-B12')?.price?.current?.amountCents).toBe(2200);
+    // NOR1 usa el precio general; NOR2 tiene su propio precio.
+    const generalB12 = { amountCents: 2000, effectiveFrom: '2026-01-01' };
+    expect(find(nor1, 'INJ-B12')?.price).toEqual({
+      general: { current: generalB12, next: null },
+      location: { current: null, next: null },
+      effective: generalB12,
+    });
+    const nor2 = find(await list(admin, NOR2), 'INJ-B12')?.price;
+    expect(nor2?.effective).toEqual({ amountCents: 2200, effectiveFrom: '2026-01-01' });
+    expect(nor2?.general.current).toEqual(generalB12);
+    expect(find(nor1, 'PROC-LAVOT')?.price?.effective?.amountCents).toBe(3000);
     expect(nor1.items['referral-sources'][0]).not.toHaveProperty('price');
   });
 
-  it('crea un procedimiento con precio en NOR1 y NOR2; el cambio de NOR1 «desde mañana» no altera el de hoy', async () => {
-    const { today } = await list(admin);
+  it('crea un procedimiento con precio general y uno propio en NOR2; los cambios «desde mañana» no alteran el de hoy', async () => {
+    const { today, generalToday } = await list(admin);
+    const base = { name: 'Curación ficticia', sortOrder: null, kind: 'procedure' };
     const created = await admin.post('/api/admin/catalog/procedures', {
+      ...base,
       code: 'PROC-CURA',
-      name: 'Curación ficticia',
-      sortOrder: null,
-      kind: 'procedure',
-      price: { locationId: NOR1, amountCents: 4000, effectiveFrom: today },
+      generalPrice: { amountCents: 4000, effectiveFrom: generalToday },
     });
     expect(created.statusCode, created.body).toBe(201);
     const { id } = created.json<{ id: string }>();
+    const item = async (sede: string) => find(await list(admin, sede), 'PROC-CURA');
+    const version = (await item(NOR1))?.version ?? 0;
+    const save = (extra: Record<string, unknown>) => admin.post(`/api/admin/catalog/procedures/${id}`, { ...base, expectedVersion: version, ...extra });
 
-    const item = () => list(admin).then((c) => find(c, 'PROC-CURA'));
-    const version = (await item())?.version ?? 0;
-    expect(
-      (await admin.post(`/api/admin/catalog/procedures/${id}`, { name: 'Curación ficticia', sortOrder: null, kind: 'procedure', expectedVersion: version, price: { locationId: NOR2, amountCents: 4500, effectiveFrom: today } }))
-        .statusCode,
-    ).toBe(204);
-    const tomorrow = nextDay(today);
-    expect(
-      (await admin.post(`/api/admin/catalog/procedures/${id}`, { name: 'Curación ficticia', sortOrder: null, kind: 'procedure', expectedVersion: version, price: { locationId: NOR1, amountCents: 5000, effectiveFrom: tomorrow } }))
-        .statusCode,
-    ).toBe(204);
+    // Sin precio propio, las dos sedes usan el general.
+    expect((await item(NOR1))?.price?.effective?.amountCents).toBe(4000);
+    expect((await item(NOR2))?.price?.effective?.amountCents).toBe(4000);
+    // NOR2 tiene su propio precio desde hoy; NOR1 sigue con el general.
+    expect((await save({ locationPrice: { locationId: NOR2, amountCents: 4500, effectiveFrom: today } })).statusCode).toBe(204);
+    expect((await item(NOR2))?.price?.effective?.amountCents).toBe(4500);
+    expect((await item(NOR1))?.price?.effective?.amountCents).toBe(4000);
 
-    // Hoy sigue el precio anterior; el nuevo aparece como programado.
-    expect((await item())?.price).toEqual({ current: { amountCents: 4000, effectiveFrom: today }, next: { amountCents: 5000, effectiveFrom: tomorrow } });
-    expect(find(await list(admin, NOR2), 'PROC-CURA')?.price?.current?.amountCents).toBe(4500);
-    // Lo mismo para el resto del personal.
+    // Desde mañana: un general nuevo y un precio propio de NOR1. Hoy no cambia nada.
+    const tomorrow = nextDay(generalToday);
+    expect((await save({ generalPrice: { amountCents: 5000, effectiveFrom: tomorrow } })).statusCode).toBe(204);
+    expect((await save({ locationPrice: { locationId: NOR1, amountCents: 5500, effectiveFrom: nextDay(today) } })).statusCode).toBe(204);
+    const nor1 = (await item(NOR1))?.price;
+    expect(nor1).toEqual({
+      general: { current: { amountCents: 4000, effectiveFrom: generalToday }, next: { amountCents: 5000, effectiveFrom: tomorrow } },
+      location: { current: null, next: { amountCents: 5500, effectiveFrom: nextDay(today) } },
+      effective: { amountCents: 4000, effectiveFrom: generalToday },
+    });
+    // La excepción de NOR2 no depende del general.
+    expect((await item(NOR2))?.price?.effective?.amountCents).toBe(4500);
+    // Lo mismo para el resto del personal (sede activa NOR1).
     const forStaff = (await recepcion.get('/api/catalog')).json<CatalogList>();
-    expect(find(forStaff, 'PROC-CURA')?.price?.current?.amountCents).toBe(4000);
+    expect(find(forStaff, 'PROC-CURA')?.price?.effective?.amountCents).toBe(4000);
 
     // Sin contexto RLS, los precios no se ven.
     const { rows } = await app.pool.query<{ n: number }>('select count(*)::int as n from app.prices where procedure_id = $1', [id]);
     expect(rows[0]?.n).toBe(0);
     const audit = await readAudit(`action = 'catalog.price_set' and entity_id = $1`, [id]);
     expect(audit.map((a) => a.metadata)).toEqual([
-      { priceLocationId: NOR1, effectiveFrom: today, previousCents: 'none', newCents: 4000 },
-      { priceLocationId: NOR2, effectiveFrom: today, previousCents: 'none', newCents: 4500 },
-      { priceLocationId: NOR1, effectiveFrom: tomorrow, previousCents: 4000, newCents: 5000 },
+      { priceLocationId: 'general', effectiveFrom: generalToday, previousCents: 'none', newCents: 4000 },
+      // En NOR2, el anterior era el general.
+      { priceLocationId: NOR2, effectiveFrom: today, previousCents: 4000, newCents: 4500 },
+      { priceLocationId: 'general', effectiveFrom: tomorrow, previousCents: 4000, newCents: 5000 },
+      { priceLocationId: NOR1, effectiveFrom: nextDay(today), previousCents: 5000, newCents: 5500 },
     ]);
   });
 
@@ -107,18 +126,28 @@ describe('T-011 catálogo y precios', () => {
     const strep = find(before, 'LAB-STREP');
     expect(strep).toBeDefined();
     const save = (amountCents: number) =>
-      admin.post(`/api/admin/catalog/lab-tests/${strep?.id ?? ''}`, { name: strep?.name, sortOrder: strep?.sortOrder ?? null, expectedVersion: strep?.version, price: { locationId: NOR1, amountCents, effectiveFrom: before.today } });
+      admin.post(`/api/admin/catalog/lab-tests/${strep?.id ?? ''}`, {
+        name: strep?.name,
+        sortOrder: strep?.sortOrder ?? null,
+        expectedVersion: strep?.version,
+        generalPrice: { amountCents, effectiveFrom: before.generalToday },
+      });
     expect((await save(2900)).statusCode).toBe(204);
     expect((await save(3100)).statusCode).toBe(204);
-    expect(find(await list(admin), 'LAB-STREP')?.price?.current).toEqual({ amountCents: 3100, effectiveFrom: before.today });
+    expect(find(await list(admin), 'LAB-STREP')?.price?.general.current).toEqual({ amountCents: 3100, effectiveFrom: before.generalToday });
   });
 
   it('rechaza una vigencia pasada, un código repetido, una versión vieja y desactivar sin motivo', async () => {
     const catalog = await list(admin);
     const b12 = find(catalog, 'INJ-B12');
     const base = { name: 'Inyección de vitamina B12', sortOrder: 10, kind: 'injection', expectedVersion: b12?.version };
-    const past = await admin.post(`/api/admin/catalog/procedures/${b12?.id ?? ''}`, { ...base, price: { locationId: NOR1, amountCents: 100, effectiveFrom: '2026-01-01' } });
+    const past = await admin.post(`/api/admin/catalog/procedures/${b12?.id ?? ''}`, { ...base, generalPrice: { amountCents: 100, effectiveFrom: '2026-01-01' } });
     expect(past.json()).toEqual({ code: 'effective_from_past' });
+    const pastSite = await admin.post(`/api/admin/catalog/procedures/${b12?.id ?? ''}`, {
+      ...base,
+      locationPrice: { locationId: NOR1, amountCents: 100, effectiveFrom: '2026-01-01' },
+    });
+    expect(pastSite.json()).toEqual({ code: 'effective_from_past' });
     const taken = await admin.post('/api/admin/catalog/referral-sources', { code: 'REDES', name: 'Repetida', sortOrder: null });
     expect([taken.statusCode, taken.json<{ code: string }>().code]).toEqual([409, 'catalog_code_taken']);
     const stale = await admin.post(`/api/admin/catalog/procedures/${b12?.id ?? ''}`, { ...base, expectedVersion: 999 });

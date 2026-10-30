@@ -61,13 +61,17 @@ const sortOrder = z.number().int().min(0).max(SORT_ORDER_MAX).nullable();
 const expectedVersion = z.number().int().positive();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-/** Precio nuevo en una sede: importe en centavos y fecha de vigencia (hoy o después, en la sede). */
-export const catalogPriceSchema = z.object({
-  locationId: z.uuid(),
-  amountCents: z.number().int().min(0).max(PRICE_MAX_CENTS),
-  effectiveFrom: isoDate,
-});
-export type CatalogPriceInput = z.infer<typeof catalogPriceSchema>;
+const amountCents = z.number().int().min(0).max(PRICE_MAX_CENTS);
+
+/**
+ * Precio de venta nuevo (lo que paga el paciente), con su fecha de vigencia:
+ * hoy o después. El general vale en todas las sedes de la organización.
+ */
+export const generalPriceSchema = z.object({ amountCents, effectiveFrom: isoDate });
+/** Excepción de una sede: reemplaza al precio general solo en ella. */
+export const locationPriceSchema = z.object({ locationId: z.uuid(), amountCents, effectiveFrom: isoDate });
+export type GeneralPriceInput = z.infer<typeof generalPriceSchema>;
+export type LocationPriceInput = z.infer<typeof locationPriceSchema>;
 
 const FIELDS = {
   'appointment-types': {
@@ -82,16 +86,19 @@ const FIELDS = {
   'referral-sources': { name, sortOrder },
 } as const;
 
-/** «Crear»: el código solo se escribe aquí. En los catálogos con precio, el de la sede elegida es obligatorio. */
+/**
+ * «Crear»: el código solo se escribe aquí. En los catálogos con precio, el
+ * precio general es obligatorio y el de la sede elegida, opcional.
+ */
 export function createCatalogItemSchema(kind: CatalogKind) {
   const base = z.object({ code: z.string().regex(CATALOG_CODE_REGEX), ...FIELDS[kind] });
-  return PRICED_KINDS.includes(kind) ? base.extend({ price: catalogPriceSchema }) : base;
+  return PRICED_KINDS.includes(kind) ? base.extend({ generalPrice: generalPriceSchema, locationPrice: locationPriceSchema.optional() }) : base;
 }
 
-/** «Guardar»: sin código; el precio, solo si cambia (crea una fila nueva). */
+/** «Guardar»: sin código; cada precio, solo si cambia (crea una fila nueva). */
 export function updateCatalogItemSchema(kind: CatalogKind) {
   const base = z.object({ ...FIELDS[kind], expectedVersion });
-  return PRICED_KINDS.includes(kind) ? base.extend({ price: catalogPriceSchema.optional() }) : base;
+  return PRICED_KINDS.includes(kind) ? base.extend({ generalPrice: generalPriceSchema.optional(), locationPrice: locationPriceSchema.optional() }) : base;
 }
 
 export const deactivateCatalogItemSchema = z.object({ reason: reasonSchema, expectedVersion });
@@ -101,6 +108,12 @@ export interface CatalogPrice {
   amountCents: number;
   /** Fecha de vigencia, `AAAA-MM-DD`, en la zona horaria de la sede. */
   effectiveFrom: string;
+}
+
+/** El precio que rige hoy y el próximo programado. */
+export interface PriceTimeline {
+  current: CatalogPrice | null;
+  next: CatalogPrice | null;
 }
 
 /** Una fila de cualquier catálogo; los campos propios solo vienen en el suyo. */
@@ -115,13 +128,19 @@ export interface CatalogItem {
   suggestedRoute?: (typeof VISIT_ROUTES)[number] | null;
   color?: AgendaColor;
   kind?: ProcedureKind;
-  /** Procedimientos y pruebas: precio vigente hoy en la sede y el próximo programado. */
-  price?: { current: CatalogPrice | null; next: CatalogPrice | null };
+  /**
+   * Procedimientos y pruebas, en la sede consultada: el precio general, el
+   * propio de la sede (sin `current` ni `next`: «Usa el precio general») y el
+   * que rige hoy (el propio si hay; si no, el general).
+   */
+  price?: { general: PriceTimeline; location: PriceTimeline; effective: CatalogPrice | null };
 }
 
 export interface CatalogList {
   locationId: string;
-  /** Hoy en la sede (`AAAA-MM-DD`): la vigencia mínima de un precio nuevo. */
+  /** Hoy en la sede (`AAAA-MM-DD`): la vigencia mínima de su precio propio. */
   today: string;
+  /** El día más adelantado entre las sedes activas: la vigencia mínima de un precio general. */
+  generalToday: string;
   items: Record<CatalogKind, CatalogItem[]>;
 }

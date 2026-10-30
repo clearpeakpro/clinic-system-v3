@@ -6,7 +6,9 @@ import {
   type CatalogKind,
   type CatalogList,
   type CatalogPrice,
-  type CatalogPriceInput,
+  type GeneralPriceInput,
+  type LocationPriceInput,
+  type PriceTimeline,
 } from '@clinic/shared';
 import { asc, eq, sql } from 'drizzle-orm';
 import type { AuditService } from './audit.ts';
@@ -17,8 +19,11 @@ import { HttpError, requireContext, type RequestMeta } from './services.ts';
 // organización activa, bajo su RLS:
 //  - el código es único en la organización e inmutable;
 //  - se desactiva con motivo, nunca se borra; concurrencia optimista por versión;
+//  - el precio de venta es general (toda la organización) con excepción
+//    opcional por sede; en una sede rige el propio si hay uno vigente y, si
+//    no, el general;
 //  - un precio nunca se modifica: cambiarlo es una fila nueva con su fecha de
-//    vigencia (hoy o después, en la zona horaria de la sede);
+//    vigencia (hoy o después);
 //  - el precio vigente lo calcula siempre el servidor, para una sede y un día;
 //  - cada cambio se audita en la misma transacción. Los catálogos no son datos
 //    clínicos: en los precios se guardan el importe anterior y el nuevo.
@@ -68,7 +73,8 @@ function toItem(kind: CatalogKind, row: Record<string, unknown>): CatalogItem {
 
 /** Los campos editables que llegan validados (sin código, versión ni precio). */
 function editable(input: Record<string, unknown>): Fields {
-  return Object.fromEntries(Object.entries(input).filter(([key]) => !['code', 'expectedVersion', 'price'].includes(key))) as Fields;
+  const excluded = ['code', 'expectedVersion', 'generalPrice', 'locationPrice'];
+  return Object.fromEntries(Object.entries(input).filter(([key]) => !excluded.includes(key))) as Fields;
 }
 
 export class CatalogService {
@@ -88,6 +94,7 @@ export class CatalogService {
     const ctx = requireContext(actor);
     return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       const today = await this.#today(tx, locationId);
+      const generalToday = await this.#generalToday(tx);
       const items = {} as CatalogList['items'];
       for (const kind of CATALOG_KINDS) {
         const table = TABLES[kind];
@@ -97,15 +104,24 @@ export class CatalogService {
       }
       for (const kind of PRICED_KINDS) {
         const column = kind === 'procedures' ? 'procedure_id' : 'lab_test_id';
-        const current = await this.#prices(tx, column, locationId, today, 'current');
-        const next = await this.#prices(tx, column, locationId, today, 'next');
-        for (const item of items[kind]) item.price = { current: current.get(item.id) ?? null, next: next.get(item.id) ?? null };
+        const timeline = async (scope: string | null) => {
+          const current = await this.#prices(tx, column, scope, today, 'current');
+          const next = await this.#prices(tx, column, scope, today, 'next');
+          return (id: string): PriceTimeline => ({ current: current.get(id) ?? null, next: next.get(id) ?? null });
+        };
+        const general = await timeline(null);
+        const own = await timeline(locationId);
+        for (const item of items[kind]) {
+          const g = general(item.id);
+          const l = own(item.id);
+          item.price = { general: g, location: l, effective: l.current ?? g.current };
+        }
       }
-      return { locationId, today, items };
+      return { locationId, today, generalToday, items };
     });
   }
 
-  /** S-ADM-19 «Crear». En procedimientos y pruebas, con el precio de la sede elegida. */
+  /** S-ADM-19 «Crear». En procedimientos y pruebas, con el precio general y, si se da, el de una sede. */
   async create(actor: Principal, kind: CatalogKind, input: Record<string, unknown>, meta: RequestMeta): Promise<{ id: string }> {
     const ctx = requireContext(actor);
     const table = TABLES[kind];
@@ -126,8 +142,7 @@ export class CatalogService {
           ...meta,
           metadata: { code: input.code as string },
         });
-        const price = input.price as CatalogPriceInput | undefined;
-        if (price) await this.#setPrice(tx, actor, kind, row.id, price, meta);
+        await this.#setPrices(tx, actor, kind, row.id, input, meta);
         return { id: row.id };
       });
     } catch (error) {
@@ -161,8 +176,7 @@ export class CatalogService {
           metadata: { fields: fields.join(',') },
         });
       }
-      const price = input.price as CatalogPriceInput | undefined;
-      if (price) await this.#setPrice(tx, actor, kind, itemId, price, meta);
+      await this.#setPrices(tx, actor, kind, itemId, input, meta);
     });
   }
 
@@ -207,34 +221,69 @@ export class CatalogService {
     return row.today;
   }
 
-  /** Precio vigente hoy (`current`) o el próximo programado (`next`) de cada ítem en la sede. */
-  async #prices(tx: Tx, column: 'procedure_id' | 'lab_test_id', locationId: string, today: string, which: 'current' | 'next') {
+  /** El día más adelantado entre las sedes activas: un precio general no puede cambiar el pasado de ninguna. */
+  async #generalToday(tx: Tx): Promise<string> {
+    const [row] = await tx
+      .select({ today: sql<string>`(max((now() at time zone ${locations.timezone})::date))::text` })
+      .from(locations)
+      .where(eq(locations.active, true));
+    if (!row?.today) throw new HttpError(409, 'no_active_location');
+    return row.today;
+  }
+
+  /**
+   * Por ítem, el precio que rige `today` (`current`) o el próximo programado
+   * (`next`): los generales (`scope` nulo) o los propios de una sede.
+   */
+  async #prices(tx: Tx, column: 'procedure_id' | 'lab_test_id', scope: string | null, today: string, which: 'current' | 'next') {
     const item = sql.raw(`"${column}"`);
     const rows = await tx.execute<{ item_id: string; amount_cents: number; effective_from: string }>(sql`
       select distinct on (${item}) ${item} as item_id, amount_cents, effective_from::text as effective_from
         from app.prices
-       where location_id = ${locationId} and ${item} is not null
+       where ${scope === null ? sql`location_id is null` : sql`location_id = ${scope}`} and ${item} is not null
          and ${which === 'current' ? sql`effective_from <= ${today}::date` : sql`effective_from > ${today}::date`}
        order by ${item}, effective_from ${which === 'current' ? sql`desc` : sql`asc`}, created_at desc, id desc`);
     return new Map<string, CatalogPrice>(rows.rows.map((r) => [r.item_id, { amountCents: r.amount_cents, effectiveFrom: r.effective_from }]));
   }
 
+  /** Los precios que trae «Crear» o «Guardar»: el general y, si se da, el de una sede. */
+  async #setPrices(tx: Tx, actor: Principal, kind: CatalogKind, itemId: string, input: Record<string, unknown>, meta: RequestMeta): Promise<void> {
+    const general = input.generalPrice as GeneralPriceInput | undefined;
+    const location = input.locationPrice as LocationPriceInput | undefined;
+    if (general) await this.#setPrice(tx, actor, kind, itemId, { ...general, locationId: null }, meta);
+    if (location) await this.#setPrice(tx, actor, kind, itemId, location, meta);
+  }
+
   /**
-   * Precio nuevo: fila nueva, sin tocar las anteriores. Vigente desde hoy o
-   * después en la sede, que debe estar activa. Se audita con el importe que
+   * Precio nuevo, general (`locationId` nulo) o de una sede activa: fila nueva,
+   * sin tocar las anteriores, vigente desde hoy o después (el general, desde
+   * el día más adelantado de las sedes activas). Se audita con el importe que
    * regía ese día antes del cambio y el nuevo.
    */
-  async #setPrice(tx: Tx, actor: Principal, kind: CatalogKind, itemId: string, price: CatalogPriceInput, meta: RequestMeta): Promise<void> {
+  async #setPrice(
+    tx: Tx,
+    actor: Principal,
+    kind: CatalogKind,
+    itemId: string,
+    price: { locationId: string | null; amountCents: number; effectiveFrom: string },
+    meta: RequestMeta,
+  ): Promise<void> {
     const ctx = requireContext(actor);
-    const [site] = await tx
-      .select({ active: locations.active, today: sql<string>`((now() at time zone ${locations.timezone})::date)::text` })
-      .from(locations)
-      .where(eq(locations.id, price.locationId));
-    if (!site) throw new HttpError(400, 'invalid_location');
-    if (!site.active) throw new HttpError(400, 'location_inactive');
-    if (price.effectiveFrom < site.today) throw new HttpError(400, 'effective_from_past');
+    let minimum: string;
+    if (price.locationId === null) {
+      minimum = await this.#generalToday(tx);
+    } else {
+      const [site] = await tx
+        .select({ active: locations.active, today: sql<string>`((now() at time zone ${locations.timezone})::date)::text` })
+        .from(locations)
+        .where(eq(locations.id, price.locationId));
+      if (!site) throw new HttpError(400, 'invalid_location');
+      if (!site.active) throw new HttpError(400, 'location_inactive');
+      minimum = site.today;
+    }
+    if (price.effectiveFrom < minimum) throw new HttpError(400, 'effective_from_past');
     const column = kind === 'procedures' ? 'procedure_id' : 'lab_test_id';
-    const before = (await this.#pricesOn(tx, column, itemId, price.locationId, price.effectiveFrom)) ?? null;
+    const before = await this.#priceOn(tx, column, itemId, price.locationId, price.effectiveFrom);
     await tx.insert(prices).values({
       organizationId: ctx.organizationId,
       locationId: price.locationId,
@@ -252,7 +301,7 @@ export class CatalogService {
       ...meta,
       // Datos financieros, no clínicos: importe anterior y nuevo (ADR 0018).
       metadata: {
-        priceLocationId: price.locationId,
+        priceLocationId: price.locationId ?? 'general',
         effectiveFrom: price.effectiveFrom,
         previousCents: before ?? 'none',
         newCents: price.amountCents,
@@ -260,14 +309,22 @@ export class CatalogService {
     });
   }
 
-  /** Importe que rige un ítem en una sede en una fecha. */
-  async #pricesOn(tx: Tx, column: 'procedure_id' | 'lab_test_id', itemId: string, locationId: string, date: string): Promise<number | undefined> {
+  /**
+   * Importe que rige un ítem en una fecha: el general (`locationId` nulo) o,
+   * en una sede, su propio precio si tiene uno vigente y si no, el general.
+   */
+  async #priceOn(tx: Tx, column: 'procedure_id' | 'lab_test_id', itemId: string, locationId: string | null, date: string): Promise<number | undefined> {
     const item = sql.raw(`"${column}"`);
-    const rows = await tx.execute<{ amount_cents: number }>(sql`
-      select amount_cents from app.prices
-       where location_id = ${locationId} and ${item} = ${itemId} and effective_from <= ${date}::date
-       order by effective_from desc, created_at desc, id desc limit 1`);
-    return rows.rows[0]?.amount_cents;
+    const scopes = locationId === null ? [null] : [locationId, null];
+    for (const scope of scopes) {
+      const rows = await tx.execute<{ amount_cents: number }>(sql`
+        select amount_cents from app.prices
+         where ${scope === null ? sql`location_id is null` : sql`location_id = ${scope}`} and ${item} = ${itemId} and effective_from <= ${date}::date
+         order by effective_from desc, created_at desc, id desc limit 1`);
+      const amount = rows.rows[0]?.amount_cents;
+      if (amount !== undefined) return amount;
+    }
+    return undefined;
   }
 
   /** Bloquea la fila y comprueba la versión (409 version_conflict). */
