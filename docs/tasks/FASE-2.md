@@ -43,7 +43,9 @@ Todo sigue aislado entre las dos clínicas ficticias.
 
 ## Para la fase 3
 
-- **Órdenes de laboratorio:** la tarea de órdenes de la fase 3 debe usar la función de selección de laboratorio de T-011b ([ADR 0028](../decisions/0028-laboratorios-costos.md)):
+- **Órdenes de laboratorio:** la tarea de órdenes de la fase 3 debe usar la función de selección de laboratorio de T-011b, `suggestLabs()` de `packages/shared/src/labs.ts` ([ADR 0028](../decisions/0028-laboratorios-costos.md)):
+  - recibe las pruebas, los laboratorios, el historial de costos, el día de la orden en la sede y la cobertura (`self_pay`, `membership` o `insurance`);
+  - la API de órdenes lee los costos en el servidor y solo devuelve al personal el **nombre** del laboratorio sugerido;
   - una sola orden y una sola muestra cuando un laboratorio hace todas las pruebas;
   - sin sugerencia por costo con seguro;
   - cambio del laboratorio sugerido con motivo obligatorio y auditado;

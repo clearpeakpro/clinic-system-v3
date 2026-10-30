@@ -54,3 +54,16 @@ La orden al laboratorio externo se hace fuera del sistema. En la orden se inform
 - **La selección es una función pura en `packages/shared`,** con sus pruebas. La usará la tarea de órdenes de la fase 3.
 - **El servidor no devuelve costos** a quien no tiene el permiso de verlos, en ninguna respuesta.
 - **Reemplaza a S-ADM-16 del manual:** ya no hay un «precio de venta» por laboratorio. El precio que paga el paciente es el del catálogo (T-011).
+
+## Detalles decididos al implementar T-011b (2026-10-30)
+
+1. **Dónde:** «Proveedores de laboratorio» es la quinta pestaña de **Catálogos** (`/admin/catalogos/proveedores-de-laboratorio`), como en el manual (S-ADM-17).
+2. **Campos del laboratorio:** nombre (único en la organización), estado y orden de preferencia, **sin código**. **1 es el más preferido**; con la misma preferencia, desempata el nombre.
+3. **Desmarcar** un laboratorio en una prueba es un registro sin costo, «No la realiza desde {fecha}», con fecha mínima de hoy (como «Volver al precio general», [ADR 0029](0029-precio-general-excepcion-sede.md)). Se conserva el historial y se puede volver a marcar.
+4. **Empate entre combinaciones** de varios laboratorios (mismo número y mismo costo total): gana la que incluye el laboratorio más preferido; si también empatan, la del siguiente, y así sucesivamente.
+5. **Semilla:** las pruebas ficticias Hemoglobina A1c, Perfil tiroideo (TSH) y Antígeno prostático (PSA), con su precio general, y sus costos en LabCorp, CPL y Quest Diagnostics; Quest no hace PSA.
+
+Además, en la implementación:
+- **Fecha mínima de un costo:** la del precio general, el día más adelantado entre las sedes activas, porque los costos son de la organización.
+- **«Sin laboratorio asignado»:** ningún laboratorio **activo** realiza la prueba hoy.
+- **Manual sin reemplazo:** no se construyen «Código externo» ni «Vigente hasta» de S-ADM-16; la vigencia termina con el registro siguiente.

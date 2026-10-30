@@ -97,6 +97,14 @@ pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» 
 - **Permisos de `clinic_app`:** sin `DELETE` en ninguna; en `prices`, solo `SELECT` e `INSERT`: un cambio de precio es una fila nueva.
 - **Semilla:** un catálogo básico ficticio en las dos organizaciones, con precio general y, en Norte, excepciones en NOR2 (`DEMO_CATALOG`).
 
+## Laboratorios y costos por prueba (T-011b)
+
+- **Tablas** (`src/catalog-schema.ts`, migraciones 0020 y 0021): `lab_providers` y `lab_test_costs`, con RLS forzado y claves compuestas hacia `lab_tests` y `lab_providers` ([ADR 0028](../../docs/decisions/0028-laboratorios-costos.md)).
+- **Reglas en la base de datos:** nombre del laboratorio único por organización sin distinguir mayúsculas (índice sobre `lower(name)`), preferencia de 1 a 1000 y costo no negativo.
+- **Costos:** una fila sin importe es «No la realiza desde» (desmarcar el laboratorio en la prueba conserva su historial). Un laboratorio hace una prueba un día si su última fila vigente ese día tiene importe.
+- **Permisos de `clinic_app`:** sin `DELETE`; en `lab_test_costs`, solo `SELECT` e `INSERT`.
+- **Semilla** (`DEMO_LABS`, también en `pnpm demo:reset`): LabCorp, Quest Diagnostics y CPL en cada clínica, con costos ficticios distintos en las pruebas A1c, TSH y PSA (Quest no hace PSA). La de estreptococo queda sin laboratorio.
+
 ## Pruebas
 
 `pnpm test` levanta Postgres 16 con Testcontainers (Docker en ejecución), aplica bootstrap, migraciones y semilla, y ejecuta las pruebas conectando como `clinic_app` mediante `pg.Pool`. Las contraseñas de prueba se generan al azar en cada ejecución.
