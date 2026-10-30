@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { appointmentTypes, labTests, prices, procedures, referralSources } from '../src/catalog-schema.ts';
-import { DEMO, DEMO_CATALOG } from '../src/seed.ts';
+import { appointmentTypes, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from '../src/catalog-schema.ts';
+import { DEMO, DEMO_CATALOG, DEMO_LABS } from '../src/seed.ts';
 import { createTenantDb, type TenantDb } from '../src/with-tenant.ts';
 import { expectPgError, SQLSTATE } from './helpers.ts';
 
@@ -43,8 +43,8 @@ describe('catálogo', () => {
       expect(rows.procedures).toHaveLength(DEMO_CATALOG.procedures.length);
       expect(rows.labs).toHaveLength(DEMO_CATALOG.labTests.length);
       expect(rows.sources).toHaveLength(DEMO_CATALOG.referralSources.length);
-      // Tres ítems con precio general; en Norte, dos con excepción en NOR2.
-      expect(rows.prices.filter((p) => p.locationId === null)).toHaveLength(3);
+      // Todos los procedimientos y pruebas con precio general; en Norte, dos con excepción en NOR2.
+      expect(rows.prices.filter((p) => p.locationId === null)).toHaveLength(DEMO_CATALOG.procedures.length + DEMO_CATALOG.labTests.length);
       const exceptions = rows.prices.filter((p) => p.locationId !== null);
       expect(exceptions.map((p) => p.locationId)).toEqual(org === NORTE ? [NORTE.locations[1].id, NORTE.locations[1].id] : []);
     }
@@ -161,5 +161,102 @@ describe('catálogo', () => {
     );
     expect(row?.active).toBe(false);
     await db.withTenant(NORTE.id, (tx) => tx.update(referralSources).set({ active: true }).where(eq(referralSources.code, 'LETRERO')));
+  });
+});
+
+describe('laboratorios y costos por prueba (T-011b)', () => {
+  let pool: pg.Pool;
+  let db: TenantDb;
+
+  beforeAll(() => {
+    pool = new pg.Pool({ connectionString: inject('appUrl'), max: 4 });
+    db = createTenantDb(pool);
+  });
+  afterAll(async () => {
+    await pool.end();
+  });
+
+  const ids = async (orgId: string, provider: string, test: string) =>
+    db.withTenant(orgId, async (tx) => ({
+      provider: (await tx.select({ id: labProviders.id }).from(labProviders).where(eq(labProviders.name, provider)))[0]?.id ?? '',
+      test: (await tx.select({ id: labTests.id }).from(labTests).where(eq(labTests.code, test)))[0]?.id ?? '',
+    }));
+
+  it('la semilla deja LabCorp, CPL y Quest en cada organización, con costos distintos', async () => {
+    const byOrg = [];
+    for (const org of [NORTE, SUR]) {
+      const rows = await db.withTenant(org.id, async (tx) => ({
+        providers: await tx.select().from(labProviders),
+        costs: await tx
+          .select({ provider: labProviders.name, test: labTests.code, amountCents: labTestCosts.amountCents })
+          .from(labTestCosts)
+          .innerJoin(labProviders, eq(labProviders.id, labTestCosts.labProviderId))
+          .innerJoin(labTests, eq(labTests.id, labTestCosts.labTestId)),
+      }));
+      expect(rows.providers.map((p) => [p.name, p.preference]).sort()).toEqual(DEMO_LABS.providers.map((p) => [p.name, p.preference]).sort());
+      // Quest no hace PSA; nadie hace la de estreptococo.
+      expect(rows.costs.filter((c) => c.provider === 'Quest Diagnostics').map((c) => c.test).sort()).toEqual(['LAB-A1C', 'LAB-TSH']);
+      expect(rows.costs.some((c) => c.test === 'LAB-STREP')).toBe(false);
+      byOrg.push(rows.costs.map((c) => `${c.provider}:${c.test}:${String(c.amountCents)}`).sort());
+    }
+    expect(byOrg[0]).not.toEqual(byOrg[1]);
+  });
+
+  it('cada organización ve solo sus laboratorios y costos; sin contexto no se ve nada', async () => {
+    const norte = await ids(NORTE.id, 'LabCorp', 'LAB-A1C');
+    expect(await db.withTenant(SUR.id, (tx) => tx.select().from(labProviders).where(eq(labProviders.id, norte.provider)))).toEqual([]);
+    expect(await db.withTenant(SUR.id, (tx) => tx.select().from(labTestCosts).where(eq(labTestCosts.labProviderId, norte.provider)))).toEqual([]);
+    for (const table of ['lab_providers', 'lab_test_costs']) {
+      expect((await pool.query(`select * from app.${table}`)).rows, table).toEqual([]);
+    }
+  });
+
+  it('no se escribe en otra organización ni un costo apunta a un laboratorio o una prueba de otra', async () => {
+    await expectPgError(
+      db.withTenant(SUR.id, (tx) => tx.insert(labProviders).values({ organizationId: NORTE.id, name: 'Intruso', preference: 5 })),
+      SQLSTATE.insufficientPrivilege,
+    );
+    const norte = await ids(NORTE.id, 'LabCorp', 'LAB-A1C');
+    const sur = await ids(SUR.id, 'LabCorp', 'LAB-A1C');
+    const cost = (labProviderId: string, labTestId: string) =>
+      db.withTenant(NORTE.id, (tx) =>
+        tx.insert(labTestCosts).values({ organizationId: NORTE.id, labProviderId, labTestId, amountCents: 100, effectiveFrom: '2026-02-01' }),
+      );
+    await expectPgError(cost(sur.provider, norte.test), SQLSTATE.foreignKeyViolation);
+    await expectPgError(cost(norte.provider, sur.test), SQLSTATE.foreignKeyViolation);
+  });
+
+  it('el nombre es único en la organización sin distinguir mayúsculas, y la preferencia va de 1 a 1000', async () => {
+    const insert = (orgId: string, name: string, preference = 9) =>
+      db.withTenant(orgId, (tx) => tx.insert(labProviders).values({ organizationId: orgId, name, preference }));
+    await expectPgError(insert(NORTE.id, 'labcorp'), UNIQUE_VIOLATION);
+    await expectPgError(insert(NORTE.id, 'Laboratorio Ficticio', 0), CHECK_VIOLATION);
+    await expectPgError(insert(NORTE.id, 'Laboratorio Ficticio', 1001), CHECK_VIOLATION);
+    await expectPgError(insert(NORTE.id, ''), CHECK_VIOLATION);
+    await insert(NORTE.id, 'Laboratorio Ficticio');
+    await insert(SUR.id, 'Laboratorio Ficticio');
+  });
+
+  it('una fila sin importe es «No la realiza desde»; un costo no es negativo y nunca se modifica ni se borra', async () => {
+    const norte = await ids(NORTE.id, 'CPL', 'LAB-TSH');
+    const base = { organizationId: NORTE.id, labProviderId: norte.provider, labTestId: norte.test, effectiveFrom: '2026-06-01' };
+    await db.withTenant(NORTE.id, (tx) => tx.insert(labTestCosts).values({ ...base, amountCents: null }));
+    await expectPgError(db.withTenant(NORTE.id, (tx) => tx.insert(labTestCosts).values({ ...base, amountCents: -1 })), CHECK_VIOLATION);
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.update(labTestCosts).set({ amountCents: 1 }).where(eq(labTestCosts.labProviderId, norte.provider))),
+      SQLSTATE.insufficientPrivilege,
+    );
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.delete(labTestCosts).where(eq(labTestCosts.labProviderId, norte.provider))),
+      SQLSTATE.insufficientPrivilege,
+    );
+  });
+
+  it('los laboratorios se desactivan, no se borran', async () => {
+    await expectPgError(db.withTenant(NORTE.id, (tx) => tx.delete(labProviders)), SQLSTATE.insufficientPrivilege);
+    const [row] = await db.withTenant(NORTE.id, (tx) =>
+      tx.update(labProviders).set({ active: false, version: 2 }).where(eq(labProviders.name, 'Laboratorio Ficticio')).returning({ active: labProviders.active }),
+    );
+    expect(row?.active).toBe(false);
   });
 });

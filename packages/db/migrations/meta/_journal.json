@@ -141,6 +141,20 @@
       "when": 1793370150332,
       "tag": "0019_two_factor_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793386934890,
+      "tag": "0020_lab_providers",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793386945450,
+      "tag": "0021_lab_providers_rls",
+      "breakpoints": true
     }
   ]
 }

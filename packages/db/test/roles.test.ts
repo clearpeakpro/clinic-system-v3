@@ -26,6 +26,9 @@ const TABLES = [
   'lab_tests',
   'referral_sources',
   'prices',
+  // T-011b
+  'lab_providers',
+  'lab_test_costs',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {
