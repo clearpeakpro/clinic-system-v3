@@ -66,7 +66,7 @@ cp .env.example .env          # en la raíz del repositorio
 docker compose up -d
 pnpm db:bootstrap
 pnpm db:migrate
-pnpm db:seed                  # «Clínica Demo Norte» y «Clínica Demo Sur» (sedes en hora Central, America/Chicago, con direcciones ficticias)
+pnpm db:seed                  # aplica antes las migraciones pendientes; «Clínica Demo Norte» y «Clínica Demo Sur» (sedes en hora Central, America/Chicago, con direcciones ficticias)
 ```
 
 ## Worker: pg-boss, outbox e idempotencia (T-008)
