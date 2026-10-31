@@ -3,11 +3,14 @@ import { notificationText } from '../src/notifications.ts';
 import {
   ageLabel,
   ageOn,
+  canSchedule,
   createPatientSchema,
   formatPhone,
   normalizePatientCode,
   PATIENT_QUERY_ERRORS,
   parsePatientQuery,
+  patientStatusChangeSchema,
+  updatePatientSchema,
 } from '../src/patients.ts';
 import { permissionsFor } from '../src/permissions.ts';
 
@@ -128,5 +131,42 @@ describe('permisos y aviso (T-012)', () => {
       title: 'El Propietario cambió sus roles clínicos',
       body: 'Sedes: NOR1, NOR2. Puede revisarlo en Administración › Usuarios.',
     });
+  });
+});
+
+describe('editar, inactivar y reactivar (T-013)', () => {
+  it('quién edita qué', () => {
+    expect(permissionsFor(['recepcion']).has('patients.edit')).toBe(true);
+    expect(permissionsFor(['proveedor']).has('patients.edit')).toBe(false);
+    expect(permissionsFor(['proveedor']).has('patients.edit_phone')).toBe(true);
+    for (const role of ['enfermeria', 'proveedor', 'recepcion'] as const) {
+      expect(permissionsFor([role]).has('patients.edit_birth_date'), role).toBe(false);
+      expect(permissionsFor([role]).has('patients.deactivate'), role).toBe(false);
+    }
+    for (const role of ['propietario', 'administrador'] as const) {
+      expect(permissionsFor([role, 'recepcion']).has('patients.edit_birth_date'), role).toBe(true);
+      expect(permissionsFor([role, 'recepcion']).has('patients.deactivate'), role).toBe(true);
+    }
+  });
+
+  it('la fecha de nacimiento exige motivo', () => {
+    expect(updatePatientSchema.safeParse({ expectedVersion: 1, birthDate: '1985-02-03' }).success).toBe(false);
+    expect(updatePatientSchema.safeParse({ expectedVersion: 1, birthDate: '1985-02-03', birthDateReason: '  ' }).success).toBe(false);
+    expect(updatePatientSchema.safeParse({ expectedVersion: 1, birthDate: '1985-02-03', birthDateReason: 'Error de captura' }).success).toBe(true);
+  });
+
+  it('sin fuente de referido, los detalles se borran; el teléfono queda en dígitos', () => {
+    const parsed = updatePatientSchema.parse({ expectedVersion: 2, phone: '(214) 555-0199', referral: { sourceId: null, details: 'Volante' } });
+    expect(parsed.phone).toBe('2145550199');
+    expect(parsed.referral).toEqual({ sourceId: null, details: null });
+    expect(updatePatientSchema.parse({ expectedVersion: 2, phone: null }).phone).toBeNull();
+    expect(updatePatientSchema.safeParse({ expectedVersion: 2, phone: '123' }).success).toBe(false);
+  });
+
+  it('inactivar y reactivar exigen motivo; solo se agenda a pacientes activos', () => {
+    expect(patientStatusChangeSchema.safeParse({ expectedVersion: 1, reason: '' }).success).toBe(false);
+    expect(patientStatusChangeSchema.safeParse({ expectedVersion: 1, reason: 'Registro duplicado' }).success).toBe(true);
+    expect(canSchedule({ status: 'active' })).toBe(true);
+    expect(canSchedule({ status: 'inactive' })).toBe(false);
   });
 });

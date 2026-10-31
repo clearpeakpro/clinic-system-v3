@@ -23,6 +23,7 @@ import {
   SkeletonRows,
   Spinner,
   StaleDataBanner,
+  Tabs,
   TextAreaField,
   useSnackbar,
   VisitStatusChip,
@@ -31,7 +32,7 @@ import {
 import type { VisitRoute, VisitStatus } from '@clinic/shared';
 import { BellButton, DegradedBannerView, LiveIndicatorView, NotificationList } from '../components/realtime.tsx';
 import type { NotificationItem } from '../lib/api.ts';
-import { Check, Coffee, IdCard, MailPlus, RefreshCw, Trash2, UserRoundX } from 'lucide-react';
+import { CalendarDays, Check, ClipboardList, Coffee, History, IdCard, MailPlus, RefreshCw, Trash2, UserRoundX, Wallet } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IdleWarningDialog } from '../components/idle-guard.tsx';
 
@@ -202,8 +203,28 @@ export function DevUiPage() {
         <Section n={9} title="Tiempo real y notificaciones (T-009)">
           <Live />
         </Section>
+
+        <Section n={10} title="Pestañas del perfil (T-013)">
+          <TabsDemo />
+        </Section>
       </div>
     </main>
+  );
+}
+
+const TAB_ITEMS = [
+  { key: 'resumen', label: 'Resumen', icon: ClipboardList },
+  { key: 'citas', label: 'Citas', icon: CalendarDays },
+  { key: 'visitas', label: 'Visitas', icon: History },
+  { key: 'saldos', label: 'Saldos', icon: Wallet },
+] as const;
+
+function TabsDemo() {
+  const [tab, setTab] = useState<(typeof TAB_ITEMS)[number]['key']>('resumen');
+  return (
+    <Tabs label="Secciones de ejemplo" items={TAB_ITEMS} value={tab} onValueChange={setTab}>
+      <EmptyState title="Contenido de la pestaña" description={`Pestaña activa: ${TAB_ITEMS.find((t) => t.key === tab)?.label ?? ''}.`} />
+    </Tabs>
   );
 }
 

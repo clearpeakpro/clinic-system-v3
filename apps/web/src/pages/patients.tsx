@@ -1,5 +1,5 @@
 import { ageLabel, ageOn, formatPhone, parsePatientQuery, type PatientSearchResult, type PatientSummary } from '@clinic/shared';
-import { Banner, Button, cn, CodeText, DataTable, EmptyState, ErrorState, Field, SemanticChip, Spinner, useSnackbar, type Column } from '@clinic/ui';
+import { Banner, Button, Checkbox, cn, CodeText, DataTable, EmptyState, ErrorState, Field, SemanticChip, Spinner, useSnackbar, type Column } from '@clinic/ui';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowRight, ChevronDown, CornerDownLeft, FolderSearch, Info, Lock, RotateCcw, Search, UserPlus, UserSearch, UsersRound } from 'lucide-react';
@@ -19,7 +19,8 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // construye lo que el sistema no tiene (estadísticas, «Ordenar por»,
 // descargar, sexo y seguro bajo el nombre, chips de escáner y búsqueda
 // fonética) ni textos que afirmen cumplimiento de normas. La búsqueda se lanza
-// solo con «Buscar» o Enter, y vive solo en memoria.
+// solo con «Buscar» o Enter, y vive solo en memoria. «Incluir inactivos»
+// (T-013) se aplica al buscar; por código se encuentra siempre.
 
 export function PatientsPage() {
   const me = useMe();
@@ -27,15 +28,16 @@ export function PatientsPage() {
   const navigate = useNavigate();
   const snackbar = useSnackbar();
   const canCreate = me.data?.permissions.includes('patients.create') ?? false;
-  const { text: submitted, version } = useSubmittedSearch();
+  const { text: submitted, includeInactive: submittedInactive, version } = useSubmittedSearch();
   const [text, setText] = useState(submitted ?? '');
+  const [includeInactive, setIncludeInactive] = useState(submittedInactive);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const results = useInfiniteQuery<PatientSearchResult, ApiError>({
     // La versión hace que repetir la misma búsqueda vuelva a pedirla (y a auditarla).
-    queryKey: ['patient-search', submitted, version],
-    queryFn: ({ pageParam }) => api.searchPatients(submitted ?? '', pageParam as number),
+    queryKey: ['patient-search', submitted, submittedInactive, version],
+    queryFn: ({ pageParam }) => api.searchPatients(submitted ?? '', pageParam as number, submittedInactive),
     initialPageParam: 0,
     getNextPageParam: (last) => last.nextOffset ?? undefined,
     enabled: submitted !== null,
@@ -53,6 +55,7 @@ export function PatientsPage() {
   if (seenVersion !== version) {
     setSeenVersion(version);
     setText(submitted ?? '');
+    setIncludeInactive(submittedInactive);
   }
 
   const submit = (event: SubmitEvent<HTMLFormElement>) => {
@@ -65,10 +68,11 @@ export function PatientsPage() {
       return;
     }
     setError(null);
-    patientSearch.submit(text.trim());
+    patientSearch.submit(text.trim(), includeInactive);
   };
   const clear = () => {
     setText('');
+    setIncludeInactive(false);
     setError(null);
     patientSearch.submit(null);
     focusSearch();
@@ -146,6 +150,7 @@ export function PatientsPage() {
             setError(null);
           }}
         />
+        <Checkbox label="Incluir inactivos" checked={includeInactive} onCheckedChange={setIncludeInactive} />
         <div className="flex flex-wrap items-center justify-between gap-space-sm">
           <p className="flex items-center gap-space-xs text-caption text-on-surface-variant">
             <CornerDownLeft aria-hidden className="size-4" /> Presione Enter para iniciar la búsqueda
