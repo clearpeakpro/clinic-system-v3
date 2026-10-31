@@ -45,7 +45,8 @@ if (!process.argv.includes('--si')) {
   console.log(`
 Esto BORRA la base de datos local de Clinic System y la deja como recién instalada:
   - «Clínica Demo Norte» (sedes NOR1 y NOR2) y «Clínica Demo Sur» (sedes SUR1 y SUR2);
-  - ${String(DEV_USERS.length)} usuarios ficticios, todos con la contraseña de DEV_SEED_PASSWORD y sin MFA.
+  - ${String(DEV_USERS.length)} usuarios ficticios, todos con la contraseña de DEV_SEED_PASSWORD y sin MFA;
+  - citas ficticias de ayer, hoy y los próximos días en las cuatro sedes.
 Todo lo que haya hecho (invitaciones, sedes nuevas, MFA, auditoría…) se pierde.
 `);
   const rl = createInterface({ input: process.stdin, output: process.stdout });

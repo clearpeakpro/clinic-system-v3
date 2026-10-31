@@ -5,13 +5,13 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { createApp, type ClinicApp } from './app.ts';
 import type { AppConfig } from './config.ts';
-import { seedDevUsers } from './dev-seed.ts';
+import { seedDevAppointments, seedDevUsers } from './dev-seed.ts';
 import { MemoryLogSink } from './logging.ts';
 import { operatorErrorMessage } from './platform.ts';
 
 // Demo de la fase 1 (T-010), solo en desarrollo:
 //  - resetDemo: deja la base de datos local como recién instalada, con las dos
-//    organizaciones ficticias y sus 11 usuarios, ninguno con MFA.
+//    organizaciones ficticias, sus 12 usuarios (ninguno con MFA) y sus citas.
 //  - sendDemoNotification: un aviso ficticio para ver la campana en vivo.
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -92,6 +92,7 @@ export async function resetDemo(options: ResetOptions): Promise<void> {
   const app = await createApp({ config: options.config, logs: new MemoryLogSink() });
   try {
     await seedDevUsers(app, options.seedPassword);
+    await seedDevAppointments(app, options.config.fieldEncryptionKey);
   } finally {
     await app.close();
   }

@@ -18,6 +18,7 @@ import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
 import { CatalogService } from './catalog.ts';
 import { LabProviderService } from './lab-providers.ts';
+import { AppointmentService } from './appointments.ts';
 import { PatientService } from './patients.ts';
 import { ProfileService } from './profile.ts';
 import { RealtimeGateway } from './realtime.ts';
@@ -37,6 +38,7 @@ export async function createApp({ config, logs }: AppDeps) {
   const auth = createAuth({ config, pool, audit, logs });
   const resolver = new PrincipalResolver(auth, pool, tenantDb, config);
   const plain = drizzle({ client: pool });
+  const fieldCipher = createLocalFieldCipher(config.fieldEncryptionKey);
 
   const services = {
     contexts: new ContextService(pool, tenantDb),
@@ -47,7 +49,8 @@ export async function createApp({ config, logs }: AppDeps) {
     notifications: new NotificationService(tenantDb),
     catalog: new CatalogService(tenantDb, audit),
     labProviders: new LabProviderService(tenantDb, audit),
-    patients: new PatientService(tenantDb, audit, createLocalFieldCipher(config.fieldEncryptionKey)),
+    patients: new PatientService(tenantDb, audit, fieldCipher),
+    appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

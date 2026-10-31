@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { DEFAULTS, type AppConfig } from '../src/config.ts';
 import { assertLocalDatabase, assertOperatorPassword, DemoBusyError, DemoUserError, resetDemo, sendDemoNotification } from '../src/demo.ts';
 import { operatorErrorMessage } from '../src/platform.ts';
-import { DEV_USERS } from '../src/dev-seed.ts';
+import { DEMO_AGENDA, DEV_USERS } from '../src/dev-seed.ts';
 import { createStaff, NORTE, startApp, type TestApp } from './support.ts';
 
 // T-010: pnpm demo:reset y pnpm demo:aviso. demo:reset se prueba en una base
@@ -67,7 +67,7 @@ describe('pnpm demo:reset', () => {
     await admin.end();
   });
 
-  it('deja las dos organizaciones, sus cuatro sedes y los 11 usuarios ficticios, sin MFA', async () => {
+  it('deja las dos organizaciones, sus cuatro sedes, los 12 usuarios ficticios sin MFA y las citas de la semilla', async () => {
     expect(await query('select name from app.organizations order by name')).toEqual([{ name: 'Clínica Demo Norte' }, { name: 'Clínica Demo Sur' }]);
     expect((await query<{ code: string }>('select code from app.locations order by code')).map((r) => r.code)).toEqual(['NOR1', 'NOR2', 'SUR1', 'SUR2']);
     const users = await query<{ email: string; two_factor_enabled: boolean }>('select email, two_factor_enabled from auth."user" order by email');
@@ -75,6 +75,11 @@ describe('pnpm demo:reset', () => {
     expect(users.every((u) => !u.two_factor_enabled)).toBe(true);
     expect(await query('select 1 from auth.two_factor')).toEqual([]);
     expect(await query('select 1 from auth.session')).toEqual([]);
+    // T-014: 20 citas por sede (ayer, hoy y los próximos días).
+    const perSite = await query<{ code: string; n: number }>(
+      'select l.code, count(*)::int as n from app.appointments a join app.locations l on l.id = a.location_id group by l.code order by l.code',
+    );
+    expect(perSite).toEqual(['NOR1', 'NOR2', 'SUR1', 'SUR2'].map((code) => ({ code, n: DEMO_AGENDA.length })));
   });
 
   it('una segunda vez borra lo que se hizo (MFA, cuentas nuevas) y vuelve al mismo estado', async () => {

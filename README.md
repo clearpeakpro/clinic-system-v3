@@ -28,6 +28,7 @@ Todos usan la contraseña `DEV_SEED_PASSWORD` de `.env`.
 | --- | --- | --- |
 | `recepcion.norte@example.test` | Recepción | NOR1 |
 | `proveedor.norte@example.test` | Proveedor | NOR2 |
+| `proveedora.nor1@example.test` | Proveedor | NOR1 |
 | `enfermeria.sur@example.test` | Enfermería | SUR2 |
 | `multi@example.test` | Recepción en Norte y Enfermería en Sur | NOR1 y SUR1 |
 | `admin.norte@example.test` | Administrador, **sin MFA**: al entrar debe inscribirse | toda Clínica Demo Norte |
