@@ -34,7 +34,7 @@ TypeScript en todo. pnpm + Turborepo.
 - `pnpm test` — unitarias + integración (Testcontainers)
 - `pnpm test:e2e` — Playwright (compila la web y levanta Postgres con Testcontainers, la API y `vite preview`)
 - `pnpm --filter @clinic/web test:a11y` — axe sobre `/dev/ui` (hoja de componentes, solo en desarrollo: http://localhost:5173/dev/ui)
-- `pnpm db:bootstrap` (superusuario) / `pnpm db:migrate` / `pnpm db:seed` (clínicas ficticias y sus Propietarios)
+- `pnpm db:bootstrap` (superusuario) / `pnpm db:migrate` / `pnpm db:seed` (aplica antes las migraciones pendientes; clínicas ficticias y sus Propietarios)
 - `pnpm org:create` / `pnpm audit:platform` — operador de la plataforma, como `clinic_operator` (ADR 0024)
 - `pnpm demo:reset` — borra la base de datos LOCAL y la deja como recién instalada: las dos clínicas ficticias y sus 11 usuarios, sin MFA (pide escribir `BORRAR`; con `pnpm dev` detenido). Guion: `docs/DEMO-FASE-1.md`
 - `pnpm demo:aviso <correo>` — aviso ficticio en la campana de esa persona (solo desarrollo)
