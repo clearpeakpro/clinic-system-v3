@@ -105,6 +105,20 @@ pnpm db:seed                  # aplica antes las migraciones pendientes; «Clín
 - **Permisos de `clinic_app`:** sin `DELETE`; en `lab_test_costs`, solo `SELECT` e `INSERT`.
 - **Semilla** (`DEMO_LABS`, también en `pnpm demo:reset`): LabCorp, Quest Diagnostics y CPL en cada clínica, con costos ficticios distintos en las pruebas A1c, TSH y PSA (Quest no hace PSA). La de estreptococo queda sin laboratorio.
 
+## Pacientes, códigos y cifrado de campos (T-012)
+
+- **Tablas** (`src/patients-schema.ts`, migraciones 0022 y 0023): `patients`, ampliada, y `code_counters`, con RLS forzado y claves compuestas (sede, fuente de referido, `merged_into`).
+- **Códigos:** `nextCode(tx, org, 'patient')` (`src/codes.ts`) da `P-000123` con el contador de la organización, en la misma transacción que el alta. Si la transacción se deshace, el número no se gasta. La migración 0022 dio código a los pacientes que ya existían.
+- **Búsqueda:**
+  - `pg_trgm` y `unaccent` están en el esquema `ext` (extensiones *trusted*, las crea `clinic_owner`);
+  - `app.search_text(texto)` (minúsculas y sin tildes, IMMUTABLE);
+  - el índice GIN de trigramas sobre el nombre completo.
+- **Cifrado de campos** (`src/field-cipher.ts`): la interfaz es asíncrona `FieldCipher` y la implementación local es AES-256-GCM con `FIELD_ENCRYPTION_KEY`. Cada valor va atado a su organización, tabla, columna y fila.
+- **Permisos de `clinic_app`:** sin `DELETE` en `patients` ni en `code_counters`.
+- **Semilla:** 20 pacientes ficticios por clínica, con tildes, homónimos, un posible duplicado y madre e hijo con el mismo teléfono.
+  - Con `FIELD_ENCRYPTION_KEY` (`pnpm db:seed`, `demo:reset`), los detalles del referido se guardan cifrados.
+  - `seed(url, { minimal: true })` siembra solo organizaciones y sedes (para la prueba de T-008).
+
 ## Pruebas
 
 `pnpm test` levanta Postgres 16 con Testcontainers (Docker en ejecución), aplica bootstrap, migraciones y semilla, y ejecuta las pruebas conectando como `clinic_app` mediante `pg.Pool`. Las contraseñas de prueba se generan al azar en cada ejecución.

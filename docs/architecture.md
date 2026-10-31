@@ -176,7 +176,7 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | `organizations` | name, status | El tenant |
 | `locations` | org, code, name, timezone, address (opcional) | `code` es único por organización y aparece en la URL |
 | `users` (global) / `memberships` / `membership_roles` | correo; usuario–organización; rol por sede | |
-| `patients` | código, nombre, apellidos, fecha de nacimiento, teléfono, merged_into | Pertenecen a la organización |
+| `patients` / `code_counters` | código `P-000123` por organización (contador en la misma transacción), nombre, apellidos, fecha de nacimiento, teléfono (solo dígitos), fuente de referido, detalles del referido cifrados, estado, merged_into, `version` | Pertenecen a la organización y no se borran. Búsqueda en un solo campo, parcial y sin tildes, con `pg_trgm` + `unaccent` (esquema `ext`, `app.search_text`) e índice GIN de trigramas ([ADR 0030](decisions/0030-busqueda-pacientes-un-campo.md)). Los detalles del referido van cifrados con `FieldCipher` (`packages/db/src/field-cipher.ts`): clave local `FIELD_ENCRYPTION_KEY` en desarrollo y KMS en la fase 4 ([ADR 0026](decisions/0026-cifrado-campos-busqueda.md)) |
 | `appointments` | sede, paciente, proveedor, tipo, inicio, estado, version | |
 | `kiosk_devices` / `kiosk_checkins` | sede, hash del token; datos enviados, estado, vencimiento | |
 | `encounters` / `encounter_events` | sede, paciente, cita?, ruta, estado, version; transiciones | Índice único parcial: una sola visita abierta por cita |
