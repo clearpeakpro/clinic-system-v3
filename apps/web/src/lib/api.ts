@@ -1,4 +1,14 @@
-import type { CatalogKind, CatalogList, GeneralPriceInput, LocationPriceInput, NotificationKind, Permission, Role } from '@clinic/shared';
+import type {
+  CatalogKind,
+  CatalogList,
+  CreateLabProviderInput,
+  GeneralPriceInput,
+  LabCostChange,
+  LocationPriceInput,
+  NotificationKind,
+  Permission,
+  Role,
+} from '@clinic/shared';
 
 // Cliente de la API (mismo origen: /api). Las cookies de sesión son httpOnly:
 // la web nunca ve ni guarda tokens. Nada de lo que devuelve se persiste
@@ -215,12 +225,15 @@ export const api = {
 
   // Administración › Catálogos y precios (S-ADM-13 a 20)
   adminCatalog: (locationId: string) => request<CatalogList>('GET', `/api/admin/catalog?locationId=${encodeURIComponent(locationId)}`),
-  createCatalogItem: (kind: CatalogKind, input: Record<string, unknown> & { code: string; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput }) =>
+  createCatalogItem: (
+    kind: CatalogKind,
+    input: Record<string, unknown> & { code: string; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput; labCosts?: LabCostChange[] },
+  ) =>
     request<{ id: string }>('POST', `/api/admin/catalog/${kind}`, input),
   updateCatalogItem: (
     kind: CatalogKind,
     id: string,
-    input: Record<string, unknown> & { expectedVersion: number; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput },
+    input: Record<string, unknown> & { expectedVersion: number; generalPrice?: GeneralPriceInput; locationPrice?: LocationPriceInput; labCosts?: LabCostChange[] },
   ) =>
     request<null>('POST', `/api/admin/catalog/${kind}/${id}`, input),
   deactivateCatalogItem: (kind: CatalogKind, id: string, reason: string, expectedVersion: number) =>
@@ -229,6 +242,13 @@ export const api = {
     request<null>('POST', `/api/admin/catalog/${kind}/${id}/use-general`, { locationId, effectiveFrom }),
   reactivateCatalogItem: (kind: CatalogKind, id: string, expectedVersion: number) =>
     request<null>('POST', `/api/admin/catalog/${kind}/${id}/reactivate`, { expectedVersion }),
+  // Proveedores de laboratorio (S-ADM-17, T-011b); la lista llega con adminCatalog.
+  createLabProvider: (input: CreateLabProviderInput) => request<{ id: string }>('POST', '/api/admin/lab-providers', input),
+  updateLabProvider: (id: string, input: CreateLabProviderInput, expectedVersion: number) =>
+    request<null>('POST', `/api/admin/lab-providers/${id}`, { ...input, expectedVersion }),
+  deactivateLabProvider: (id: string, reason: string, expectedVersion: number) =>
+    request<null>('POST', `/api/admin/lab-providers/${id}/deactivate`, { reason, expectedVersion }),
+  reactivateLabProvider: (id: string, expectedVersion: number) => request<null>('POST', `/api/admin/lab-providers/${id}/reactivate`, { expectedVersion }),
 
   // Centro de notificaciones (S-GEN-15)
   notifications: () => request<NotificationsList>('GET', '/api/notifications'),

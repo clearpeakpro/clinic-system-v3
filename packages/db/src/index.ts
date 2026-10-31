@@ -20,4 +20,4 @@ export {
   type NotificationPayload,
 } from './outbox.ts';
 export { notifyRealtime, parseRealtimeMessage, REALTIME_CHANNEL, type RealtimeMessage } from './realtime.ts';
-export { DEMO, seed } from './seed.ts';
+export { DEMO, DEMO_LABS, seed } from './seed.ts';

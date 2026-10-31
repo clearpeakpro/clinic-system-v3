@@ -1,7 +1,11 @@
 import {
   acceptInvitationSchema,
   createCatalogItemSchema,
+  createLabProviderSchema,
   deactivateCatalogItemSchema,
+  deactivateLabProviderSchema,
+  reactivateLabProviderSchema,
+  updateLabProviderSchema,
   isCatalogKind,
   reactivateCatalogItemSchema,
   updateCatalogItemSchema,
@@ -49,6 +53,7 @@ import { AuditService } from './audit.ts';
 import { CatalogService } from './catalog.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
+import { LabProviderService } from './lab-providers.ts';
 import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
 import { ProfileService } from './profile.ts';
@@ -447,7 +452,7 @@ export class AdminCatalogController {
     const principal = principalOf(request);
     const sede = locationId ? id(locationId) : principal.context?.locationId;
     if (!sede) throw new HttpError(403, 'no_active_context');
-    return this.#catalog.list(principal, sede, { activeOnly: false });
+    return this.#catalog.list(principal, sede, { activeOnly: false, withLabCosts: true });
   }
 
   @Post(':kind')
@@ -492,7 +497,46 @@ export class AdminCatalogController {
   }
 }
 
-/** Lo activo del catálogo, con los precios de la sede activa: lo usan las citas y las órdenes. */
+/** Administración › Catálogos › Proveedores de laboratorio (S-ADM-17, T-011b). La lista va con la de Catálogos. */
+@Controller('admin/lab-providers')
+export class AdminLabProvidersController {
+  readonly #labs: LabProviderService;
+  constructor(@Inject(LabProviderService) labs: LabProviderService) {
+    this.#labs = labs;
+  }
+
+  @Post()
+  @RequirePermission('catalog.manage')
+  create(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#labs.create(principalOf(request), parse(createLabProviderSchema, body), metaOf(request));
+  }
+
+  @Post(':id')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async update(@Req() request: FastifyRequest, @Param('id') providerId: string, @Body() body: unknown) {
+    await this.#labs.update(principalOf(request), id(providerId), parse(updateLabProviderSchema, body), metaOf(request));
+  }
+
+  @Post(':id/deactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async deactivate(@Req() request: FastifyRequest, @Param('id') providerId: string, @Body() body: unknown) {
+    await this.#labs.setActive(principalOf(request), id(providerId), false, parse(deactivateLabProviderSchema, body), metaOf(request));
+  }
+
+  @Post(':id/reactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async reactivate(@Req() request: FastifyRequest, @Param('id') providerId: string, @Body() body: unknown) {
+    await this.#labs.setActive(principalOf(request), id(providerId), true, parse(reactivateLabProviderSchema, body), metaOf(request));
+  }
+}
+
+/**
+ * Lo activo del catálogo, con los precios de la sede activa: lo usan las
+ * citas y las órdenes. Nunca lleva laboratorios ni costos (ADR 0028).
+ */
 @Controller('catalog')
 export class CatalogController {
   readonly #catalog: CatalogService;
@@ -504,7 +548,7 @@ export class CatalogController {
   list(@Req() request: FastifyRequest) {
     const principal = principalOf(request);
     if (!principal.context) throw new HttpError(403, 'no_active_context');
-    return this.#catalog.list(principal, principal.context.locationId, { activeOnly: true });
+    return this.#catalog.list(principal, principal.context.locationId, { activeOnly: true, withLabCosts: false });
   }
 }
 
@@ -516,6 +560,7 @@ export interface ApiProviders {
   locations: LocationService;
   notifications: NotificationService;
   catalog: CatalogService;
+  labProviders: LabProviderService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -532,6 +577,7 @@ export function createApiModule(providers: ApiProviders) {
       LocationsController,
       NotificationsController,
       AdminCatalogController,
+      AdminLabProvidersController,
       CatalogController,
     ],
     providers: [
@@ -542,6 +588,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: LocationService, useValue: providers.locations },
       { provide: NotificationService, useValue: providers.notifications },
       { provide: CatalogService, useValue: providers.catalog },
+      { provide: LabProviderService, useValue: providers.labProviders },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

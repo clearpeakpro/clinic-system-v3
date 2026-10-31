@@ -8,6 +8,7 @@ import {
   type CatalogItem,
   type CatalogKind,
   type CatalogList,
+  type LabProvider,
   type PriceTimeline,
   type ProcedureKind,
 } from '@clinic/shared';
@@ -26,7 +27,7 @@ import {
   useSnackbar,
   type Column,
 } from '@clinic/ui';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   Ban,
@@ -38,6 +39,7 @@ import {
   CirclePlay,
   FlaskConical,
   Info,
+  Microscope,
   Pencil,
   Plus,
   RefreshCw,
@@ -49,8 +51,9 @@ import {
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { AGENDA_STRIPE, CatalogDialog } from '../components/catalog/catalog-dialog.tsx';
+import { LabProvidersPanel } from '../components/catalog/lab-providers.tsx';
 import { api, ApiError } from '../lib/api.ts';
-import { catalogMessage, formatDay, NEW_LABELS, nextPriceText, withAmount } from '../lib/catalog.ts';
+import { catalogMessage, formatDay, hasNoLab, NEW_LABELS, nextPriceText, withAmount } from '../lib/catalog.ts';
 import { flatten, useActiveLocation, useLocations } from '../lib/session.ts';
 import { isVersionConflict } from '../lib/users.ts';
 
@@ -68,13 +71,22 @@ import { isVersionConflict } from '../lib/users.ts';
 // sistema no tiene: «Exportar catálogo», paginación, versión del catálogo,
 // descripciones bajo el nombre ni el aviso de auditoría. Las pestañas sin
 // captura (Tipos de cita, Pruebas, Fuentes) siguen el mismo patrón con las
-// columnas del manual.
+// columnas del manual. T-011b: quinta pestaña «Proveedores de laboratorio»
+// (S-ADM-17, como en el manual) y, en Pruebas, el aviso «Sin laboratorio
+// asignado» (ADR 0028).
 
-const TAB_ICONS: Record<CatalogKind, LucideIcon> = {
+/** Pestañas: los cuatro catálogos y los proveedores de laboratorio. */
+export type CatalogTab = CatalogKind | 'lab-providers';
+const TABS: readonly CatalogTab[] = [...CATALOG_KINDS, 'lab-providers'];
+const LAB_PROVIDERS_TAB = { title: 'Proveedores de laboratorio', segment: 'proveedores-de-laboratorio' };
+const tabLabel = (tab: CatalogTab) => (tab === 'lab-providers' ? LAB_PROVIDERS_TAB : CATALOG_LABELS[tab]);
+
+const TAB_ICONS: Record<CatalogTab, LucideIcon> = {
   'appointment-types': CalendarDays,
   procedures: BriefcaseMedical,
   'lab-tests': FlaskConical,
   'referral-sources': Share2,
+  'lab-providers': Microscope,
 };
 
 const KIND_ICONS: Record<ProcedureKind, LucideIcon> = { procedure: BriefcaseMedical, injection: Syringe };
@@ -90,22 +102,160 @@ type Dialogs =
   | null;
 
 /** Pestaña de la URL (`/admin/catalogos/<pestaña>`). */
-export function catalogKindOf(segment: string): CatalogKind | undefined {
-  return CATALOG_KINDS.find((k) => CATALOG_LABELS[k].segment === segment);
+export function catalogTabOf(segment: string): CatalogTab | undefined {
+  return TABS.find((t) => tabLabel(t).segment === segment);
 }
 
-export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
+export function AdminCatalogPage({ tab }: { tab: CatalogTab }) {
   const active = useActiveLocation();
   const locations = useLocations();
   const sites = locations.data ? flatten(locations.data).filter((l) => l.organizationId === active?.organizationId) : [];
   const [siteId, setSiteId] = useState<string | null>(null);
-  const site = sites.find((l) => l.id === siteId) ?? active;
+  // Los laboratorios no dependen de la sede: usan la activa.
+  const site = (tab === 'lab-providers' ? undefined : sites.find((l) => l.id === siteId)) ?? active;
   const catalog = useQuery<CatalogList, ApiError>({
     queryKey: ['admin-catalog', site?.id],
     queryFn: () => api.adminCatalog(site?.id ?? ''),
     enabled: site !== undefined,
     staleTime: 0,
   });
+  const [creating, setCreating] = useState(false);
+
+  const reload = async () => {
+    await catalog.refetch();
+  };
+
+  return (
+    <section aria-labelledby="page-title" className="mx-auto flex w-full max-w-7xl flex-col gap-space-lg">
+      <header className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-lg shadow-level-1 dark:bg-surface-container-low">
+        <div className="flex flex-wrap items-end justify-between gap-space-md desk:flex-nowrap">
+          <div className="flex min-w-0 flex-1 flex-col gap-space-xs">
+            <h1 id="page-title" className="text-display-md text-on-surface">
+              Catálogos y precios
+            </h1>
+            <p className="text-body-lg text-on-surface-variant">
+              Tipos de cita, procedimientos, pruebas de laboratorio y fuentes de referido, con sus precios por sede, y los laboratorios con los que trabaja.
+            </p>
+          </div>
+          <Button className="shrink-0" onClick={() => { setCreating(true); }}>
+            <Plus aria-hidden className="size-5" /> {tab === 'lab-providers' ? 'Nuevo laboratorio' : NEW_LABELS[tab]}
+          </Button>
+        </div>
+        {tab === 'lab-providers' ? (
+          <p className="flex items-center gap-space-xs self-start rounded-md bg-primary/10 px-space-sm py-space-xs text-body-md text-primary">
+            <Info aria-hidden className="size-4 shrink-0" /> El costo de cada prueba en cada laboratorio se escribe en Pruebas de laboratorio.
+          </p>
+        ) : (
+          <div className="flex flex-wrap items-end gap-space-md">
+            <div className="w-full max-w-sm">
+              <SelectField
+                label="Sede de los precios"
+                icon={<Building2 className="size-5" />}
+                value={site?.id ?? ''}
+                onChange={(e) => { setSiteId(e.target.value); }}
+              >
+                {sites.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.code} · {l.name}
+                  </option>
+                ))}
+              </SelectField>
+            </div>
+            <p className="flex items-center gap-space-xs rounded-md bg-primary/10 px-space-sm py-space-xs text-body-md text-primary">
+              <Info aria-hidden className="size-4 shrink-0" /> Cada sede usa el precio general, salvo que tenga su propio precio.
+            </p>
+          </div>
+        )}
+      </header>
+
+      <nav aria-label="Catálogos" className="flex flex-wrap gap-space-xs rounded-lg bg-surface-container-lowest p-space-xs shadow-level-1 dark:bg-surface-container-low">
+        {TABS.map((t) => {
+          const Icon = TAB_ICONS[t];
+          const selected = t === tab;
+          const count = t === 'lab-providers' ? catalog.data?.labProviders?.length : catalog.data?.items[t].length;
+          return (
+            <Link
+              key={t}
+              to="/admin/catalogos/$pestana"
+              params={{ pestana: tabLabel(t).segment }}
+              aria-current={selected ? 'page' : undefined}
+              className={cn(
+                'flex min-h-touch shrink-0 items-center gap-space-sm rounded-md px-space-md text-body-lg whitespace-nowrap transition-colors',
+                selected ? 'bg-primary text-on-primary' : 'text-on-surface hover:bg-surface-container-low dark:hover:bg-surface-container-high',
+              )}
+            >
+              <Icon aria-hidden className="size-5" />
+              {tabLabel(t).title}
+              {count !== undefined ? (
+                <span className={cn('rounded-full px-2 text-caption', selected ? 'bg-on-primary text-primary' : 'bg-surface-container-high text-on-surface-variant')}>
+                  {count}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">
+        {tab === 'lab-providers' ? (
+          <AsyncView
+            source={catalog}
+            loading="skeleton"
+            isEmpty={(data) => (data.labProviders ?? []).length === 0 && !creating}
+            empty={
+              <EmptyState
+                icon={Microscope}
+                title="Aún no hay laboratorios."
+                description="Dé de alta el primer laboratorio con el que trabaja la clínica."
+                action={
+                  <Button onClick={() => { setCreating(true); }}>
+                    <Plus aria-hidden className="size-5" /> Nuevo laboratorio
+                  </Button>
+                }
+              />
+            }
+          >
+            {(data) => (
+              <LabProvidersPanel
+                providers={data.labProviders ?? []}
+                creating={creating}
+                onCloseCreate={() => { setCreating(false); }}
+                onReload={reload}
+              />
+            )}
+          </AsyncView>
+        ) : (
+          <CatalogBody
+            kind={tab}
+            catalog={catalog}
+            site={site ? { id: site.id, code: site.code, name: site.name } : undefined}
+            creating={creating}
+            setCreating={setCreating}
+            reload={reload}
+          />
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Un catálogo: filtros, tabla y sus diálogos. */
+function CatalogBody({
+  kind,
+  catalog,
+  site,
+  creating,
+  setCreating,
+  reload,
+}: {
+  kind: CatalogKind;
+  catalog: UseQueryResult<CatalogList, ApiError>;
+  site: { id: string; code: string; name: string } | undefined;
+  /** «+ Nuevo …» del encabezado. */
+  creating: boolean;
+  setCreating: (creating: boolean) => void;
+  reload: () => Promise<void>;
+}) {
   const snackbar = useSnackbar();
   const [dialog, setDialog] = useState<Dialogs>(null);
   const [search, setSearch] = useState('');
@@ -113,12 +263,14 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const priced = PRICED_KINDS.includes(kind);
   const label = CATALOG_LABELS[kind];
-
-  const reload = async () => {
-    await catalog.refetch();
-  };
-  const conflict = () => {
+  const form = creating ? ({ kind: 'new' } as const) : dialog?.kind === 'edit' ? dialog : null;
+  const closeForm = () => {
+    setCreating(false);
     setDialog(null);
+  };
+
+  const conflict = () => {
+    closeForm();
     snackbar({ message: 'Este registro fue actualizado por otro usuario. Actualice para continuar.', action: { label: 'Actualizar', onClick: () => void reload() } });
   };
   const reactivate = async (item: CatalogItem) => {
@@ -142,156 +294,94 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
   };
 
   return (
-    <section aria-labelledby="page-title" className="mx-auto flex w-full max-w-7xl flex-col gap-space-lg">
-      <header className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-lg shadow-level-1 dark:bg-surface-container-low">
-        <div className="flex flex-wrap items-end justify-between gap-space-md desk:flex-nowrap">
-          <div className="flex min-w-0 flex-1 flex-col gap-space-xs">
-            <h1 id="page-title" className="text-display-md text-on-surface">
-              Catálogos y precios
-            </h1>
-            <p className="text-body-lg text-on-surface-variant">Tipos de cita, procedimientos, pruebas de laboratorio y fuentes de referido, con sus precios por sede.</p>
-          </div>
-          <Button className="shrink-0" onClick={() => { setDialog({ kind: 'new' }); }}>
-            <Plus aria-hidden className="size-5" /> {NEW_LABELS[kind]}
-          </Button>
+    <>
+      <div className="flex flex-wrap items-end gap-space-sm">
+        <div className="min-w-60 flex-1">
+          <Field
+            label="Buscar"
+            hideLabel
+            icon={<Search className="size-5" />}
+            placeholder={`Buscar por código o nombre de ${label.singular}…`}
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); }}
+          />
         </div>
-        <div className="flex flex-wrap items-end gap-space-md">
-          <div className="w-full max-w-sm">
-            <SelectField
-              label="Sede de los precios"
-              icon={<Building2 className="size-5" />}
-              value={site?.id ?? ''}
-              onChange={(e) => { setSiteId(e.target.value); }}
-            >
-              {sites.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.code} · {l.name}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-          <p className="flex items-center gap-space-xs rounded-md bg-primary/10 px-space-sm py-space-xs text-body-md text-primary">
-            <Info aria-hidden className="size-4 shrink-0" /> Cada sede usa el precio general, salvo que tenga su propio precio.
-          </p>
-        </div>
-      </header>
-
-      <nav aria-label="Catálogos" className="flex gap-space-xs overflow-x-auto rounded-lg bg-surface-container-lowest p-space-xs shadow-level-1 dark:bg-surface-container-low">
-        {CATALOG_KINDS.map((k) => {
-          const Icon = TAB_ICONS[k];
-          const selected = k === kind;
-          const count = catalog.data?.items[k].length;
-          return (
-            <Link
-              key={k}
-              to="/admin/catalogos/$pestana"
-              params={{ pestana: CATALOG_LABELS[k].segment }}
-              aria-current={selected ? 'page' : undefined}
-              className={cn(
-                'flex min-h-touch shrink-0 items-center gap-space-sm rounded-md px-space-md text-body-lg whitespace-nowrap transition-colors',
-                selected ? 'bg-primary text-on-primary' : 'text-on-surface hover:bg-surface-container-low dark:hover:bg-surface-container-high',
-              )}
-            >
-              <Icon aria-hidden className="size-5" />
-              {CATALOG_LABELS[k].title}
-              {count !== undefined ? (
-                <span className={cn('rounded-full px-2 text-caption', selected ? 'bg-on-primary text-primary' : 'bg-surface-container-high text-on-surface-variant')}>
-                  {count}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">
-        <div className="flex flex-wrap items-end gap-space-sm">
-          <div className="min-w-60 flex-1">
-            <Field
-              label="Buscar"
-              hideLabel
-              icon={<Search className="size-5" />}
-              placeholder={`Buscar por código o nombre de ${label.singular}…`}
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); }}
-            />
-          </div>
-          {kind === 'procedures' ? (
-            <SelectField label="Tipo" hideLabel value={kindFilter} onChange={(e) => { setKindFilter(e.target.value as KindFilter); }}>
-              <option value="all">Todos los tipos (Procedimiento, Inyección)</option>
-              <option value="procedure">Solo Procedimientos</option>
-              <option value="injection">Solo Inyecciones</option>
-            </SelectField>
-          ) : null}
-          <SelectField label="Estado" hideLabel value={stateFilter} onChange={(e) => { setStateFilter(e.target.value as StateFilter); }}>
-            <option value="all">Todos los estados</option>
-            <option value="active">Activo</option>
-            <option value="inactive">Inactivo</option>
+        {kind === 'procedures' ? (
+          <SelectField label="Tipo" hideLabel value={kindFilter} onChange={(e) => { setKindFilter(e.target.value as KindFilter); }}>
+            <option value="all">Todos los tipos (Procedimiento, Inyección)</option>
+            <option value="procedure">Solo Procedimientos</option>
+            <option value="injection">Solo Inyecciones</option>
           </SelectField>
-          <Button variant="elevated" aria-label="Actualizar" title="Actualizar" className="px-3" onClick={() => void reload()}>
-            <RefreshCw aria-hidden className="size-5" />
-          </Button>
-        </div>
-
-        <AsyncView
-          source={catalog}
-          loading="skeleton"
-          isEmpty={(data) => data.items[kind].length === 0}
-          empty={
-            <EmptyState
-              icon={BookOpen}
-              title="Aún no hay entradas."
-              description={`Cree la primera de ${label.title.toLocaleLowerCase('es')}.`}
-              action={
-                <Button onClick={() => { setDialog({ kind: 'new' }); }}>
-                  <Plus aria-hidden className="size-5" /> {NEW_LABELS[kind]}
-                </Button>
-              }
-            />
-          }
-        >
-          {(data) => {
-            const rows = visible(data.items[kind]);
-            return (
-              <>
-                <p className="flex items-center gap-space-xs text-body-md text-on-surface-variant">
-                  <span aria-hidden className="size-2 rounded-full bg-primary" />
-                  Mostrando <strong className="text-on-surface">{rows.length}</strong> de <strong className="text-on-surface">{data.items[kind].length}</strong>{' '}
-                  {label.title.toLocaleLowerCase('es')}
-                  {priced && site ? ` · precios de ${site.name}` : ''}
-                </p>
-                <DataTable
-                  caption={label.title}
-                  density="compact"
-                  cardsBelow="desk"
-                  rows={rows}
-                  rowKey={(r) => r.id}
-                  rowClassName={(r) => (r.active ? undefined : 'opacity-70')}
-                  empty="Ninguna entrada coincide con la búsqueda."
-                  columns={columnsFor(kind, site?.code ?? '', {
-                    onEdit: (item) => { setDialog({ kind: 'edit', item }); },
-                    onDeactivate: (item) => { setDialog({ kind: 'deactivate', item }); },
-                    onReactivate: (item) => void reactivate(item),
-                    onUseGeneral: (item) => { setDialog({ kind: 'use-general', item }); },
-                  })}
-                />
-              </>
-            );
-          }}
-        </AsyncView>
+        ) : null}
+        <SelectField label="Estado" hideLabel value={stateFilter} onChange={(e) => { setStateFilter(e.target.value as StateFilter); }}>
+          <option value="all">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
+        </SelectField>
+        <Button variant="elevated" aria-label="Actualizar" title="Actualizar" className="px-3" onClick={() => void reload()}>
+          <RefreshCw aria-hidden className="size-5" />
+        </Button>
       </div>
 
-      {(dialog?.kind === 'new' || dialog?.kind === 'edit') && site && catalog.data ? (
+      <AsyncView
+        source={catalog}
+        loading="skeleton"
+        isEmpty={(data) => data.items[kind].length === 0}
+        empty={
+          <EmptyState
+            icon={BookOpen}
+            title="Aún no hay entradas."
+            description={`Cree la primera de ${label.title.toLocaleLowerCase('es')}.`}
+            action={
+              <Button onClick={() => { setCreating(true); }}>
+                <Plus aria-hidden className="size-5" /> {NEW_LABELS[kind]}
+              </Button>
+            }
+          />
+        }
+      >
+        {(data) => {
+          const rows = visible(data.items[kind]);
+          return (
+            <>
+              <p className="flex items-center gap-space-xs text-body-md text-on-surface-variant">
+                <span aria-hidden className="size-2 rounded-full bg-primary" />
+                Mostrando <strong className="text-on-surface">{rows.length}</strong> de <strong className="text-on-surface">{data.items[kind].length}</strong>{' '}
+                {label.title.toLocaleLowerCase('es')}
+                {priced && site ? ` · precios de ${site.name}` : ''}
+              </p>
+              <DataTable
+                caption={label.title}
+                density="compact"
+                cardsBelow="desk"
+                rows={rows}
+                rowKey={(r) => r.id}
+                rowClassName={(r) => (r.active ? undefined : 'opacity-70')}
+                empty="Ninguna entrada coincide con la búsqueda."
+                columns={columnsFor(kind, site?.code ?? '', data.labProviders ?? [], {
+                  onEdit: (item) => { setDialog({ kind: 'edit', item }); },
+                  onDeactivate: (item) => { setDialog({ kind: 'deactivate', item }); },
+                  onReactivate: (item) => void reactivate(item),
+                  onUseGeneral: (item) => { setDialog({ kind: 'use-general', item }); },
+                })}
+              />
+            </>
+          );
+        }}
+      </AsyncView>
+
+      {form && site && catalog.data ? (
         <CatalogDialog
           kind={kind}
-          item={dialog.kind === 'edit' ? dialog.item : null}
+          item={form.kind === 'edit' ? form.item : null}
           location={{ id: site.id, name: site.name }}
           today={catalog.data.today}
           generalToday={catalog.data.generalToday}
-          onClose={() => { setDialog(null); }}
+          labProviders={catalog.data.labProviders ?? []}
+          onClose={closeForm}
           onConflict={conflict}
           onSaved={() => {
-            setDialog(null);
+            closeForm();
             void reload();
             snackbar({ message: 'Guardado.' });
           }}
@@ -336,7 +426,7 @@ export function AdminCatalogPage({ kind }: { kind: CatalogKind }) {
           }}
         />
       ) : null}
-    </section>
+    </>
   );
 }
 
@@ -425,6 +515,7 @@ function RowActions({
 function columnsFor(
   kind: CatalogKind,
   siteCode: string,
+  labProviders: readonly LabProvider[],
   actions: {
     onEdit: (item: CatalogItem) => void;
     onDeactivate: (item: CatalogItem) => void;
@@ -531,7 +622,23 @@ function columnsFor(
         acts,
       ];
     case 'lab-tests':
-      return [code, name, general, site, state, acts];
+      return [
+        code,
+        {
+          ...name,
+          // «Sin laboratorio asignado» (ADR 0028): no se podría sugerir laboratorio.
+          cell: (r) => (
+            <span className="flex flex-col items-start gap-space-xs">
+              <span className="text-body-lg-medium text-on-surface">{r.name}</span>
+              {hasNoLab(r, labProviders) ? <SemanticChip tone="warning" label="Sin laboratorio asignado" /> : null}
+            </span>
+          ),
+        },
+        general,
+        site,
+        state,
+        acts,
+      ];
     case 'referral-sources':
       return [code, name, order, state, acts];
   }

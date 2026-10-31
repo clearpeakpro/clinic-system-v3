@@ -10,7 +10,9 @@ import { E2E } from './global-setup.ts';
 // programa un cambio del general desde mañana
 // (hoy sigue el anterior), lo desactiva con motivo y lo reactiva. El caso de
 // NOR1/NOR2 y el aislamiento completo están en las pruebas de la API y de la
-// base de datos.
+// base de datos. T-011b: da de alta un laboratorio, lo marca con su costo en
+// la prueba sin laboratorio, programa un cambio de costo y desmarca otro en
+// A1c, y al desactivarlo la prueba vuelve a «Sin laboratorio asignado».
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const axe = async (page: Page) =>
@@ -31,8 +33,8 @@ function tomorrowInChicago(): { iso: string; short: string } {
 
 test.describe.configure({ retries: 0 });
 
-test('el Administrador gestiona el catálogo y los precios por sede', async ({ page }) => {
-  test.setTimeout(120_000);
+test('el Administrador gestiona el catálogo, los precios por sede y los laboratorios', async ({ page }) => {
+  test.setTimeout(180_000);
   await page.goto('/login');
   await page.getByLabel('Correo electrónico').fill('admin.sur@example.test');
   await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
@@ -138,9 +140,83 @@ test('el Administrador gestiona el catálogo y los precios por sede', async ({ p
   await expect(row(page, 'PROC-CURA')).toContainText('Activo');
 
   // Las demás pestañas.
-  await page.getByRole('navigation', { name: 'Catálogos' }).getByRole('link', { name: /Pruebas de laboratorio/ }).click();
-  await expect(row(page, 'LAB-STREP')).toContainText('$25.00');
-  await page.getByRole('navigation', { name: 'Catálogos' }).getByRole('link', { name: /Fuentes de referido/ }).click();
+  const tabs = page.getByRole('navigation', { name: 'Catálogos' });
+  await tabs.getByRole('link', { name: /Fuentes de referido/ }).click();
   await expect(row(page, 'REDES')).toContainText('Redes sociales');
   await expectAccessible(page);
+
+  // T-011b. Pruebas: la de estreptococo no tiene laboratorio; A1c sí.
+  await tabs.getByRole('link', { name: /Pruebas de laboratorio/ }).click();
+  await expect(row(page, 'LAB-STREP')).toContainText('$25.00');
+  await expect(row(page, 'LAB-STREP')).toContainText('Sin laboratorio asignado');
+  await expect(row(page, 'LAB-A1C')).not.toContainText('Sin laboratorio asignado');
+
+  // Proveedores de laboratorio (S-ADM-17): los de la semilla y uno nuevo.
+  await tabs.getByRole('link', { name: /Proveedores de laboratorio/ }).click();
+  await expect(page).toHaveURL(/\/admin\/catalogos\/proveedores-de-laboratorio$/);
+  await expect(page.getByLabel('Sede de los precios')).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: 'LabCorp' })).toContainText('Activo');
+  await expect(page.getByRole('row').filter({ hasText: 'CPL' })).toContainText('3');
+  await page.getByRole('button', { name: 'Nuevo laboratorio' }).click();
+  const newLab = page.getByRole('dialog', { name: 'Nuevo laboratorio' });
+  await newLab.getByRole('button', { name: 'Crear' }).click();
+  await expect(newLab.getByText('Este campo es obligatorio.')).toHaveCount(2);
+  await newLab.getByLabel('Nombre').fill('Laboratorio Ficticio Sur');
+  await newLab.getByLabel('Orden de preferencia').fill('4');
+  await expectAccessible(page);
+  await newLab.getByRole('button', { name: 'Crear' }).click();
+  await expect(page.getByText('Guardado.').first()).toBeVisible();
+  const ficticio = page.getByRole('row').filter({ hasText: 'Laboratorio Ficticio Sur' });
+  await expect(ficticio).toContainText('Activo');
+  await expectAccessible(page);
+  await page.locator('main').screenshot({ path: 'test-results/catalogo-laboratorios.png' });
+
+  // «Laboratorios que la realizan» (S-ADM-16): se marca con su costo en la prueba sin laboratorio.
+  await tabs.getByRole('link', { name: /Pruebas de laboratorio/ }).click();
+  await row(page, 'LAB-STREP').getByRole('button', { name: 'Editar Prueba rápida de estreptococo' }).click();
+  const strep = page.getByRole('dialog', { name: 'Editar prueba de laboratorio' });
+  const labsSection = strep.getByRole('group', { name: 'Laboratorios que la realizan' });
+  await labsSection.getByRole('checkbox', { name: 'Laboratorio Ficticio Sur' }).click();
+  await strep.getByRole('button', { name: 'Guardar' }).click();
+  await expect(labsSection.getByText('Este campo es obligatorio.')).toBeVisible();
+  await labsSection.getByLabel('Costo para la clínica en Laboratorio Ficticio Sur').fill('7.50');
+  await expectAccessible(page);
+  await strep.getByRole('button', { name: 'Guardar' }).click();
+  await expect(strep).toHaveCount(0);
+  await expect(row(page, 'LAB-STREP')).not.toContainText('Sin laboratorio asignado');
+
+  // A1c: CPL cambia de costo desde mañana (hoy sigue el anterior) y Quest deja de hacerla desde hoy.
+  await row(page, 'LAB-A1C').getByRole('button', { name: 'Editar Hemoglobina A1c' }).click();
+  const a1c = page.getByRole('dialog', { name: 'Editar prueba de laboratorio' });
+  const a1cLabs = a1c.getByRole('group', { name: 'Laboratorios que la realizan' });
+  await expect(a1cLabs.getByRole('checkbox', { name: 'CPL' })).toBeChecked();
+  await expect(a1cLabs.getByLabel('Costo para la clínica en CPL')).toHaveValue('10.00');
+  await a1cLabs.getByLabel('Costo para la clínica en CPL').fill('9');
+  await a1cLabs.getByLabel('Vigente desde (CPL)').fill(tomorrow.iso);
+  await a1cLabs.getByRole('checkbox', { name: 'Quest Diagnostics' }).click();
+  await expect(a1cLabs.getByLabel('No la realiza desde (Quest Diagnostics)')).toBeVisible();
+  await a1c.getByRole('button', { name: 'Guardar' }).click();
+  await expect(a1c).toHaveCount(0);
+  await row(page, 'LAB-A1C').getByRole('button', { name: 'Editar Hemoglobina A1c' }).click();
+  const again = page.getByRole('dialog', { name: 'Editar prueba de laboratorio' });
+  const againLabs = again.getByRole('group', { name: 'Laboratorios que la realizan' });
+  await expect(againLabs).toContainText('Hoy cuesta 10.00 USD');
+  await expect(againLabs).toContainText(`Desde ${tomorrow.short}: $9.00`);
+  await expect(againLabs.getByRole('checkbox', { name: 'Quest Diagnostics' })).not.toBeChecked();
+  await expectAccessible(page);
+  await againLabs.scrollIntoViewIfNeeded();
+  await againLabs.screenshot({ path: 'test-results/catalogo-laboratorios-de-la-prueba.png' });
+  await again.getByRole('button', { name: 'Cancelar' }).click();
+
+  // Al desactivar el laboratorio, la prueba vuelve a quedar sin laboratorio.
+  await tabs.getByRole('link', { name: /Proveedores de laboratorio/ }).click();
+  await ficticio.getByRole('button', { name: 'Desactivar Laboratorio Ficticio Sur' }).click();
+  const deactivate = page.getByRole('dialog', { name: '¿Desactivar Laboratorio Ficticio Sur?' });
+  await deactivate.getByLabel('Motivo').fill('Prueba ficticia');
+  await deactivate.getByRole('button', { name: 'Desactivar' }).click();
+  await expect(ficticio).toContainText('Inactivo');
+  await tabs.getByRole('link', { name: /Pruebas de laboratorio/ }).click();
+  await expect(row(page, 'LAB-STREP')).toContainText('Sin laboratorio asignado');
+  await expectAccessible(page);
+  await page.locator('main').screenshot({ path: 'test-results/catalogo-pruebas.png' });
 });

@@ -1,12 +1,13 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, date, foreignKey, index, integer, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, date, foreignKey, index, integer, text, timestamp, unique, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 import { appSchema, locations, organizations } from './schema.ts';
 
-// Catálogo mínimo y precios por sede (T-011; S-ADM-13 a 20). Se desactiva,
-// nunca se borra; los precios no se modifican: cada cambio es una fila nueva
-// con su fecha de vigencia. RLS, FORCE y GRANT en
-// migrations/0018_catalog_rls.sql. Los valores permitidos (rutas, tipos,
+// Catálogo mínimo y precios por sede (T-011; S-ADM-13 a 20), laboratorios y
+// sus costos por prueba (T-011b; S-ADM-16 y 17). Se desactiva, nunca se
+// borra; precios y costos no se modifican: cada cambio es una fila nueva con
+// su fecha de vigencia. RLS, FORCE y GRANT en migrations/0018_catalog_rls.sql
+// y 0021_lab_providers_rls.sql. Los valores permitidos (rutas, tipos,
 // colores) son los de @clinic/shared (catalog.ts); una prueba los compara.
 
 /** Código de un ítem: empieza por letra; A–Z, dígitos, `_` y `-`; de 2 a 41 caracteres. */
@@ -137,5 +138,70 @@ export const prices = appSchema.table(
     foreignKey({ name: 'prices_lab_test_fk', columns: [t.organizationId, t.labTestId], foreignColumns: [labTests.organizationId, labTests.id] }),
     index('prices_procedure_idx').on(t.organizationId, t.locationId, t.procedureId, t.effectiveFrom),
     index('prices_lab_test_idx').on(t.organizationId, t.locationId, t.labTestId, t.effectiveFrom),
+  ],
+);
+
+/**
+ * Laboratorio externo con el que trabaja la organización (T-011b, ADR 0028;
+ * S-ADM-17). Se desactiva, nunca se borra. `preference`: 1 es el más
+ * preferido; desempata la sugerencia de laboratorio cuando el costo empata.
+ */
+export const labProviders = appSchema.table(
+  'lab_providers',
+  {
+    id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    name: text('name').notNull(),
+    preference: integer('preference').notNull(),
+    active: boolean('active').notNull().default(true),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  (t) => [
+    unique('lab_providers_organization_id_id_key').on(t.organizationId, t.id),
+    // El nombre es único en la organización, sin distinguir mayúsculas.
+    uniqueIndex('lab_providers_organization_id_name_key').on(t.organizationId, sql`lower(${t.name})`),
+    check('lab_providers_name_length', sql`char_length(${t.name}) between 1 and 120`),
+    check('lab_providers_preference_range', sql`${t.preference} between 1 and 1000`),
+  ],
+);
+
+/**
+ * Costo para la clínica de una prueba en un laboratorio, desde una fecha
+ * (ADR 0028). No es el precio que paga el paciente (`prices`). Una fila sin
+ * importe es «No la realiza desde {fecha}»: desmarcar el laboratorio en la
+ * prueba conserva su historial. Nunca se modifica ni se borra: un cambio es
+ * una fila nueva.
+ *
+ * Un laboratorio hace una prueba un día si su última fila vigente ese día
+ * (la de fecha más reciente que no sea posterior; con la misma fecha, la
+ * última creada) tiene importe.
+ */
+export const labTestCosts = appSchema.table(
+  'lab_test_costs',
+  {
+    id: uuid('id').primaryKey().$defaultFn(() => uuidv7()),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    labTestId: uuid('lab_test_id').notNull(),
+    labProviderId: uuid('lab_provider_id').notNull(),
+    /** Centavos de USD (regla 4). Nulo: «No la realiza desde». */
+    amountCents: integer('amount_cents'),
+    effectiveFrom: date('effective_from').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+  },
+  (t) => [
+    unique('lab_test_costs_organization_id_id_key').on(t.organizationId, t.id),
+    check('lab_test_costs_amount_check', sql`${t.amountCents} >= 0`),
+    foreignKey({ name: 'lab_test_costs_lab_test_fk', columns: [t.organizationId, t.labTestId], foreignColumns: [labTests.organizationId, labTests.id] }),
+    foreignKey({
+      name: 'lab_test_costs_lab_provider_fk',
+      columns: [t.organizationId, t.labProviderId],
+      foreignColumns: [labProviders.organizationId, labProviders.id],
+    }),
+    index('lab_test_costs_lab_test_idx').on(t.organizationId, t.labTestId, t.labProviderId, t.effectiveFrom),
   ],
 );

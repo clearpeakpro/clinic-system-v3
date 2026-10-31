@@ -1,12 +1,16 @@
-import { appointmentTypes, labTests, locations, procedures, referralSources, prices, type TenantDb, type Tx } from '@clinic/db';
+import { appointmentTypes, labProviders, labTestCosts, labTests, locations, procedures, referralSources, prices, type TenantDb, type Tx } from '@clinic/db';
 import {
   CATALOG_KINDS,
+  compareLabProviders,
   PRICED_KINDS,
   type CatalogItem,
   type CatalogKind,
   type CatalogList,
   type CatalogPrice,
   type GeneralPriceInput,
+  type LabCost,
+  type LabCostChange,
+  type LabTestLab,
   type LocationPriceInput,
   type PriceTimeline,
   type UseGeneralPriceInput,
@@ -28,6 +32,10 @@ import { HttpError, requireContext, type RequestMeta } from './services.ts';
 //  - el precio vigente lo calcula siempre el servidor, para una sede y un día;
 //  - cada cambio se audita en la misma transacción. Los catálogos no son datos
 //    clínicos: en los precios se guardan el importe anterior y el nuevo.
+// T-011b (ADR 0028): en las pruebas, «Laboratorios que la realizan» con el
+// costo para la clínica en cada laboratorio. Como los precios, un costo es
+// una fila nueva con su vigencia; desmarcar es una fila sin importe. Los
+// costos solo salen en la lista de Administración (`withLabCosts`).
 
 const TABLES = {
   'appointment-types': appointmentTypes,
@@ -74,7 +82,7 @@ function toItem(kind: CatalogKind, row: Record<string, unknown>): CatalogItem {
 
 /** Los campos editables que llegan validados (sin código, versión ni precio). */
 function editable(input: Record<string, unknown>): Fields {
-  const excluded = ['code', 'expectedVersion', 'generalPrice', 'locationPrice'];
+  const excluded = ['code', 'expectedVersion', 'generalPrice', 'locationPrice', 'labCosts'];
   return Object.fromEntries(Object.entries(input).filter(([key]) => !excluded.includes(key))) as Fields;
 }
 
@@ -90,8 +98,10 @@ export class CatalogService {
   /**
    * S-ADM-13 a 18: los cuatro catálogos de la organización, con los precios
    * en la sede elegida. `activeOnly`: lo que usa el resto del personal.
+   * `withLabCosts` (solo Administración, catalog.manage): los laboratorios y,
+   * en cada prueba, sus costos (ADR 0028). Nunca para el resto del personal.
    */
-  async list(actor: Principal, locationId: string, options: { activeOnly: boolean }): Promise<CatalogList> {
+  async list(actor: Principal, locationId: string, options: { activeOnly: boolean; withLabCosts: boolean }): Promise<CatalogList> {
     const ctx = requireContext(actor);
     return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       const today = await this.#today(tx, locationId);
@@ -119,8 +129,40 @@ export class CatalogService {
           item.price = { general: g, location: l, effective: l.current && l.current.amountCents !== null ? l.current : g.current };
         }
       }
-      return { locationId, today, generalToday, items };
+      if (!options.withLabCosts) return { locationId, today, generalToday, items };
+      const providers = (await tx.select().from(labProviders)).sort(compareLabProviders);
+      const labs = await this.#labTimelines(tx, today);
+      for (const item of items['lab-tests']) item.labs = labs.get(item.id) ?? [];
+      return {
+        locationId,
+        today,
+        generalToday,
+        items,
+        labProviders: providers.map((p) => ({ id: p.id, name: p.name, preference: p.preference, active: p.active, version: p.version })),
+      };
     });
+  }
+
+  /** Por prueba, los laboratorios con algún costo: el que rige `today` y el próximo programado. */
+  async #labTimelines(tx: Tx, today: string): Promise<Map<string, LabTestLab[]>> {
+    const query = (which: 'current' | 'next') =>
+      tx.execute<{ lab_test_id: string; lab_provider_id: string; amount_cents: number | null; effective_from: string }>(sql`
+        select distinct on (lab_test_id, lab_provider_id) lab_test_id, lab_provider_id, amount_cents, effective_from::text as effective_from
+          from app.lab_test_costs
+         where ${which === 'current' ? sql`effective_from <= ${today}::date` : sql`effective_from > ${today}::date`}
+         order by lab_test_id, lab_provider_id, effective_from ${which === 'current' ? sql`desc` : sql`asc`}, created_at desc, id desc`);
+    const byTest = new Map<string, Map<string, LabTestLab>>();
+    const entry = (testId: string, providerId: string) => {
+      const labs = byTest.get(testId) ?? new Map<string, LabTestLab>();
+      byTest.set(testId, labs);
+      const lab = labs.get(providerId) ?? { labProviderId: providerId, current: null, next: null };
+      labs.set(providerId, lab);
+      return lab;
+    };
+    const cost = (r: { amount_cents: number | null; effective_from: string }): LabCost => ({ amountCents: r.amount_cents, effectiveFrom: r.effective_from });
+    for (const r of (await query('current')).rows) entry(r.lab_test_id, r.lab_provider_id).current = cost(r);
+    for (const r of (await query('next')).rows) entry(r.lab_test_id, r.lab_provider_id).next = cost(r);
+    return new Map([...byTest].map(([testId, labs]) => [testId, [...labs.values()]]));
   }
 
   /** S-ADM-19 «Crear». En procedimientos y pruebas, con el precio general y, si se da, el de una sede. */
@@ -145,6 +187,7 @@ export class CatalogService {
           metadata: { code: input.code as string },
         });
         await this.#setPrices(tx, actor, kind, row.id, input, meta);
+        await this.#setLabCosts(tx, actor, row.id, input, meta);
         return { id: row.id };
       });
     } catch (error) {
@@ -179,7 +222,59 @@ export class CatalogService {
         });
       }
       await this.#setPrices(tx, actor, kind, itemId, input, meta);
+      await this.#setLabCosts(tx, actor, itemId, input, meta);
     });
+  }
+
+  /**
+   * «Laboratorios que la realizan» (ADR 0028), en la misma transacción que la
+   * prueba: marcar un laboratorio activo o cambiar su costo, o desmarcarlo
+   * («No la realiza desde»). Cada cambio es una fila nueva, desde hoy o
+   * después en la sede más adelantada (como el precio general), y se audita
+   * con el costo que regía ese día y el nuevo. Desmarcar exige que el
+   * laboratorio la haya hecho alguna vez.
+   */
+  async #setLabCosts(tx: Tx, actor: Principal, labTestId: string, input: Record<string, unknown>, meta: RequestMeta): Promise<void> {
+    const changes = input.labCosts as LabCostChange[] | undefined;
+    if (!changes || changes.length === 0) return;
+    const ctx = requireContext(actor);
+    const minimum = await this.#generalToday(tx);
+    for (const change of changes) {
+      if (change.effectiveFrom < minimum) throw new HttpError(400, 'effective_from_past');
+      const [provider] = await tx.select({ active: labProviders.active }).from(labProviders).where(eq(labProviders.id, change.labProviderId));
+      if (!provider) throw new HttpError(400, 'invalid_lab_provider');
+      if (change.amountCents !== null && !provider.active) throw new HttpError(400, 'lab_provider_inactive');
+      const history = await tx.execute<{ amount_cents: number | null; effective_from: string }>(sql`
+        select amount_cents, effective_from::text as effective_from from app.lab_test_costs
+         where lab_test_id = ${labTestId} and lab_provider_id = ${change.labProviderId}
+         order by effective_from desc, created_at desc, id desc`);
+      if (change.amountCents === null && !history.rows.some((r) => r.amount_cents !== null)) throw new HttpError(409, 'lab_not_assigned');
+      // El costo que regía ese día antes del cambio (nulo o sin fila: no la hacía).
+      const before = history.rows.find((r) => r.effective_from <= change.effectiveFrom)?.amount_cents ?? null;
+      await tx.insert(labTestCosts).values({
+        organizationId: ctx.organizationId,
+        labTestId,
+        labProviderId: change.labProviderId,
+        amountCents: change.amountCents,
+        effectiveFrom: change.effectiveFrom,
+      });
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: change.amountCents === null ? 'catalog.lab_unassigned' : before === null ? 'catalog.lab_assigned' : 'catalog.lab_cost_set',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: ctx.locationId,
+        entityType: 'lab_test',
+        entityId: labTestId,
+        ...meta,
+        // Datos financieros, no clínicos: costo anterior y nuevo (ADR 0018).
+        metadata: {
+          labProviderId: change.labProviderId,
+          effectiveFrom: change.effectiveFrom,
+          previousCents: before ?? 'none',
+          newCents: change.amountCents ?? 'none',
+        },
+      });
+    }
   }
 
   /** S-ADM-20 «Desactivar» (con motivo) y «Reactivar». */

@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import pg from 'pg';
-import { appointmentTypes, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
+import { appointmentTypes, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
 import { locations, organizations, patients } from './schema.ts';
 import { createTenantDb, type Tx } from './with-tenant.ts';
 
@@ -53,7 +53,13 @@ export const DEMO_CATALOG = {
     { code: 'INJ-B12', name: 'Inyección de vitamina B12', kind: 'injection', sortOrder: 10 },
     { code: 'PROC-LAVOT', name: 'Lavado ótico', kind: 'procedure', sortOrder: 20 },
   ],
-  labTests: [{ code: 'LAB-STREP', name: 'Prueba rápida de estreptococo', sortOrder: 10 }],
+  labTests: [
+    { code: 'LAB-STREP', name: 'Prueba rápida de estreptococo', sortOrder: 10 },
+    // T-011b: las tres del ejemplo de la sugerencia de laboratorio (ADR 0028).
+    { code: 'LAB-A1C', name: 'Hemoglobina A1c', sortOrder: 20 },
+    { code: 'LAB-TSH', name: 'Perfil tiroideo (TSH)', sortOrder: 30 },
+    { code: 'LAB-PSA', name: 'Antígeno prostático (PSA)', sortOrder: 40 },
+  ],
   referralSources: [
     { code: 'RECOMENDACION', name: 'Recomendación de un conocido', sortOrder: 10 },
     { code: 'REDES', name: 'Redes sociales', sortOrder: 20 },
@@ -65,15 +71,79 @@ export const DEMO_CATALOG = {
       'INJ-B12': { general: 2000, NOR2: 2200 },
       'PROC-LAVOT': { general: 3000 },
       'LAB-STREP': { general: 2800, NOR2: 3000 },
+      'LAB-A1C': { general: 3500 },
+      'LAB-TSH': { general: 4500 },
+      'LAB-PSA': { general: 5000 },
     },
     sur: {
       'INJ-B12': { general: 1800 },
       'PROC-LAVOT': { general: 2800 },
       'LAB-STREP': { general: 2500 },
+      'LAB-A1C': { general: 3200 },
+      'LAB-TSH': { general: 4200 },
+      'LAB-PSA': { general: 4800 },
     },
   } as Record<'norte' | 'sur', Record<string, Record<string, number>>>,
   pricesEffectiveFrom: '2026-01-01',
 } as const;
+
+/**
+ * Laboratorios ficticios (T-011b, ADR 0028) y su costo para la clínica, en
+ * centavos, vigente desde el 1 de enero de 2026. Distintos en cada
+ * organización. Con A1c + TSH + PSA gana LabCorp en total aunque CPL sea más
+ * barato en A1c; Quest no hace PSA; la prueba de estreptococo no tiene
+ * laboratorio («Sin laboratorio asignado»).
+ */
+export const DEMO_LABS = {
+  providers: [
+    { name: 'LabCorp', preference: 1 },
+    { name: 'Quest Diagnostics', preference: 2 },
+    { name: 'CPL', preference: 3 },
+  ],
+  /** Por organización, laboratorio y código de prueba. */
+  costs: {
+    norte: {
+      LabCorp: { 'LAB-A1C': 1200, 'LAB-TSH': 1500, 'LAB-PSA': 1800 },
+      CPL: { 'LAB-A1C': 900, 'LAB-TSH': 1900, 'LAB-PSA': 2100 },
+      'Quest Diagnostics': { 'LAB-A1C': 1100, 'LAB-TSH': 1400 },
+    },
+    sur: {
+      LabCorp: { 'LAB-A1C': 1300, 'LAB-TSH': 1600, 'LAB-PSA': 1900 },
+      CPL: { 'LAB-A1C': 1000, 'LAB-TSH': 2000, 'LAB-PSA': 2200 },
+      'Quest Diagnostics': { 'LAB-A1C': 1150, 'LAB-TSH': 1450 },
+    },
+  } as Record<'norte' | 'sur', Record<string, Record<string, number>>>,
+  effectiveFrom: '2026-01-01',
+} as const;
+
+/** Laboratorios y costos de una organización (idempotente: no toca lo que ya existe). */
+async function seedLabs(tx: Tx, organizationId: string, orgCosts: Record<string, Record<string, number>>): Promise<void> {
+  await tx
+    .insert(labProviders)
+    .values(DEMO_LABS.providers.map((p) => ({ ...p, organizationId })))
+    .onConflictDoNothing();
+  const providers = await tx.select({ id: labProviders.id, name: labProviders.name }).from(labProviders);
+  const tests = await tx.select({ id: labTests.id, code: labTests.code }).from(labTests);
+  for (const provider of providers) {
+    for (const test of tests) {
+      const amountCents = orgCosts[provider.name]?.[test.code];
+      if (amountCents === undefined) continue;
+      const existing = await tx
+        .select({ id: labTestCosts.id })
+        .from(labTestCosts)
+        .where(and(eq(labTestCosts.labProviderId, provider.id), eq(labTestCosts.labTestId, test.id)))
+        .limit(1);
+      if (existing.length > 0) continue;
+      await tx.insert(labTestCosts).values({
+        organizationId,
+        labTestId: test.id,
+        labProviderId: provider.id,
+        amountCents,
+        effectiveFrom: DEMO_LABS.effectiveFrom,
+      });
+    }
+  }
+}
 
 /** Catálogo y precios de una organización (idempotente: no toca lo que ya existe). */
 async function seedCatalog(
@@ -122,7 +192,7 @@ async function seedCatalog(
  */
 export async function seed(
   migratorUrl: string,
-  /** `catalog: false`: sin catálogo, para una base con migraciones anteriores a T-011. */
+  /** `catalog: false`: sin catálogo ni laboratorios, para una base con migraciones anteriores a T-011. */
   options: { catalog?: boolean } = {},
 ): Promise<void> {
   const client = new pg.Client({ connectionString: migratorUrl });
@@ -159,7 +229,9 @@ export async function seed(
           )
           .onConflictDoNothing();
         if (options.catalog !== false) {
-          await seedCatalog(tx, org.id, org.locations, DEMO_CATALOG.prices[org.id === DEMO.norte.id ? 'norte' : 'sur']);
+          const key = org.id === DEMO.norte.id ? 'norte' : 'sur';
+          await seedCatalog(tx, org.id, org.locations, DEMO_CATALOG.prices[key]);
+          await seedLabs(tx, org.id, DEMO_LABS.costs[key]);
         }
       });
     }

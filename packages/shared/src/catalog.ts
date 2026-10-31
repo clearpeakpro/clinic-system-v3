@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { labCostChangesSchema, type LabProvider, type LabTestLab } from './labs.ts';
 import { reasonSchema } from './schemas.ts';
 import { VISIT_ROUTES } from './visit.ts';
 
@@ -89,19 +90,26 @@ const FIELDS = {
   'referral-sources': { name, sortOrder },
 } as const;
 
+/** Pruebas de laboratorio: los cambios de «Laboratorios que la realizan» (T-011b), solo los que cambian. */
+const labCosts = labCostChangesSchema.optional();
+
 /**
  * «Crear»: el código solo se escribe aquí. En los catálogos con precio, el
  * precio general es obligatorio y el de la sede elegida, opcional.
  */
 export function createCatalogItemSchema(kind: CatalogKind) {
   const base = z.object({ code: z.string().regex(CATALOG_CODE_REGEX), ...FIELDS[kind] });
-  return PRICED_KINDS.includes(kind) ? base.extend({ generalPrice: generalPriceSchema, locationPrice: locationPriceSchema.optional() }) : base;
+  if (!PRICED_KINDS.includes(kind)) return base;
+  const priced = base.extend({ generalPrice: generalPriceSchema, locationPrice: locationPriceSchema.optional() });
+  return kind === 'lab-tests' ? priced.extend({ labCosts }) : priced;
 }
 
 /** «Guardar»: sin código; cada precio, solo si cambia (crea una fila nueva). */
 export function updateCatalogItemSchema(kind: CatalogKind) {
   const base = z.object({ ...FIELDS[kind], expectedVersion });
-  return PRICED_KINDS.includes(kind) ? base.extend({ generalPrice: generalPriceSchema.optional(), locationPrice: locationPriceSchema.optional() }) : base;
+  if (!PRICED_KINDS.includes(kind)) return base;
+  const priced = base.extend({ generalPrice: generalPriceSchema.optional(), locationPrice: locationPriceSchema.optional() });
+  return kind === 'lab-tests' ? priced.extend({ labCosts }) : priced;
 }
 
 export const deactivateCatalogItemSchema = z.object({ reason: reasonSchema, expectedVersion });
@@ -141,6 +149,12 @@ export interface CatalogItem {
    * que rige hoy (el propio si hay; si no, el general).
    */
   price?: { general: PriceTimeline; location: PriceTimeline; effective: CatalogPrice | null };
+  /**
+   * Pruebas, solo en Administración (`catalog.manage`, ADR 0028): los
+   * laboratorios con algún costo registrado, con el que rige hoy y el
+   * próximo. Nunca llega al resto del personal.
+   */
+  labs?: LabTestLab[];
 }
 
 export interface CatalogList {
@@ -150,4 +164,6 @@ export interface CatalogList {
   /** El día más adelantado entre las sedes activas: la vigencia mínima de un precio general. */
   generalToday: string;
   items: Record<CatalogKind, CatalogItem[]>;
+  /** Solo en Administración (`catalog.manage`): los laboratorios de la organización (T-011b). */
+  labProviders?: LabProvider[];
 }
