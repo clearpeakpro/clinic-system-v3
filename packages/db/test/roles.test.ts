@@ -31,6 +31,8 @@ const TABLES = [
   'lab_test_costs',
   // T-012
   'code_counters',
+  // T-014
+  'appointments',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {
