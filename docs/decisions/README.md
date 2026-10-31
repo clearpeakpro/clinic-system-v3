@@ -12,7 +12,7 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0006. Alergias y antecedentes a nivel del paciente](0006-alergias-por-paciente.md) | Aceptada |
 | [0007. Búsqueda parcial y sin tildes](0007-busqueda-pacientes.md) | Aceptada |
 | [0008. Historial de notificaciones](0008-historial-notificaciones.md) | Aceptada |
-| [0009. Editar fecha de nacimiento e inactivar pacientes](0009-editar-nacimiento-inactivar.md) | Aceptada |
+| [0009. Editar fecha de nacimiento e inactivar pacientes](0009-editar-nacimiento-inactivar.md) | Aceptada (revisada 2026-10-31: Propietario o Administrador con rol clínico) |
 | [0010. Reportes por rango para Recepción](0010-recepcion-reportes-rango.md) | Aprobada en principio — falta detalle |
 | [0011. Roles nuevos de v3](0011-roles-v3.md) | Aprobada en principio — falta detalle |
 | [0012. Accesos que faltaban en el prototipo](0012-accesos-faltantes.md) | Aceptada |
