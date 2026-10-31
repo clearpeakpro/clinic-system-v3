@@ -167,6 +167,9 @@ test('el Proveedor solo edita el teléfono; Enfermería no ve «Editar»', async
 
 test('el Propietario con Recepción cambia la fecha de nacimiento con motivo, inactiva y reactiva', async ({ page }) => {
   test.setTimeout(150_000);
+  // La organización Este solo existe en la base desechable de esta ejecución
+  // (Testcontainers, ver e2e/README.md): sin su URL no se crea en otra base.
+  if (!process.env.E2E_OPERATOR_URL) throw new Error('Falta E2E_OPERATOR_URL (lo fija global-setup.ts)');
   const created = await run(
     'pnpm',
     [
