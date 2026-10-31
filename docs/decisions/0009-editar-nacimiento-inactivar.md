@@ -36,4 +36,4 @@ Solo el Administrador, con motivo auditado.
   - se auditan `patient.deactivated` y `patient.reactivated`, con el motivo;
   - repetir el mismo estado da `409 patient_already_inactive` o `patient_already_active`.
 - **Búsqueda:** `includeInactive` en `POST /api/patients/search`; por código no se filtra.
-- **Pruebas:** `apps/api/test/patients-edit.test.ts` (Administrador sin rol clínico: 403; Administrador y Propietario con Recepción: sí) y `apps/web/e2e/patient-profile.spec.ts` (el Propietario de Sur se asigna Recepción, cambia la fecha, inactiva y reactiva).
+- **Pruebas:** `apps/api/test/patients-edit.test.ts` (Administrador sin rol clínico: 403; Administrador y Propietario con Recepción: sí) y `apps/web/e2e/patient-profile.spec.ts` (el Propietario de una organización nueva, creada con `pnpm org:create`, se asigna Recepción, cambia la fecha, inactiva y reactiva).

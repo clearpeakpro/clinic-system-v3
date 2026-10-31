@@ -1,5 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { execFile } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { generate } from 'otplib';
 import { E2E } from './global-setup.ts';
 
@@ -8,9 +11,16 @@ import { E2E } from './global-setup.ts';
 // ventanas: edita el teléfono en una y la otra recibe «Actualizado por otro
 // usuario» al guardar; no puede cambiar la fecha de nacimiento; el teléfono de
 // otro paciente da el aviso con «Guardar de todos modos» y «Volver y
-// corregir». El Propietario de Sur se asigna Recepción en SUR1 (ADR 0027),
-// cambia la fecha de nacimiento con motivo, inactiva al paciente (ya no sale
-// en la búsqueda salvo con «Incluir inactivos») y lo reactiva (ADR 0009).
+// corregir». El Propietario de una organización nueva (creada con `pnpm
+// org:create`, como en locations.spec, para no tocar los usuarios de las
+// demás pruebas) se asigna Recepción (ADR 0027), da de alta a un paciente,
+// cambia su fecha de nacimiento con motivo, lo inactiva (ya no sale en la
+// búsqueda salvo con «Incluir inactivos») y lo reactiva (ADR 0009).
+
+const run = promisify(execFile);
+const apiDir = fileURLToPath(new URL('../../api/', import.meta.url));
+/** Con shell (Windows), los argumentos con espacios van entre comillas. */
+const arg = (value: string) => (process.platform === 'win32' ? `"${value}"` : value);
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const axe = async (page: Page) =>
@@ -156,23 +166,53 @@ test('el Proveedor solo edita el teléfono; Enfermería no ve «Editar»', async
 });
 
 test('el Propietario con Recepción cambia la fecha de nacimiento con motivo, inactiva y reactiva', async ({ page }) => {
-  test.setTimeout(120_000);
-  await signIn(page, 'propietario.sur@example.test');
+  test.setTimeout(150_000);
+  const created = await run(
+    'pnpm',
+    [
+      'exec', 'tsx', 'scripts/org-create.ts',
+      '--organizacion', arg('Clínica Demo Este (ficticia)'),
+      '--propietario-correo', 'propietario.este@example.test',
+      '--propietario-nombre', arg('Propietario Este (ficticio)'),
+      '--sede-codigo', 'EST1',
+      '--sede-nombre', arg('Este Centro'),
+      '--zona-horaria', 'America/Chicago',
+    ],
+    {
+      cwd: apiDir,
+      shell: process.platform === 'win32',
+      env: { ...process.env, DATABASE_OPERATOR_URL: process.env.E2E_OPERATOR_URL, BASE_URL: process.env.E2E_BASE_URL, OUTBOX_KEY: process.env.E2E_OUTBOX_KEY },
+    },
+  );
+  const link = /https?:\/\/\S+\/invitacion\/\S+/.exec(created.stdout)?.[0];
+  if (!link) throw new Error('org:create no mostró el enlace');
+  await page.goto(new URL(link).pathname);
+  await page.getByLabel('Nombre para mostrar').fill('Propietario Este (ficticio)');
+  await page.getByLabel('Contraseña', { exact: true }).fill('una frase larga del propietario');
+  await page.getByLabel('Confirmar contraseña').fill('una frase larga del propietario');
+  await page.getByRole('button', { name: 'Aceptar invitación' }).click();
   await enrollMfa(page);
-  await expect(page).toHaveURL(/\/seleccionar-sede$/);
-  await page.getByRole('button', { name: /SUR1/ }).click();
   await expect(page).toHaveURL(/\/admin\/usuarios$/);
 
-  // Sin rol clínico no llega a Pacientes; se asigna Recepción en SUR1 (ADR 0027).
-  await page.getByRole('row').filter({ hasText: 'propietario.sur@example.test' }).getByRole('button', { name: /Más acciones/ }).click();
+  // Sin rol clínico no llega a Pacientes; se asigna Recepción en EST1 (ADR 0027).
+  await page.getByRole('row').filter({ hasText: 'propietario.este@example.test' }).getByRole('button', { name: /Más acciones/ }).click();
   await page.getByRole('menuitem', { name: 'Mis roles clínicos' }).click();
   const roles = page.getByRole('dialog', { name: 'Mis roles clínicos' });
-  await roles.getByRole('checkbox', { name: 'Recepción en SUR1' }).click();
+  await roles.getByRole('checkbox', { name: 'Recepción en EST1' }).click();
   await roles.getByLabel('Motivo del cambio').fill('Cubre la recepción esta semana');
   await roles.getByRole('button', { name: 'Guardar' }).click();
   await expect(roles).toHaveCount(0);
 
-  await openProfile(page, 'SUR1', 'ramon acosta', 'Ramón Acosta Lara');
+  // Da de alta a un paciente ficticio y llega a su perfil.
+  await page.goto('/app/EST1/pacientes');
+  await page.getByRole('button', { name: 'Crear paciente' }).first().click();
+  const newPatient = page.getByRole('dialog', { name: 'Nuevo paciente' });
+  await newPatient.getByLabel('Nombre', { exact: true }).fill('Rocío');
+  await newPatient.getByLabel('Apellido').fill('Prueba Oriente');
+  await newPatient.getByLabel('Fecha de nacimiento').fill('1968-02-02');
+  await newPatient.getByRole('button', { name: 'Crear' }).click();
+  await expect(page.getByRole('heading', { name: 'Rocío Prueba Oriente', level: 1 })).toBeVisible();
+
   await page.getByRole('button', { name: 'Editar' }).click();
   const dialog = editDialog(page);
   await dialog.getByLabel('Fecha de nacimiento').fill('1968-02-03');
@@ -200,17 +240,17 @@ test('el Propietario con Recepción cambia la fecha de nacimiento con motivo, in
   // No sale en la búsqueda por defecto; sí con «Incluir inactivos».
   await page.getByRole('link', { name: 'Volver a Pacientes' }).click();
   const field = page.getByRole('textbox', { name: 'Buscar paciente' });
-  await field.fill('ramon acosta');
+  await field.fill('rocio oriente');
   await field.press('Enter');
   await expect(page.getByText('No se encontraron pacientes')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Incluir inactivos' }).click();
   await page.getByRole('search', { name: 'Búsqueda de expedientes clínicos' }).getByRole('button', { name: 'Buscar', exact: true }).click();
   const results = page.getByRole('table', { name: 'Resultados de la búsqueda de pacientes' });
-  await expect(results).toContainText('Ramón Acosta Lara');
+  await expect(results).toContainText('Rocío Prueba Oriente');
   await expect(results).toContainText('Inactivo');
 
   // Reactivar lo devuelve.
-  await page.getByRole('button', { name: 'Ver perfil de Ramón Acosta Lara' }).click();
+  await page.getByRole('button', { name: 'Ver perfil de Rocío Prueba Oriente' }).click();
   await page.getByRole('button', { name: 'Editar' }).click();
   await editDialog(page).getByRole('button', { name: 'Reactivar paciente' }).click();
   const reactivate = page.getByRole('dialog', { name: 'Reactivar paciente' });
