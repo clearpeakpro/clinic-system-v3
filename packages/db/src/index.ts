@@ -5,6 +5,7 @@ export * from './ops-schema.ts';
 export * from './notifications-schema.ts';
 export * from './catalog-schema.ts';
 export * from './patients-schema.ts';
+export * from './appointments-schema.ts';
 export { createTenantDb, type Db, type TenantDb, type Tx } from './with-tenant.ts';
 export { bootstrap, type BootstrapOptions } from './bootstrap.ts';
 export { migrate } from './migrate.ts';
@@ -22,5 +23,5 @@ export {
 } from './outbox.ts';
 export { notifyRealtime, parseRealtimeMessage, REALTIME_CHANNEL, type RealtimeMessage } from './realtime.ts';
 export { DEMO, DEMO_LABS, seed, type DemoPatient } from './seed.ts';
-export { nextCode, type CodeKind } from './codes.ts';
+export { nextAppointmentCode, nextCode, type CodeKind } from './codes.ts';
 export { createLocalFieldCipher, type FieldCipher, type FieldContext } from './field-cipher.ts';

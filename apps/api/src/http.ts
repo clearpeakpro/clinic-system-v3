@@ -55,6 +55,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { AppointmentService } from './appointments.ts';
 import { AuditService } from './audit.ts';
 import { CatalogService } from './catalog.ts';
 import type { Principal } from './principal.ts';
@@ -632,6 +633,54 @@ export class PatientsController {
 }
 
 /**
+ * Citas (T-014; S-REC-06 a 09): solo lectura. La agenda y el detalle son de
+ * la sede activa y exigen appointments.access (Recepción o Proveedor, ADR
+ * 0027). El total de hoy del Panel no lleva PHI: lo ve quien ve el Panel.
+ */
+@Controller('appointments')
+export class AppointmentsController {
+  readonly #appointments: AppointmentService;
+  constructor(@Inject(AppointmentService) appointments: AppointmentService) {
+    this.#appointments = appointments;
+  }
+
+  @Get()
+  @RequirePermission('appointments.access')
+  day(@Req() request: FastifyRequest, @Query('date') date: unknown) {
+    return this.#appointments.day(principalOf(request), typeof date === 'string' ? date : undefined, metaOf(request));
+  }
+
+  @Get('today-count')
+  @RequirePermission('panel.view')
+  todayCount(@Req() request: FastifyRequest) {
+    return this.#appointments.todayCount(principalOf(request));
+  }
+
+  @Get(':id')
+  @RequirePermission('appointments.access')
+  get(@Req() request: FastifyRequest, @Param('id') appointmentId: string) {
+    return this.#appointments.get(principalOf(request), id(appointmentId), metaOf(request));
+  }
+}
+
+const offsetSchema = z.coerce.number().int().min(0).max(100_000);
+
+/** S-PAC-07 Pestaña Citas del perfil (T-014): appointments.access, en las sedes donde quien llama lo tiene. */
+@Controller('patients')
+export class PatientAppointmentsController {
+  readonly #appointments: AppointmentService;
+  constructor(@Inject(AppointmentService) appointments: AppointmentService) {
+    this.#appointments = appointments;
+  }
+
+  @Get(':id/appointments')
+  @RequirePermission('appointments.access')
+  list(@Req() request: FastifyRequest, @Param('id') patientId: string, @Query('offset') offset: unknown) {
+    return this.#appointments.forPatient(principalOf(request), id(patientId), parse(offsetSchema, offset ?? '0'), metaOf(request));
+  }
+}
+
+/**
  * Lo activo del catálogo, con los precios de la sede activa: lo usan las
  * citas y las órdenes. Nunca lleva laboratorios ni costos (ADR 0028).
  */
@@ -660,6 +709,7 @@ export interface ApiProviders {
   catalog: CatalogService;
   labProviders: LabProviderService;
   patients: PatientService;
+  appointments: AppointmentService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -679,6 +729,8 @@ export function createApiModule(providers: ApiProviders) {
       AdminLabProvidersController,
       CatalogController,
       PatientsController,
+      AppointmentsController,
+      PatientAppointmentsController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -690,6 +742,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: CatalogService, useValue: providers.catalog },
       { provide: LabProviderService, useValue: providers.labProviders },
       { provide: PatientService, useValue: providers.patients },
+      { provide: AppointmentService, useValue: providers.appointments },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

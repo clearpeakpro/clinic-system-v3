@@ -1,8 +1,18 @@
-import { VISIT_ROUTE_LABELS, VISIT_STATUS_LABELS, type VisitRoute, type VisitStatus } from '@clinic/shared';
+import {
+  APPOINTMENT_STATUS_LABELS,
+  VISIT_ROUTE_LABELS,
+  VISIT_STATUS_LABELS,
+  type AppointmentStatus,
+  type VisitRoute,
+  type VisitStatus,
+} from '@clinic/shared';
 import {
   Ban,
   BriefcaseMedical,
   Calculator,
+  CalendarCheck,
+  CalendarClock,
+  CalendarX,
   Circle,
   CircleCheck,
   CircleCheckBig,
@@ -19,6 +29,7 @@ import {
   TriangleAlert,
   UserCheck,
   UserSearch,
+  UserX,
 } from 'lucide-react';
 import { cn } from '../cn.ts';
 
@@ -51,6 +62,19 @@ export const VISIT_STATUS_STYLE: Record<VisitStatus, { tone: StatusTone; icon: L
   COMPLETED: { tone: 'completed', icon: CircleCheckBig },
   LEFT_EARLY: { tone: 'departed', icon: LogOut },
   CANCELLED: { tone: 'departed', icon: Ban },
+};
+
+/**
+ * Tono e icono de cada estado de la cita (T-014, decidido con el dueño del
+ * producto): Programada gris, Confirmada azul, Llegó verde, Cancelada gris y
+ * No se presentó ámbar, cada uno con su icono para no depender del color.
+ */
+export const APPOINTMENT_STATUS_STYLE: Record<AppointmentStatus, { tone: StatusTone; icon: LucideIcon }> = {
+  SCHEDULED: { tone: 'registered', icon: CalendarClock },
+  CONFIRMED: { tone: 'in-care', icon: CalendarCheck },
+  ARRIVED: { tone: 'completed', icon: UserCheck },
+  CANCELLED: { tone: 'departed', icon: CalendarX },
+  NO_SHOW: { tone: 'waiting', icon: UserX },
 };
 
 export const VISIT_ROUTE_ICONS: Record<VisitRoute, LucideIcon> = {
@@ -93,6 +117,11 @@ export function SemanticChip({ tone, label, className }: { tone: keyof typeof SE
 export function VisitStatusChip({ status, className }: { status: VisitStatus; className?: string }) {
   const style = VISIT_STATUS_STYLE[status];
   return <StatusChip tone={style.tone} icon={style.icon} label={VISIT_STATUS_LABELS[status]} {...(className ? { className } : {})} />;
+}
+
+export function AppointmentStatusChip({ status, className }: { status: AppointmentStatus; className?: string }) {
+  const style = APPOINTMENT_STATUS_STYLE[status];
+  return <StatusChip tone={style.tone} icon={style.icon} label={APPOINTMENT_STATUS_LABELS[status]} {...(className ? { className } : {})} />;
 }
 
 /** Insignia de ruta: neutra con borde (manual, S-REC-01) e icono de la hoja. */

@@ -27,6 +27,7 @@ export function DataTable<T>({
   density = 'default',
   cardsBelow = 'tab',
   empty = 'Sin filas',
+  onRowClick,
 }: {
   /** Nombre de la tabla para lectores de pantalla. */
   caption: string;
@@ -40,6 +41,11 @@ export function DataTable<T>({
   /** Hasta qué ancho se muestran tarjetas: `desk` para tablas anchas (la tableta vertical también ve tarjetas). */
   cardsBelow?: 'tab' | 'desk';
   empty?: string;
+  /**
+   * Toda la fila (o tarjeta) se toca con el ratón o el dedo. Para el teclado,
+   * alguna celda debe llevar además un botón o enlace con la misma acción.
+   */
+  onRowClick?: (row: T) => void;
 }) {
   if (rows.length === 0) {
     return <p className="rounded-lg bg-surface-container-low p-space-lg text-center text-body-md text-on-surface-variant dark:bg-surface-container">{empty}</p>;
@@ -78,7 +84,12 @@ export function DataTable<T>({
             {rows.map((row) => (
               <tr
                 key={rowKey(row)}
-                className={cn('border-t border-surface-container hover:bg-surface dark:border-surface-container-high dark:hover:bg-surface-container', rowClassName?.(row))}
+                {...(onRowClick ? { onClick: () => { onRowClick(row); } } : {})}
+                className={cn(
+                  'border-t border-surface-container hover:bg-surface dark:border-surface-container-high dark:hover:bg-surface-container',
+                  onRowClick && 'cursor-pointer',
+                  rowClassName?.(row),
+                )}
               >
                 {columns.map((c) => (
                   <td
@@ -102,7 +113,12 @@ export function DataTable<T>({
         {rows.map((row) => (
           <li
             key={rowKey(row)}
-            className={cn('flex flex-col gap-space-xs rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low', rowClassName?.(row))}
+            {...(onRowClick ? { onClick: () => { onRowClick(row); } } : {})}
+            className={cn(
+              'flex flex-col gap-space-xs rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low',
+              onRowClick && 'cursor-pointer',
+              rowClassName?.(row),
+            )}
           >
             {primary ? <div className="text-body-lg-medium text-on-surface">{primary.cell(row)}</div> : null}
             <dl className="grid grid-cols-[auto_1fr] items-center gap-x-space-md gap-y-space-xs">

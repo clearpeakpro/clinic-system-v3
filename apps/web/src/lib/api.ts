@@ -1,4 +1,7 @@
 import type {
+  AgendaDay,
+  AppointmentDetail,
+  PatientAppointments,
   CatalogKind,
   CatalogList,
   CreateLabProviderInput,
@@ -276,6 +279,12 @@ export const api = {
     request<null>('POST', `/api/patients/${id}/reactivate`, { reason, expectedVersion }),
   openExistingPatient: (id: string) => request<null>('POST', `/api/patients/${id}/open-existing`, {}),
   phoneSharedBack: (input: PhoneSharedBackInput) => request<null>('POST', '/api/patients/phone-shared/back', input),
+  // Citas (S-REC-06 a 09 y S-PAC-07, T-014): sin fecha, hoy en la sede activa.
+  agenda: (date?: string) => request<AgendaDay>('GET', `/api/appointments${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+  appointment: (id: string) => request<AppointmentDetail>('GET', `/api/appointments/${id}`),
+  todayAppointmentCount: () => request<{ count: number; today: string }>('GET', '/api/appointments/today-count'),
+  patientAppointments: (patientId: string, offset: number) =>
+    request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),
   // Excepción del ADR 0027: el Propietario se asigna roles clínicos.
   changeOwnClinicalRoles: (input: OwnClinicalRolesInput) => request<null>('POST', '/api/memberships/self/clinical-roles', input),
 

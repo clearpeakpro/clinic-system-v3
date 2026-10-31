@@ -36,7 +36,7 @@ TypeScript en todo. pnpm + Turborepo.
 - `pnpm --filter @clinic/web test:a11y` — axe sobre `/dev/ui` (hoja de componentes, solo en desarrollo: http://localhost:5173/dev/ui)
 - `pnpm db:bootstrap` (superusuario) / `pnpm db:migrate` / `pnpm db:seed` (aplica antes las migraciones pendientes; clínicas ficticias y sus Propietarios)
 - `pnpm org:create` / `pnpm audit:platform` — operador de la plataforma, como `clinic_operator` (ADR 0024)
-- `pnpm demo:reset` — borra la base de datos LOCAL y la deja como recién instalada: las dos clínicas ficticias y sus 11 usuarios, sin MFA (pide escribir `BORRAR`; con `pnpm dev` detenido). Guion: `docs/DEMO-FASE-1.md`
+- `pnpm demo:reset` — borra la base de datos LOCAL y la deja como recién instalada: las dos clínicas ficticias, sus 12 usuarios (sin MFA) y sus citas (pide escribir `BORRAR`; con `pnpm dev` detenido). Guion: `docs/DEMO-FASE-1.md`
 - `pnpm demo:aviso <correo>` — aviso ficticio en la campana de esa persona (solo desarrollo)
 - `pnpm --filter @clinic/api dev` — API en http://127.0.0.1:3001 (Mailpit en http://localhost:8025)
 - `pnpm check:rls-context` — el contexto RLS solo se fija en `withTenant` / `withUser` (va dentro de `pnpm lint`)

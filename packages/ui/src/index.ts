@@ -8,6 +8,8 @@ export { formatDate, formatDateTime, formatMoney, formatMoneyInput, formatTime, 
 
 export { Button, type ButtonProps } from './components/button.tsx';
 export {
+  APPOINTMENT_STATUS_STYLE,
+  AppointmentStatusChip,
   RouteBadge,
   SEMANTIC_TONES,
   SemanticChip,

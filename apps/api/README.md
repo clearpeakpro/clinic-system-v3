@@ -140,7 +140,7 @@ Detalle en el ADR 0023.
 
 ## Demo de la fase 1 (T-010)
 
-- **`pnpm demo:reset`** (`scripts/demo-reset.ts`, `src/demo.ts`): borra y vuelve a crear la base de datos local (solo `127.0.0.1`) con roles, migraciones, las dos organizaciones y los 11 usuarios de `src/dev-seed.ts`, ninguno con MFA ni sesiones.
+- **`pnpm demo:reset`** (`scripts/demo-reset.ts`, `src/demo.ts`): borra y vuelve a crear la base de datos local (solo `127.0.0.1`) con roles, migraciones, las dos organizaciones, los 12 usuarios de `src/dev-seed.ts` (ninguno con MFA ni sesiones) y sus citas ficticias (T-014).
   - Pide escribir `BORRAR`; con `--si` no pregunta (lo usa la E2E del guion).
   - Se niega si hay conexiones abiertas (`pnpm dev` en marcha).
 - **`pnpm demo:aviso <correo>`** (`scripts/demo-aviso.ts`): escribe en el outbox un aviso ficticio «Cita actualizada» para esa persona. Lo entrega el worker.
