@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { createTenantDb, user as userTable } from '@clinic/db';
+import { createLocalFieldCipher, createTenantDb, user as userTable } from '@clinic/db';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { eq } from 'drizzle-orm';
@@ -18,6 +18,7 @@ import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
 import { CatalogService } from './catalog.ts';
 import { LabProviderService } from './lab-providers.ts';
+import { PatientService } from './patients.ts';
 import { ProfileService } from './profile.ts';
 import { RealtimeGateway } from './realtime.ts';
 import { ContextService } from './services.ts';
@@ -46,6 +47,7 @@ export async function createApp({ config, logs }: AppDeps) {
     notifications: new NotificationService(tenantDb),
     catalog: new CatalogService(tenantDb, audit),
     labProviders: new LabProviderService(tenantDb, audit),
+    patients: new PatientService(tenantDb, audit, createLocalFieldCipher(config.fieldEncryptionKey)),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

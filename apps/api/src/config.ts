@@ -55,6 +55,11 @@ export interface AppConfig {
    */
   outboxKey: string;
   /**
+   * Clave local del cifrado de campos de pacientes (ADR 0026, T-012). En la
+   * fase 4 la reemplaza KMS. Al menos 32 caracteres.
+   */
+  fieldEncryptionKey: string;
+  /**
    * Revalidación periódica de cada socket (T-009): sesión, membresía y sede.
    * Cubre lo que no avisa al instante el canal de tiempo real.
    */
@@ -104,6 +109,7 @@ const envSchema = z.object({
   TWO_FACTOR_LOCK_SECONDS: seconds.default(DEFAULTS.twoFactorLockSeconds),
   TRUST_PROXY: bool.default(false),
   OUTBOX_KEY: z.string().min(32),
+  FIELD_ENCRYPTION_KEY: z.string().min(32),
   REALTIME_REVALIDATE_SECONDS: seconds.default(DEFAULTS.realtimeRevalidateSeconds),
 });
 
@@ -140,6 +146,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     secureCookies: e.NODE_ENV === 'production',
     trustProxy: e.TRUST_PROXY,
     outboxKey: e.OUTBOX_KEY,
+    fieldEncryptionKey: e.FIELD_ENCRYPTION_KEY,
     realtimeRevalidateSeconds: e.REALTIME_REVALIDATE_SECONDS,
   };
   assertConfig(config, e.NODE_ENV === 'production');

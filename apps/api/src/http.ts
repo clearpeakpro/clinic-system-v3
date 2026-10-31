@@ -2,6 +2,9 @@ import {
   acceptInvitationSchema,
   createCatalogItemSchema,
   createLabProviderSchema,
+  createPatientSchema,
+  ownClinicalRolesSchema,
+  searchPatientsSchema,
   deactivateCatalogItemSchema,
   deactivateLabProviderSchema,
   reactivateLabProviderSchema,
@@ -54,6 +57,7 @@ import { CatalogService } from './catalog.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
 import { LabProviderService } from './lab-providers.ts';
+import { PatientService } from './patients.ts';
 import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
 import { ProfileService } from './profile.ts';
@@ -96,7 +100,7 @@ export class ErrorFilter implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost): void {
     const reply = host.switchToHttp().getResponse<FastifyReply>();
     if (error instanceof HttpError) {
-      void reply.status(error.status).send({ code: error.code });
+      void reply.status(error.status).send({ ...error.details, code: error.code });
       return;
     }
     const status = (error as { getStatus?: () => number }).getStatus?.();
@@ -304,6 +308,18 @@ export class MembershipsController {
   readonly #memberships: MembershipService;
   constructor(@Inject(MembershipService) memberships: MembershipService) {
     this.#memberships = memberships;
+  }
+
+  /**
+   * Excepción del ADR 0027: el Propietario se asigna o se quita roles clínicos
+   * en sedes activas, con motivo. Va antes de ':id/…' para que «self» no se
+   * lea como un id.
+   */
+  @Post('self/clinical-roles')
+  @HttpCode(204)
+  @RequirePermission('members.manage')
+  async ownClinicalRoles(@Req() request: FastifyRequest, @Body() body: unknown) {
+    await this.#memberships.changeOwnClinicalRoles(principalOf(request), parse(ownClinicalRolesSchema, body), metaOf(request));
   }
 
   @Post(':id/name')
@@ -534,6 +550,46 @@ export class AdminLabProvidersController {
 }
 
 /**
+ * Pacientes (S-PAC-01 a 04, T-012). Buscar y ver: patients.access; crear:
+ * patients.create. La búsqueda va por POST: el criterio nunca queda en la URL
+ * ni en los logs.
+ */
+@Controller('patients')
+export class PatientsController {
+  readonly #patients: PatientService;
+  constructor(@Inject(PatientService) patients: PatientService) {
+    this.#patients = patients;
+  }
+
+  @Post('search')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  search(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#patients.search(principalOf(request), parse(searchPatientsSchema, body), metaOf(request));
+  }
+
+  @Post()
+  @RequirePermission('patients.create')
+  create(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#patients.create(principalOf(request), parse(createPatientSchema, body), metaOf(request));
+  }
+
+  @Get(':id')
+  @RequirePermission('patients.access')
+  get(@Req() request: FastifyRequest, @Param('id') patientId: string) {
+    return this.#patients.get(principalOf(request), id(patientId), metaOf(request));
+  }
+
+  /** «Abrir existente» en «Posible paciente existente»: la elección se audita. */
+  @Post(':id/open-existing')
+  @HttpCode(204)
+  @RequirePermission('patients.create')
+  async openExisting(@Req() request: FastifyRequest, @Param('id') patientId: string) {
+    await this.#patients.openExisting(principalOf(request), id(patientId), metaOf(request));
+  }
+}
+
+/**
  * Lo activo del catálogo, con los precios de la sede activa: lo usan las
  * citas y las órdenes. Nunca lleva laboratorios ni costos (ADR 0028).
  */
@@ -561,6 +617,7 @@ export interface ApiProviders {
   notifications: NotificationService;
   catalog: CatalogService;
   labProviders: LabProviderService;
+  patients: PatientService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -579,6 +636,7 @@ export function createApiModule(providers: ApiProviders) {
       AdminCatalogController,
       AdminLabProvidersController,
       CatalogController,
+      PatientsController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -589,6 +647,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: NotificationService, useValue: providers.notifications },
       { provide: CatalogService, useValue: providers.catalog },
       { provide: LabProviderService, useValue: providers.labProviders },
+      { provide: PatientService, useValue: providers.patients },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

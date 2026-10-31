@@ -176,6 +176,7 @@ export const createPatientSchema = z
   })
   .refine((v) => !v.referralDetails || v.referralSourceId !== null, { message: 'referral_details_without_source', path: ['referralDetails'] });
 export type CreatePatientInput = z.input<typeof createPatientSchema>;
+export type CreatePatientData = z.output<typeof createPatientSchema>;
 
 export type PatientStatus = 'active' | 'inactive';
 
