@@ -11,6 +11,8 @@ export const NOTIFICATION_KINDS = [
   'system.setup_incomplete',
   'system.client_outdated',
   'security.alert',
+  // T-012 (ADR 0027): el Propietario se asignó o se quitó roles clínicos; a los Administradores.
+  'membership.owner_clinical_roles',
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -30,6 +32,12 @@ const LABELS: Record<NotificationKind, NotificationLabel> = {
   'system.setup_incomplete': { title: 'Configuración incompleta', body: 'Faltan ajustes. Abra Configuración para terminar.' },
   'system.client_outdated': { title: 'Actualización requerida', body: 'Esta versión de la aplicación ya no es compatible.' },
   'security.alert': { title: 'Alerta de seguridad', body: 'Revísela en Administración > Seguridad' },
+  // El código son las sedes afectadas («NOR1, NOR2»); sin nombres (ADR 0030).
+  'membership.owner_clinical_roles': {
+    title: 'El Propietario cambió sus roles clínicos',
+    withCode: (c) => `Sedes: ${c}. Puede revisarlo en Administración › Usuarios.`,
+    body: 'Puede revisarlo en Administración › Usuarios.',
+  },
 };
 
 export function isNotificationKind(value: string): value is NotificationKind {
