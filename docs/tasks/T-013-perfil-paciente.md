@@ -13,7 +13,7 @@
    - nombre, apellidos, teléfono y fuente de referido;
    - **la fecha de nacimiento solo la cambia un Administrador, con motivo obligatorio** (ADR 0009);
    - conflicto de versión (S-PAC-12) con «Actualizar», sin «guardar igualmente»;
-   - **al cambiar el teléfono, el mismo diálogo del alta** si coincide con otro paciente: «Este teléfono ya está registrado en otro paciente», hasta 3 coincidencias, «Volver y corregir» (foco en el teléfono) y la acción principal para continuar (su texto en la edición se decide al preparar T-013); solo al pulsar «Guardar», nunca mientras se escribe, y la elección se audita con el teléfono como HMAC (ADR 0030, `SharedPhoneDialog` de `new-patient-dialog.tsx`).
+   - **al cambiar el teléfono, el mismo diálogo del alta** si coincide con otro paciente: «Este teléfono ya está registrado en otro paciente», hasta 3 coincidencias, «Guardar de todos modos» como botón principal y «Volver y corregir» como secundario (regresa al formulario con los datos intactos y el foco en el teléfono); solo al pulsar «Guardar», nunca mientras se escribe, y la elección se audita con el teléfono como HMAC (ADR 0030, `SharedPhoneDialog` de `new-patient-dialog.tsx`).
 4. Inactivar y reactivar un paciente, con motivo, solo el Administrador. Un paciente inactivo no aparece en la búsqueda por defecto (hay un filtro para verlo) y no se le pueden agendar citas.
 5. Auditoría:
    - cada apertura del perfil (lectura de PHI);

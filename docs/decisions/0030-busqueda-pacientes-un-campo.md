@@ -73,7 +73,7 @@ Sustituye a la nota informativa que aparecía después de crear («Paciente crea
   - `patient.phone_shared_check`: se mostró el aviso (número e ids de las coincidencias);
   - `patient.phone_shared_create_anyway`: «Crear de todos modos», con el id del paciente nuevo;
   - `patient.phone_shared_back`: «Volver y corregir» (`POST /api/patients/phone-shared/back`, permiso `patients.create`).
-- **La edición del teléfono** (S-PAC-11, T-013) usará el mismo diálogo.
+- **La edición del teléfono** (S-PAC-11, T-013) usará el mismo diálogo, con «Guardar de todos modos» como botón principal y «Volver y corregir» como secundario (decidido el 2026-10-31).
 
 ### Perfil antes de T-013
 `/app/<SEDE>/pacientes/<id>` existe desde T-012 con solo el encabezado de S-PAC-05:
