@@ -244,9 +244,25 @@ export interface AppointmentOverlap {
 /** Advertencias que devuelve el servidor al guardar; nunca bloquean. */
 export type AppointmentWarning = 'provider_overlap';
 
+/** Respuesta de cada cambio: ids y estado, sin datos del paciente; la web relee el detalle. */
 export interface AppointmentSaved {
-  appointment: AppointmentDetail;
+  id: string;
+  /** Completo: `NOR1-A-000045`. */
+  code: string;
+  status: AppointmentStatus;
+  version: number;
   warnings: AppointmentWarning[];
+}
+
+/** Proveedores del formulario (S-REC-10): los activos de la sede, con quien llama si es Proveedor. */
+export interface AppointmentFormOptions {
+  providers: AppointmentProvider[];
+  myMembershipId: string;
+  /** ¿Quien llama es Proveedor en la sede? Solo entonces aparece «Yo ·». */
+  iAmProvider: boolean;
+  scope: AppointmentScope;
+  today: string;
+  timeZone: string;
 }
 
 /** ¿Se cruzan [a, a + da) y [b, b + db)? Inicios en milisegundos, duraciones en minutos. */

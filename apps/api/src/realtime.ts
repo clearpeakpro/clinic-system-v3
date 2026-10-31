@@ -42,7 +42,8 @@ export interface ServerToClientEvents {
   ended: (payload: { reason: EndReason }) => void;
   /** Cambió la bandeja de la persona: la web vuelve a leerla. */
   notifications: () => void;
-  event: (payload: { name: string; ids: Record<string, string> }) => void;
+  /** Evento de pantalla de la sede: nombre, ids y, si aplica, el estado nuevo (T-015). Nunca PHI. */
+  event: (payload: { name: string; ids: Record<string, string>; status?: string }) => void;
 }
 
 type NoEvents = Record<string, never>;

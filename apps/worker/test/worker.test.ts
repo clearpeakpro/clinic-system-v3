@@ -278,6 +278,28 @@ describe('notificaciones', () => {
     expect((await sameEntity()).map((n) => n.id)).toEqual([first, third]);
   });
 
+  it('avisos de citas (T-015): guarda el inicio de la cita y lo actualiza al reemplazar el aviso', async () => {
+    const entityId = randomUUID();
+    const send = (startsAt: string) =>
+      tenantDb.withTenant(NORTE.id, (tx) =>
+        enqueueNotification(tx, KEY, {
+          organizationId: NORTE.id,
+          userId,
+          kind: 'appointment.changed',
+          locationId: NORTE.locations[0].id,
+          entityType: 'appointment',
+          entityId,
+          code: 'NOR1-A-000300',
+          startsAt: new Date(startsAt),
+        }),
+      );
+    await deliver(await send('2026-11-03T15:00:00Z'));
+    await deliver(await send('2026-11-04T16:30:00Z'));
+    const rows = (await mine()).filter((n) => n.entityId === entityId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.startsAt?.toISOString()).toBe('2026-11-04T16:30:00.000Z');
+  });
+
   it('si no se puede guardar, reintenta y al agotar los intentos la marca fallida y lo audita', async () => {
     const id = await tenantDb.withTenant(NORTE.id, (tx) =>
       // Destinatario inexistente: la FK falla al guardar.

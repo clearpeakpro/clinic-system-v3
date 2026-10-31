@@ -1,5 +1,12 @@
 import {
   acceptInvitationSchema,
+  appointmentOverlapSchema,
+  appointmentVersionSchema,
+  cancelAppointmentSchema,
+  createAppointmentSchema,
+  type CreateAppointmentInput,
+  rescheduleAppointmentSchema,
+  updateAppointmentSchema,
   createCatalogItemSchema,
   createLabProviderSchema,
   createPatientSchema,
@@ -55,7 +62,9 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
+import { IdempotencyKey } from './idempotency.ts';
 import { AuditService } from './audit.ts';
 import { CatalogService } from './catalog.ts';
 import type { Principal } from './principal.ts';
@@ -633,15 +642,82 @@ export class PatientsController {
 }
 
 /**
- * Citas (T-014; S-REC-06 a 09): solo lectura. La agenda y el detalle son de
- * la sede activa y exigen appointments.access (Recepción o Proveedor, ADR
- * 0027). El total de hoy del Panel no lleva PHI: lo ve quien ve el Panel.
+ * Citas (T-014 y T-015; S-REC-06 a 17). La agenda y el detalle son de la sede
+ * activa y exigen appointments.access (Recepción o Proveedor, ADR 0027). Los
+ * cambios exigen además appointments.manage; el alcance del Proveedor (solo
+ * sus citas) lo comprueba el servicio. El total de hoy del Panel no lleva
+ * PHI: lo ve quien ve el Panel.
  */
 @Controller('appointments')
 export class AppointmentsController {
   readonly #appointments: AppointmentService;
-  constructor(@Inject(AppointmentService) appointments: AppointmentService) {
+  readonly #commands: AppointmentCommands;
+  constructor(@Inject(AppointmentService) appointments: AppointmentService, @Inject(AppointmentCommands) commands: AppointmentCommands) {
     this.#appointments = appointments;
+    this.#commands = commands;
+  }
+
+  /** S-REC-10: proveedores del formulario y alcance de quien llama. */
+  @Get('form-options')
+  @RequirePermission('appointments.access', 'appointments.manage')
+  formOptions(@Req() request: FastifyRequest) {
+    return this.#commands.formOptions(principalOf(request));
+  }
+
+  /** Solapamiento del proveedor antes de guardar (S-REC-10 y 13). */
+  @Post('overlap')
+  @HttpCode(200)
+  @RequirePermission('appointments.access', 'appointments.manage')
+  overlap(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#commands.overlap(principalOf(request), parse(appointmentOverlapSchema, body));
+  }
+
+  /** S-REC-10 «Crear cita», con Idempotency-Key. */
+  @Post()
+  @RequirePermission('appointments.access', 'appointments.manage')
+  create(@Req() request: FastifyRequest, @Body() body: unknown, @IdempotencyKey() key: string) {
+    // El hash de la clave se calcula con el cuerpo tal como llegó; el servicio lo valida.
+    parse(createAppointmentSchema, body);
+    return this.#commands.create(principalOf(request), body as CreateAppointmentInput, key, metaOf(request));
+  }
+
+  /** S-REC-10 «Editar cita». */
+  @Post(':id')
+  @HttpCode(200)
+  @RequirePermission('appointments.access', 'appointments.manage')
+  update(@Req() request: FastifyRequest, @Param('id') appointmentId: string, @Body() body: unknown) {
+    return this.#commands.update(principalOf(request), id(appointmentId), parse(updateAppointmentSchema, body), metaOf(request));
+  }
+
+  /** S-REC-13 Reprogramar. */
+  @Post(':id/reschedule')
+  @HttpCode(200)
+  @RequirePermission('appointments.access', 'appointments.manage')
+  reschedule(@Req() request: FastifyRequest, @Param('id') appointmentId: string, @Body() body: unknown) {
+    return this.#commands.reschedule(principalOf(request), id(appointmentId), parse(rescheduleAppointmentSchema, body), metaOf(request));
+  }
+
+  @Post(':id/confirm')
+  @HttpCode(200)
+  @RequirePermission('appointments.access', 'appointments.manage')
+  confirm(@Req() request: FastifyRequest, @Param('id') appointmentId: string, @Body() body: unknown) {
+    return this.#commands.transition(principalOf(request), id(appointmentId), 'confirm', parse(appointmentVersionSchema, body), metaOf(request));
+  }
+
+  /** S-REC-14: motivo obligatorio. */
+  @Post(':id/cancel')
+  @HttpCode(200)
+  @RequirePermission('appointments.access', 'appointments.manage')
+  cancel(@Req() request: FastifyRequest, @Param('id') appointmentId: string, @Body() body: unknown) {
+    return this.#commands.transition(principalOf(request), id(appointmentId), 'cancel', parse(cancelAppointmentSchema, body), metaOf(request));
+  }
+
+  /** S-REC-15: solo desde la hora de inicio. */
+  @Post(':id/no-show')
+  @HttpCode(200)
+  @RequirePermission('appointments.access', 'appointments.manage')
+  noShow(@Req() request: FastifyRequest, @Param('id') appointmentId: string, @Body() body: unknown) {
+    return this.#commands.transition(principalOf(request), id(appointmentId), 'no_show', parse(appointmentVersionSchema, body), metaOf(request));
   }
 
   @Get()
@@ -710,6 +786,7 @@ export interface ApiProviders {
   labProviders: LabProviderService;
   patients: PatientService;
   appointments: AppointmentService;
+  appointmentCommands: AppointmentCommands;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -743,6 +820,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: LabProviderService, useValue: providers.labProviders },
       { provide: PatientService, useValue: providers.patients },
       { provide: AppointmentService, useValue: providers.appointments },
+      { provide: AppointmentCommands, useValue: providers.appointmentCommands },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },
