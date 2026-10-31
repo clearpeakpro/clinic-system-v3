@@ -160,9 +160,8 @@ describe('T-012 pacientes', () => {
       expect(response.statusCode, response.body).toBe(201);
       const created = response.json<CreatedPatient>();
       expect(created.code).toMatch(/^P-\d{6}$/);
-      expect(created.phoneSharedWith).toEqual([]);
       const [event] = await readAudit(`action = 'patient.created' and entity_id = $1`, [created.id]);
-      expect(event?.metadata).toEqual({ code: created.code, fields: 'firstName,lastName,birthDate,phone', phoneShared: 0 });
+      expect(event?.metadata).toEqual({ code: created.code, fields: 'firstName,lastName,birthDate,phone' });
       const read = await recepcion.get(`/api/patients/${created.id}`);
       expect(read.json()).toMatchObject({ code: created.code, phone: '2145550177', status: 'active' });
       expect((await readAudit(`action = 'patient.read' and entity_id = $1`, [created.id])).length).toBe(1);
@@ -189,12 +188,56 @@ describe('T-012 pacientes', () => {
       expect(String(event?.metadata?.candidateIds)).toContain(NORTE.patients[0].id);
     });
 
-    it('madre e hijo con el mismo teléfono: sin aviso de duplicado, con la nota del teléfono', async () => {
-      const response = await recepcion.post('/api/patients', newPatient({ firstName: 'Sofía', lastName: 'Hernández Díaz', birthDate: '2015-07-07', phone: '817-555-0105' }));
-      expect(response.statusCode, response.body).toBe(201);
-      const created = response.json<CreatedPatient>();
-      expect(created.phoneSharedWith).toHaveLength(2);
-      expect(created.phoneSharedWith.every((c) => /^P-\d{6}$/.test(c))).toBe(true);
+    it('madre e hijo con el mismo teléfono: aviso suave con las coincidencias; «Crear de todos modos» crea y se audita', async () => {
+      const input = newPatient({ firstName: 'Sofía', lastName: 'Hernández Díaz', birthDate: '2015-07-07', phone: '817-555-0105' });
+      const response = await recepcion.post('/api/patients', input);
+      expect(response.statusCode, response.body).toBe(409);
+      const body = response.json<{ code: string; matches: DuplicateCandidate[] }>();
+      expect(body.code).toBe('phone_shared');
+      // Código, nombre y fecha de nacimiento; nunca el teléfono.
+      expect(body.matches.map((m) => `${m.firstName} ${m.lastName} ${m.birthDate}`).sort()).toEqual([
+        'Lucía Hernández Díaz 1970-08-18',
+        'Mateo Hernández Díaz 2012-04-09',
+      ]);
+      expect(body.matches.every((m) => /^P-\d{6}$/.test(m.code))).toBe(true);
+      expect(response.body).not.toContain('5550105');
+      const [check] = await readAudit(`action = 'patient.phone_shared_check'`);
+      expect(check?.metadata).toMatchObject({ matches: 2 });
+      expect(check?.metadata?.phoneHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(JSON.stringify(check)).not.toContain('5550105');
+
+      const created = await recepcion.post('/api/patients', { ...input, confirmSharedPhone: true });
+      expect(created.statusCode, created.body).toBe(201);
+      const { id } = created.json<CreatedPatient>();
+      const [choice] = await readAudit(`action = 'patient.phone_shared_create_anyway' and entity_id = $1`, [id]);
+      expect(choice?.metadata).toMatchObject({ matches: 2, phoneHash: check?.metadata?.phoneHash });
+      expect(JSON.stringify(choice)).not.toContain('5550105');
+    });
+
+    it('«Volver y corregir» se audita sin el teléfono en claro; con otro teléfono se crea sin aviso', async () => {
+      const input = newPatient({ firstName: 'Emilio', lastName: 'Hernández Díaz', birthDate: '2016-03-03', phone: '(817) 555-0105' });
+      expect((await recepcion.post('/api/patients', input)).json()).toMatchObject({ code: 'phone_shared' });
+      const back = await recepcion.post('/api/patients/phone-shared/back', { phone: input.phone });
+      expect(back.statusCode, back.body).toBe(204);
+      const [event] = (await readAudit(`action = 'patient.phone_shared_back'`)).slice(-1);
+      expect(event?.metadata?.phoneHash).toMatch(/^[0-9a-f]{64}$/);
+      expect(JSON.stringify(event)).not.toContain('5550105');
+      // Enfermería no crea pacientes, así que tampoco registra esta elección.
+      expect((await enfermeria.post('/api/patients/phone-shared/back', { phone: input.phone })).statusCode).toBe(403);
+
+      const corrected = await recepcion.post('/api/patients', { ...input, phone: '(817) 555-0198' });
+      expect(corrected.statusCode, corrected.body).toBe(201);
+    });
+
+    it('nombre, fecha y teléfono a la vez: solo el aviso fuerte; forzarlo no pide confirmar el teléfono', async () => {
+      const input = newPatient({ firstName: 'Maria', lastName: 'Lopez Garcia', birthDate: '1985-02-03', phone: '214-555-0101' });
+      const response = await recepcion.post('/api/patients', input);
+      expect(response.statusCode).toBe(409);
+      expect(response.json<{ code: string }>().code).toBe('possible_duplicate');
+      const forced = await recepcion.post('/api/patients', { ...input, forceCreate: true });
+      expect(forced.statusCode, forced.body).toBe(201);
+      const { id } = forced.json<CreatedPatient>();
+      expect(await readAudit(`action = 'patient.phone_shared_create_anyway' and entity_id = $1`, [id])).toEqual([]);
     });
 
     it('rechaza una fecha futura, una fuente de otra clínica y detalles sin fuente', async () => {

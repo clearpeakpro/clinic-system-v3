@@ -58,8 +58,22 @@ El manual (S-PAC-01) y Stitch tienen cinco campos de búsqueda: Nombre, Apellido
 ### Posible paciente existente
 - **Bloquea el alta:** misma fecha de nacimiento y nombre completo parecido (similitud de trigramas ≥ 0.6, sin tildes ni mayúsculas). Se ofrecen «Abrir existente» y «Crear de todos modos».
 - **El mismo teléfono por sí solo no es un duplicado:** una familia puede compartirlo.
-  - Si coincide con otro paciente de nombre distinto, el alta sigue adelante.
-  - Se muestra una nota informativa que no bloquea: «Este teléfono ya está registrado en otro paciente (P-000123)».
+
+### Teléfono compartido (cambio del 2026-10-31)
+Sustituye a la nota informativa que aparecía después de crear («Paciente creado. Este teléfono ya está registrado en otro paciente (P-000123).»), que ya no se muestra.
+- **Cuándo:** al pulsar «Crear», nunca mientras se escribe, si el teléfono coincide con otro paciente de la organización y **no** hay posible duplicado por nombre + fecha.
+- **Diálogo informativo, de tono suave (no de error):**
+  - título «Este teléfono ya está registrado en otro paciente»;
+  - hasta 3 coincidencias, con código, nombre y fecha de nacimiento (nunca el teléfono);
+  - «Volver y corregir»: regresa al formulario con los datos intactos y el foco en el teléfono;
+  - «Crear de todos modos» (principal): crea el paciente.
+- **Con posible duplicado por nombre + fecha** solo se muestra el aviso fuerte («Abrir existente» / «Crear de todos modos»). Si se fuerza desde ahí, no se pide además confirmar el teléfono.
+- **API:** sin duplicado y con el teléfono en otro paciente, el alta responde 409 `phone_shared` con las coincidencias, salvo que llegue `confirmSharedPhone`. `forceCreate` (aviso fuerte) también lo acepta.
+- **Auditoría, con el teléfono como HMAC y nunca en claro:**
+  - `patient.phone_shared_check`: se mostró el aviso (número e ids de las coincidencias);
+  - `patient.phone_shared_create_anyway`: «Crear de todos modos», con el id del paciente nuevo;
+  - `patient.phone_shared_back`: «Volver y corregir» (`POST /api/patients/phone-shared/back`, permiso `patients.create`).
+- **La edición del teléfono** (S-PAC-11, T-013) usará el mismo diálogo.
 
 ### Perfil antes de T-013
 `/app/<SEDE>/pacientes/<id>` existe desde T-012 con solo el encabezado de S-PAC-05:
@@ -82,5 +96,6 @@ El manual (S-PAC-01) y Stitch tienen cinco campos de búsqueda: Nombre, Apellido
 - **El umbral de similitud** está en `apps/api/src/patients.ts` (`DUPLICATE_SIMILARITY`). La prueba de `packages/db/test/patients.test.ts` comprueba los dos casos:
   - «Maria Lopez» frente a «María López García» lo supera;
   - una madre y su hijo, no.
+- **El aviso del teléfono compartido** está en `apps/web/src/components/patients/new-patient-dialog.tsx` (`SharedPhoneDialog`). La prueba de `apps/api/test/patients.test.ts` y la E2E cubren madre e hijo con el mismo teléfono, «Volver y corregir» con el teléfono corregido, y nombre + fecha + teléfono a la vez (solo el aviso fuerte).
 - **El selector de paciente de Citas** (S-REC-12, T-015) usará el mismo campo.
 - **La búsqueda de la cabecera** está en `apps/web/src/components/patients/header-search.tsx`. Su E2E (`apps/web/e2e/patients.spec.ts`) cubre el panel, el teclado, el código escaneado, el campo vacío al cerrar y el teléfono, con axe.

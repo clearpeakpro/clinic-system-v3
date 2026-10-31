@@ -7,7 +7,7 @@ import { useEffect, useState, type SubmitEvent } from 'react';
 import { NewPatientDialog } from '../components/patients/new-patient-dialog.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { formatDay } from '../lib/catalog.ts';
-import { createdMessage, patientInitials, patientMessage, patientSearch, queryErrorText, useSubmittedSearch } from '../lib/patients.ts';
+import { patientInitials, patientMessage, patientSearch, queryErrorText, useSubmittedSearch } from '../lib/patients.ts';
 import { useActiveLocation, useMe } from '../lib/session.ts';
 
 // S-PAC-01 Pacientes (Stitch: design/stitch/pacientes/S-PAC-01_pacientes).
@@ -239,7 +239,7 @@ export function PatientsPage() {
           }}
           onCreated={(created) => {
             setCreating(false);
-            snackbar({ message: createdMessage(created.phoneSharedWith) });
+            snackbar({ message: 'Paciente creado.' });
             openProfile(created.id);
           }}
         />

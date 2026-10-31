@@ -8,8 +8,10 @@ import { E2E } from './global-setup.ts';
 // propia prueba. Recepción Norte busca en la página con un solo campo
 // (ADR 0030), ve los errores de fecha y del mínimo de 3 letras, intenta crear
 // un duplicado («Posible paciente existente»), abre el existente, y crea al
-// hijo de una paciente con su mismo teléfono (solo la nota). Enfermería busca
-// pero no crea. La excepción del Propietario está en users.spec.ts.
+// hijo de una paciente con su mismo teléfono: el aviso suave, «Volver y
+// corregir» (foco en el teléfono, datos intactos) y «Crear de todos modos».
+// Con nombre, fecha y teléfono a la vez, solo el aviso fuerte. Enfermería
+// busca pero no crea. La excepción del Propietario está en users.spec.ts.
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const axe = async (page: Page) =>
@@ -96,18 +98,69 @@ test('Recepción busca, ve el aviso de duplicado y crea pacientes', async ({ pag
   await page.getByRole('link', { name: 'Volver a Pacientes' }).click();
   await expect(page.getByRole('heading', { name: 'Pacientes', level: 1 })).toBeVisible();
 
-  // El hijo de Lucía Hernández, con el mismo teléfono: sin aviso, con la nota.
+  // Nombre, fecha y teléfono a la vez: solo el aviso fuerte, nunca el del teléfono.
+  await page.getByRole('button', { name: 'Crear paciente' }).first().click();
+  const both = page.getByRole('dialog', { name: 'Nuevo paciente' });
+  await both.getByLabel('Nombre', { exact: true }).fill('Maria');
+  await both.getByLabel('Apellido').fill('Lopez Garcia');
+  await both.getByLabel('Fecha de nacimiento').fill('1985-02-03');
+  await both.getByLabel('Teléfono de contacto').fill('(214) 555-0101');
+  await both.getByRole('button', { name: 'Crear' }).click();
+  await expect(both.getByRole('region', { name: 'Posible paciente existente' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Este teléfono ya está registrado en otro paciente' })).toHaveCount(0);
+  await both.getByRole('button', { name: 'Cancelar' }).click();
+  await page.getByRole('dialog', { name: '¿Descartar cambios sin guardar?' }).getByRole('button', { name: 'Descartar' }).click();
+  await expect(both).toHaveCount(0);
+
+  // El hijo de Lucía Hernández, con el mismo teléfono: el aviso suave, solo al pulsar «Crear».
   await page.getByRole('button', { name: 'Crear paciente' }).first().click();
   const child = page.getByRole('dialog', { name: 'Nuevo paciente' });
+  const phoneNotice = page.getByRole('dialog', { name: 'Este teléfono ya está registrado en otro paciente' });
   await child.getByLabel('Nombre', { exact: true }).fill('Sofía');
   await child.getByLabel('Apellido').fill('Hernández Díaz');
   await child.getByLabel('Fecha de nacimiento').fill('2015-07-07');
   await child.getByLabel('Teléfono de contacto').fill('(817) 555-0105');
   await child.getByLabel('Fuente de referido').selectOption({ label: 'Recomendación de un conocido' });
   await child.getByLabel('Detalles del referido').fill('Por su madre');
+  await expect(phoneNotice).toHaveCount(0);
   await child.getByRole('button', { name: 'Crear' }).click();
-  await expect(page.getByText(/Paciente creado\. Este teléfono ya está registrado en otros pacientes \(P-\d{6}, P-\d{6}\)\./)).toBeVisible();
+  const matches = phoneNotice.getByRole('list', { name: 'Pacientes con este teléfono' }).getByRole('listitem');
+  await expect(matches).toHaveCount(2);
+  await expect(matches.filter({ hasText: 'Lucía Hernández Díaz' })).toContainText(/P-\d{6} · 18 ago 1970/);
+  await expect(matches.filter({ hasText: 'Mateo Hernández Díaz' })).toBeVisible();
+  await expectAccessible(page);
+  await phoneNotice.screenshot({ path: 'test-results/pacientes-telefono-compartido.png' });
+
+  // «Volver y corregir»: los datos quedan y el foco va al teléfono.
+  await phoneNotice.getByRole('button', { name: 'Volver y corregir' }).click();
+  await expect(phoneNotice).toHaveCount(0);
+  const phone = child.getByLabel('Teléfono de contacto');
+  await expect(phone).toBeFocused();
+  await expect(phone).toHaveValue('(817) 555-0105');
+  await expect(child.getByLabel('Nombre', { exact: true })).toHaveValue('Sofía');
+  await expect(child.getByLabel('Detalles del referido')).toHaveValue('Por su madre');
+
+  // Es el teléfono de la familia: «Crear de todos modos» crea, sin nota después.
+  await child.getByRole('button', { name: 'Crear' }).click();
+  await phoneNotice.getByRole('button', { name: 'Crear de todos modos' }).click();
+  await expect(page.getByText('Paciente creado.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Este teléfono ya está registrado/)).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Sofía Hernández Díaz', level: 1 })).toBeVisible();
+
+  // Su hermano, con el teléfono corregido tras «Volver y corregir»: se crea sin aviso.
+  await page.getByRole('link', { name: 'Volver a Pacientes' }).click();
+  await page.getByRole('button', { name: 'Crear paciente' }).first().click();
+  const brother = page.getByRole('dialog', { name: 'Nuevo paciente' });
+  await brother.getByLabel('Nombre', { exact: true }).fill('Emilio');
+  await brother.getByLabel('Apellido').fill('Hernández Díaz');
+  await brother.getByLabel('Fecha de nacimiento').fill('2016-03-03');
+  await brother.getByLabel('Teléfono de contacto').fill('(817) 555-0105');
+  await brother.getByRole('button', { name: 'Crear' }).click();
+  await phoneNotice.getByRole('button', { name: 'Volver y corregir' }).click();
+  await expect(brother.getByLabel('Teléfono de contacto')).toBeFocused();
+  await brother.getByLabel('Teléfono de contacto').fill('(817) 555-0198');
+  await brother.getByRole('button', { name: 'Crear' }).click();
+  await expect(page.getByRole('heading', { name: 'Emilio Hernández Díaz', level: 1 })).toBeVisible();
 });
 
 test('Enfermería busca pacientes pero no ve «Crear paciente»', async ({ page }) => {

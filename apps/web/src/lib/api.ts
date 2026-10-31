@@ -7,6 +7,7 @@ import type {
   OwnClinicalRolesInput,
   PatientSearchResult,
   PatientSummary,
+  PhoneSharedBackInput,
   GeneralPriceInput,
   LabCostChange,
   LocationPriceInput,
@@ -267,6 +268,7 @@ export const api = {
   createPatient: (input: CreatePatientInput) => request<CreatedPatient>('POST', '/api/patients', input),
   patient: (id: string) => request<PatientSummary & { today: string }>('GET', `/api/patients/${id}`),
   openExistingPatient: (id: string) => request<null>('POST', `/api/patients/${id}/open-existing`, {}),
+  phoneSharedBack: (input: PhoneSharedBackInput) => request<null>('POST', '/api/patients/phone-shared/back', input),
   // Excepción del ADR 0027: el Propietario se asigna roles clínicos.
   changeOwnClinicalRoles: (input: OwnClinicalRolesInput) => request<null>('POST', '/api/memberships/self/clinical-roles', input),
 

@@ -159,7 +159,11 @@ export const searchPatientsSchema = z.object({
 });
 export type SearchPatientsInput = z.input<typeof searchPatientsSchema>;
 
-/** S-PAC-02 «Nuevo paciente». `forceCreate`: «Crear de todos modos» (S-PAC-03). */
+/**
+ * S-PAC-02 «Nuevo paciente». `forceCreate`: «Crear de todos modos» en el aviso
+ * fuerte (S-PAC-03); también acepta el teléfono compartido. `confirmSharedPhone`:
+ * «Crear de todos modos» en el aviso del teléfono (ADR 0030).
+ */
 export const createPatientSchema = z
   .object({
     firstName: personName,
@@ -173,6 +177,7 @@ export const createPatientSchema = z
     referralSourceId: z.uuid().nullable(),
     referralDetails: z.string().trim().max(REFERRAL_DETAILS_MAX).nullable(),
     forceCreate: z.boolean().default(false),
+    confirmSharedPhone: z.boolean().default(false),
   })
   .refine((v) => !v.referralDetails || v.referralSourceId !== null, { message: 'referral_details_without_source', path: ['referralDetails'] });
 export type CreatePatientInput = z.input<typeof createPatientSchema>;
@@ -209,12 +214,23 @@ export interface DuplicateCandidate {
   birthDate: string;
 }
 
-/** Respuesta del alta: el paciente nuevo y, si los hay, los códigos que comparten su teléfono. */
+/** Coincidencias que se muestran en el aviso del teléfono compartido (ADR 0030). */
+export const PHONE_MATCHES_SHOWN = 3;
+
+/** Respuesta del alta: el paciente nuevo. */
 export interface CreatedPatient {
   id: string;
   code: string;
-  phoneSharedWith: string[];
 }
+
+/** «Volver y corregir» en el aviso del teléfono: el teléfono solo va a la auditoría como HMAC. */
+export const phoneSharedBackSchema = z.object({
+  phone: z
+    .string()
+    .transform(phoneDigits)
+    .pipe(z.string().regex(/^\d{7,15}$/)),
+});
+export type PhoneSharedBackInput = z.input<typeof phoneSharedBackSchema>;
 
 // --- Excepción del ADR 0027: el Propietario se asigna roles clínicos -------
 

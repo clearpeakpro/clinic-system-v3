@@ -58,15 +58,6 @@ export function patientMessage(error: unknown): string {
   return userActionMessage(error);
 }
 
-/** «Paciente creado.» con la nota del teléfono compartido (ADR 0030), si la hay. */
-export function createdMessage(phoneSharedWith: readonly string[]): string {
-  if (phoneSharedWith.length === 0) return 'Paciente creado.';
-  const codes = phoneSharedWith.join(', ');
-  return phoneSharedWith.length === 1
-    ? `Paciente creado. Este teléfono ya está registrado en otro paciente (${codes}).`
-    : `Paciente creado. Este teléfono ya está registrado en otros pacientes (${codes}).`;
-}
-
 /** «ML» para «María López García». */
 export function patientInitials(firstName: string, lastName: string): string {
   return `${firstName.trim().charAt(0)}${lastName.trim().charAt(0)}`.toLocaleUpperCase('es');

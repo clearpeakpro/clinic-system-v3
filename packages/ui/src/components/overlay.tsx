@@ -27,6 +27,8 @@ export interface DialogProps {
    * izquierda (formularios de administración, S-ADM-03 y S-ADM-09).
    */
   fullScreenOnPhone?: boolean;
+  /** Al cerrarse: `preventDefault()` y enfocar otro elemento (p. ej., el campo a corregir). */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /**
@@ -47,6 +49,7 @@ export function Dialog({
   inline = false,
   wide = false,
   fullScreenOnPhone = false,
+  onCloseAutoFocus,
 }: DialogProps) {
   const content = (
     <DialogPrimitive.Content
@@ -61,6 +64,7 @@ export function Dialog({
           'max-tab:inset-0 max-tab:h-dvh max-tab:max-h-none max-tab:w-full max-tab:max-w-none max-tab:translate-x-0 max-tab:translate-y-0 max-tab:rounded-none max-tab:border-0',
       )}
       {...(inline ? { onOpenAutoFocus: (e: Event) => { e.preventDefault(); } } : {})}
+      {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}
       {...(dismissible ? {} : { onPointerDownOutside: (e: Event) => { e.preventDefault(); }, onEscapeKeyDown: (e: Event) => { e.preventDefault(); } })}
     >
       <div className="flex items-start gap-space-sm">

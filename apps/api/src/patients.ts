@@ -1,6 +1,7 @@
 import { locations, nextCode, patients, referralSources, type FieldCipher, type TenantDb, type Tx } from '@clinic/db';
 import {
   PATIENT_PAGE_SIZE,
+  PHONE_MATCHES_SHOWN,
   parsePatientQuery,
   type CreatedPatient,
   type CreatePatientData,
@@ -22,7 +23,8 @@ import { HttpError, requireContext, type RequestMeta } from './services.ts';
 //    unaccent (ADR 0007 y 0026). Cada búsqueda se audita en la misma
 //    transacción con el criterio como HMAC, nunca sus valores.
 //  - Alta con detección de duplicados: misma fecha de nacimiento y nombre
-//    completo parecido (similitud ≥ 0.6). El mismo teléfono solo da una nota.
+//    completo parecido (similitud ≥ 0.6). Sin duplicado, el mismo teléfono da
+//    un aviso suave que se confirma; el teléfono solo va a la auditoría como HMAC.
 //  - Los detalles del referido se guardan cifrados (FieldCipher) y nunca se
 //    devuelven en la búsqueda ni van a la auditoría o a los logs.
 
@@ -138,7 +140,9 @@ export class PatientService {
 
   /**
    * S-PAC-02 «Crear». Con un posible duplicado y sin `forceCreate` no crea:
-   * responde 409 `possible_duplicate` con los candidatos (S-PAC-03).
+   * responde 409 `possible_duplicate` con los candidatos (S-PAC-03). Si no lo
+   * hay y el teléfono ya está en otro paciente, sin `confirmSharedPhone`
+   * responde 409 `phone_shared` con hasta 3 coincidencias (ADR 0030).
    */
   async create(actor: Principal, input: CreatePatientData, meta: RequestMeta): Promise<CreatedPatient> {
     const ctx = requireContext(actor);
@@ -161,6 +165,18 @@ export class PatientService {
         });
         return { duplicate: candidates };
       }
+      const matches = input.phone && !input.forceCreate ? await this.#phoneMatches(tx, input.phone) : [];
+      // Solo se usa con coincidencias, que exigen teléfono.
+      const phoneHash = input.phone ? this.#audit.hmac(input.phone) : '';
+      if (matches.length > 0 && !input.confirmSharedPhone) {
+        await this.#audit.inTx(tx, ctx.organizationId, {
+          ...audit,
+          action: 'patient.phone_shared_check',
+          // El teléfono como HMAC, nunca en claro.
+          metadata: { matches: matches.length, matchIds: matches.map((m) => m.id).join(','), phoneHash },
+        });
+        return { phoneShared: matches };
+      }
       const id = uuidv7();
       const code = await nextCode(tx, ctx.organizationId, 'patient');
       const details = input.referralDetails
@@ -178,15 +194,6 @@ export class PatientService {
         referralSourceId: input.referralSourceId,
         referralDetailsEnc: details,
       });
-      // La nota del teléfono compartido (ADR 0030): no bloquea.
-      const shared = input.phone
-        ? await tx
-            .select({ code: patients.code })
-            .from(patients)
-            .where(and(eq(patients.phone, input.phone), sql`${patients.id} <> ${id}`, sql`${patients.mergedInto} is null`))
-            .orderBy(patients.code)
-            .limit(MAX_CANDIDATES)
-        : [];
       const fields = ['firstName', 'lastName', 'birthDate', ...(input.phone ? ['phone'] : []), ...(input.referralSourceId ? ['referralSource'] : [])];
       if (input.referralDetails) fields.push('referralDetails');
       await this.#audit.inTx(tx, ctx.organizationId, {
@@ -194,7 +201,7 @@ export class PatientService {
         action: 'patient.created',
         entityId: id,
         // Solo los nombres de los campos (ADR 0018).
-        metadata: { code, fields: fields.join(','), phoneShared: shared.length },
+        metadata: { code, fields: fields.join(',') },
       });
       if (candidates.length > 0) {
         await this.#audit.inTx(tx, ctx.organizationId, {
@@ -204,10 +211,20 @@ export class PatientService {
           metadata: { candidates: candidates.length, candidateIds: candidates.map((c) => c.id).join(',') },
         });
       }
-      return { created: { id, code, phoneSharedWith: shared.map((s) => s.code) } };
+      if (matches.length > 0) {
+        // «Crear de todos modos» en el aviso del teléfono.
+        await this.#audit.inTx(tx, ctx.organizationId, {
+          ...audit,
+          action: 'patient.phone_shared_create_anyway',
+          entityId: id,
+          metadata: { matches: matches.length, matchIds: matches.map((m) => m.id).join(','), phoneHash },
+        });
+      }
+      return { created: { id, code } };
     });
     // Fuera de la transacción: la auditoría de la comprobación ya quedó guardada.
     if ('duplicate' in result) throw new HttpError(409, 'possible_duplicate', { candidates: result.duplicate });
+    if ('phoneShared' in result) throw new HttpError(409, 'phone_shared', { matches: result.phoneShared });
     return result.created;
   }
 
@@ -227,6 +244,32 @@ export class PatientService {
         ...meta,
       });
     });
+  }
+
+  /** «Volver y corregir» en el aviso del teléfono: la elección se audita, el teléfono como HMAC. */
+  async phoneSharedBack(actor: Principal, input: { phone: string }, meta: RequestMeta): Promise<void> {
+    const ctx = requireContext(actor);
+    await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'patient.phone_shared_back',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: ctx.locationId,
+        entityType: 'patient',
+        ...meta,
+        metadata: { phoneHash: this.#audit.hmac(input.phone) },
+      });
+    });
+  }
+
+  /** Otros pacientes con el mismo teléfono (hasta 3, para el aviso). */
+  async #phoneMatches(tx: Tx, phone: string): Promise<DuplicateCandidate[]> {
+    return tx
+      .select({ id: patients.id, code: patients.code, firstName: patients.firstName, lastName: patients.lastName, birthDate: patients.birthDate })
+      .from(patients)
+      .where(and(eq(patients.phone, phone), sql`${patients.mergedInto} is null`))
+      .orderBy(patients.code)
+      .limit(PHONE_MATCHES_SHOWN);
   }
 
   /** Misma fecha de nacimiento y nombre completo parecido. */

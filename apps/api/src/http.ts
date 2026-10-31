@@ -4,6 +4,7 @@ import {
   createLabProviderSchema,
   createPatientSchema,
   ownClinicalRolesSchema,
+  phoneSharedBackSchema,
   searchPatientsSchema,
   deactivateCatalogItemSchema,
   deactivateLabProviderSchema,
@@ -572,6 +573,14 @@ export class PatientsController {
   @RequirePermission('patients.create')
   create(@Req() request: FastifyRequest, @Body() body: unknown) {
     return this.#patients.create(principalOf(request), parse(createPatientSchema, body), metaOf(request));
+  }
+
+  /** «Volver y corregir» en el aviso del teléfono compartido: la elección se audita. */
+  @Post('phone-shared/back')
+  @HttpCode(204)
+  @RequirePermission('patients.create')
+  async phoneSharedBack(@Req() request: FastifyRequest, @Body() body: unknown) {
+    await this.#patients.phoneSharedBack(principalOf(request), parse(phoneSharedBackSchema, body), metaOf(request));
   }
 
   @Get(':id')

@@ -2,7 +2,7 @@ import { createPatientSchema, PATIENT_NAME_MAX, REFERRAL_DETAILS_MAX, type Catal
 import { Banner, Button, Dialog, DiscardChangesDialog, Field, SelectField, TextAreaField } from '@clinic/ui';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, ExternalLink, Phone, Share2, TriangleAlert, UserPlus } from 'lucide-react';
-import { useState, type SubmitEvent } from 'react';
+import { useId, useRef, useState, type SubmitEvent } from 'react';
 import { api, ApiError } from '../../lib/api.ts';
 import { formatDay } from '../../lib/catalog.ts';
 import { patientMessage } from '../../lib/patients.ts';
@@ -10,6 +10,8 @@ import { patientMessage } from '../../lib/patients.ts';
 // S-PAC-02 «Nuevo paciente» (Stitch: design/stitch/pacientes/S-PAC-02_nuevo_paciente),
 // con S-PAC-03 «Posible paciente existente» dentro del diálogo, arriba, como
 // en Stitch, y S-PAC-04 al salir con cambios (DiscardChangesDialog de T-005).
+// Si no hay posible duplicado pero el teléfono ya está en otro paciente, un
+// diálogo informativo pide confirmarlo (ADR 0030); solo al pulsar «Crear».
 // Campos del manual: Nombre, Apellido, Fecha de nacimiento, Teléfono, Fuente
 // y Detalles del referido. No se construye lo que el sistema no tiene
 // («EXP-ADM-01») ni textos que afirmen cumplimiento de normas.
@@ -44,7 +46,11 @@ export function NewPatientDialog({
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<DuplicateCandidate[] | null>(null);
+  const [phoneMatches, setPhoneMatches] = useState<DuplicateCandidate[] | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const phoneId = useId();
+  /** «Volver y corregir»: al cerrar el aviso, el foco va al teléfono. */
+  const focusPhone = useRef(false);
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((v) => ({ ...v, [key]: value }));
     // Con otros datos, el aviso de duplicado ya no corresponde.
@@ -68,7 +74,7 @@ export function NewPatientDialog({
     else onClose();
   };
 
-  const create = async (forceCreate: boolean) => {
+  const create = async ({ forceCreate = false, confirmSharedPhone = false } = {}) => {
     setSubmitted(true);
     if (Object.keys(errors).length > 0) return;
     const input = createPatientSchema.safeParse({
@@ -79,6 +85,7 @@ export function NewPatientDialog({
       referralSourceId: values.referralSourceId === '' ? null : values.referralSourceId,
       referralDetails: values.referralSourceId === '' || values.referralDetails.trim() === '' ? null : values.referralDetails,
       forceCreate,
+      confirmSharedPhone,
     });
     if (!input.success) {
       setServerError('Algunos campos no son válidos. Revíselos.');
@@ -89,13 +96,25 @@ export function NewPatientDialog({
     try {
       onCreated(await api.createPatient(input.data));
     } catch (error) {
+      setPhoneMatches(null);
       if (error instanceof ApiError && error.code === 'possible_duplicate') {
         setCandidates((error.details.candidates as DuplicateCandidate[] | undefined) ?? []);
+      } else if (error instanceof ApiError && error.code === 'phone_shared') {
+        setPhoneMatches((error.details.matches as DuplicateCandidate[] | undefined) ?? []);
       } else {
         setServerError(patientMessage(error));
       }
       setBusy(false);
     }
+  };
+
+  /** «Volver y corregir»: los datos quedan intactos; la elección se audita (el teléfono como HMAC). */
+  const backToForm = () => {
+    focusPhone.current = true;
+    setPhoneMatches(null);
+    api.phoneSharedBack({ phone: values.phone }).catch((error: unknown) => {
+      setServerError(patientMessage(error));
+    });
   };
 
   const openExisting = async (candidate: DuplicateCandidate) => {
@@ -132,10 +151,10 @@ export function NewPatientDialog({
           </>
         }
       >
-        <form id="new-patient-form" noValidate onSubmit={(e: SubmitEvent<HTMLFormElement>) => { e.preventDefault(); void create(false); }} className="flex flex-col gap-space-md">
+        <form id="new-patient-form" noValidate onSubmit={(e: SubmitEvent<HTMLFormElement>) => { e.preventDefault(); void create(); }} className="flex flex-col gap-space-md">
           <div aria-live="polite" className="flex flex-col gap-space-sm">
             {serverError ? <Banner tone="error" title={serverError} /> : null}
-            {candidates ? <DuplicateNotice candidates={candidates} busy={busy} onOpen={(c) => void openExisting(c)} onForce={() => void create(true)} /> : null}
+            {candidates ? <DuplicateNotice candidates={candidates} busy={busy} onOpen={(c) => void openExisting(c)} onForce={() => void create({ forceCreate: true })} /> : null}
           </div>
           <div className="grid gap-space-md tab:grid-cols-2">
             <Field
@@ -173,6 +192,7 @@ export function NewPatientDialog({
             onChange={(e) => { set('birthDate', e.target.value); }}
           />
           <Field
+            id={phoneId}
             label="Teléfono de contacto"
             hint="Opcional"
             type="tel"
@@ -212,6 +232,20 @@ export function NewPatientDialog({
           />
         </form>
       </Dialog>
+      {phoneMatches ? (
+        <SharedPhoneDialog
+          matches={phoneMatches}
+          busy={busy}
+          onBack={backToForm}
+          onCreate={() => void create({ confirmSharedPhone: true })}
+          onCloseAutoFocus={(event) => {
+            if (!focusPhone.current) return;
+            focusPhone.current = false;
+            event.preventDefault();
+            document.getElementById(phoneId)?.focus();
+          }}
+        />
+      ) : null}
       <DiscardChangesDialog open={confirmDiscard} onOpenChange={setConfirmDiscard} onDiscard={onClose} />
     </>
   );
@@ -266,5 +300,58 @@ function DuplicateNotice({
         </Button>
       </div>
     </section>
+  );
+}
+
+/**
+ * Aviso informativo del teléfono compartido (ADR 0030): una familia puede
+ * compartirlo, así que no es un error. «Crear de todos modos» es la principal.
+ */
+function SharedPhoneDialog({
+  matches,
+  busy,
+  onBack,
+  onCreate,
+  onCloseAutoFocus,
+}: {
+  matches: DuplicateCandidate[];
+  busy: boolean;
+  onBack: () => void;
+  onCreate: () => void;
+  onCloseAutoFocus: (event: Event) => void;
+}) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(next) => { if (!next) onBack(); }}
+      dismissible={!busy}
+      icon={<Phone className="size-7" />}
+      title="Este teléfono ya está registrado en otro paciente"
+      description="Puede ser de un familiar. Revise si el número es correcto antes de continuar."
+      onCloseAutoFocus={onCloseAutoFocus}
+      footer={
+        <>
+          <Button variant="tonal" className="text-on-surface" disabled={busy} onClick={onBack}>
+            Volver y corregir
+          </Button>
+          <Button loading={busy} onClick={onCreate}>
+            Crear de todos modos
+          </Button>
+        </>
+      }
+    >
+      <ul aria-label="Pacientes con este teléfono" className="flex flex-col divide-y divide-outline-variant rounded-md bg-surface-container-low px-space-md">
+        {matches.map((m) => (
+          <li key={m.id} className="flex flex-col py-space-xs">
+            <span className="text-body-md-medium text-on-surface">
+              {m.firstName} {m.lastName}
+            </span>
+            <span className="font-mono text-code-sm text-on-surface-variant">
+              {m.code} · {formatDay(m.birthDate)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Dialog>
   );
 }
