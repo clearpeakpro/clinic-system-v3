@@ -6,7 +6,9 @@ if (process.env.NODE_ENV === 'production') {
 }
 try {
   // Primero las migraciones pendientes, como `pnpm dev`.
-  const { migrationsApplied } = await runSeedCommand(requireEnv('DATABASE_MIGRATOR_URL'));
+  // Con FIELD_ENCRYPTION_KEY (la de la API), los detalles del referido van cifrados.
+  const fieldKey = process.env.FIELD_ENCRYPTION_KEY;
+  const { migrationsApplied } = await runSeedCommand(requireEnv('DATABASE_MIGRATOR_URL'), fieldKey ? { fieldKey } : {});
   if (migrationsApplied > 0) console.log(`Migraciones pendientes aplicadas: ${String(migrationsApplied)}.`);
   console.log('Semilla ficticia cargada.');
 } catch (error) {

@@ -13,6 +13,8 @@ declare module 'vitest' {
     operatorUrl: string;
     /** Superusuario de la base desechable: solo para simular una alteración de la auditoría (T-008). */
     superuserUrl: string;
+    /** Clave de cifrado de campos con la que se sembraron los detalles del referido (T-012). */
+    fieldKey: string;
   }
 }
 
@@ -35,12 +37,14 @@ export async function setup(project: TestProject): Promise<void> {
   await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
   const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
   await migrate(migratorUrl);
-  await seed(migratorUrl);
+  const fieldKey = randomBytes(32).toString('hex');
+  await seed(migratorUrl, { fieldKey });
 
   project.provide('appUrl', urlFor(superuserUrl, 'clinic_app', appPassword));
   project.provide('migratorUrl', migratorUrl);
   project.provide('operatorUrl', urlFor(superuserUrl, 'clinic_operator', operatorPassword));
   project.provide('superuserUrl', superuserUrl);
+  project.provide('fieldKey', fieldKey);
 }
 
 export async function teardown(): Promise<void> {
