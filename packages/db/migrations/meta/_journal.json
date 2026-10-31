@@ -169,6 +169,20 @@
       "when": 1793414612035,
       "tag": "0023_patients_search",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793482831153,
+      "tag": "0024_appointments",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793482837383,
+      "tag": "0025_appointments_rls",
+      "breakpoints": true
     }
   ]
 }
