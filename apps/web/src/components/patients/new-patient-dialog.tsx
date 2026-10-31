@@ -236,8 +236,9 @@ export function NewPatientDialog({
         <SharedPhoneDialog
           matches={phoneMatches}
           busy={busy}
+          confirmLabel="Crear de todos modos"
           onBack={backToForm}
-          onCreate={() => void create({ confirmSharedPhone: true })}
+          onConfirm={() => void create({ confirmSharedPhone: true })}
           onCloseAutoFocus={(event) => {
             if (!focusPhone.current) return;
             focusPhone.current = false;
@@ -305,19 +306,22 @@ function DuplicateNotice({
 
 /**
  * Aviso informativo del teléfono compartido (ADR 0030): una familia puede
- * compartirlo, así que no es un error. «Crear de todos modos» es la principal.
+ * compartirlo, así que no es un error. La acción principal es «Crear de todos
+ * modos» en el alta y «Guardar de todos modos» en la edición (S-PAC-11).
  */
-function SharedPhoneDialog({
+export function SharedPhoneDialog({
   matches,
   busy,
+  confirmLabel,
   onBack,
-  onCreate,
+  onConfirm,
   onCloseAutoFocus,
 }: {
   matches: DuplicateCandidate[];
   busy: boolean;
+  confirmLabel: string;
   onBack: () => void;
-  onCreate: () => void;
+  onConfirm: () => void;
   onCloseAutoFocus: (event: Event) => void;
 }) {
   return (
@@ -334,8 +338,8 @@ function SharedPhoneDialog({
           <Button variant="tonal" className="text-on-surface" disabled={busy} onClick={onBack}>
             Volver y corregir
           </Button>
-          <Button loading={busy} onClick={onCreate}>
-            Crear de todos modos
+          <Button loading={busy} onClick={onConfirm}>
+            {confirmLabel}
           </Button>
         </>
       }

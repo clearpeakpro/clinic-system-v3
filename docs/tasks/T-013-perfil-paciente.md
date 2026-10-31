@@ -20,6 +20,15 @@
    - las ediciones, guardando solo los nombres de los campos cambiados;
    - inactivar y reactivar.
 
+**Decisiones (2026-10-31, con el dueño del producto):**
+- «Nueva cita» se ve deshabilitada, con «Llega con la agenda», hasta T-015. No se muestra para pacientes inactivos ni para quien no tiene `appointments.access`.
+- En el encabezado, «Origen: {fuente}» de Stitch sí; la sede no (es ambigua: el paciente es de toda la organización). «Fusionar con…» queda fuera (S-PAC-13).
+- «Inactivar paciente» y «Reactivar paciente», al pie de «Editar paciente», como acción secundaria que abre su diálogo con motivo.
+- La búsqueda por código encuentra siempre al paciente, también inactivo, con el chip «Inactivo».
+- Los detalles del referido también se editan; si se quita la fuente, se borran.
+- La fecha de nacimiento, inactivar y reactivar los puede hacer el Propietario o el Administrador, siempre que tengan un rol clínico en esa sede, con motivo y auditado ([ADR 0009](../decisions/0009-editar-nacimiento-inactivar.md), revisado).
+- El Proveedor solo cambia el teléfono (S-PAC-11 del manual); Enfermería no edita.
+
 **Terminada cuando:**
 - Recepción edita el teléfono y otra ventana con el perfil abierto recibe el conflicto de versión al guardar;
 - Recepción no puede cambiar la fecha de nacimiento;

@@ -109,6 +109,7 @@ Cada una de esas salidas tiene su control propio.
 
 - Los permisos efectivos son la unión de los roles del usuario en la sede activa más sus roles de toda la organización. Se definen en `packages/shared/src/permissions.ts`.
 - Propietario y Administrador son roles administrativos. Ver datos clínicos, incluidos Pacientes y Citas, requiere un rol clínico explícito (Recepción, Enfermería o Proveedor) en la sede ([ADR 0027](decisions/0027-acceso-clinico-propietario-administrador.md)).
+- Su permiso de pacientes (fecha de nacimiento, inactivar y reactivar, [ADR 0009](decisions/0009-editar-nacimiento-inactivar.md)) solo sirve junto a `patients.access`. Por eso `@RequirePermission()` de la API admite varios permisos y exige todos.
 - En cada petición, la API valida que la sede pertenece a la organización y que el usuario tiene membresía activa allí.
 
 ### Roles de base de datos
@@ -176,7 +177,7 @@ Todas las tablas de negocio llevan `organization_id`, `UNIQUE (organization_id, 
 | `organizations` | name, status | El tenant |
 | `locations` | org, code, name, timezone, address (opcional) | `code` es único por organización y aparece en la URL |
 | `users` (global) / `memberships` / `membership_roles` | correo; usuario–organización; rol por sede | |
-| `patients` / `code_counters` | código `P-000123` por organización (contador en la misma transacción), nombre, apellidos, fecha de nacimiento, teléfono (solo dígitos), fuente de referido, detalles del referido cifrados, estado, merged_into, `version` | Pertenecen a la organización y no se borran. Búsqueda en un solo campo, parcial y sin tildes, con `pg_trgm` + `unaccent` (esquema `ext`, `app.search_text`) e índice GIN de trigramas ([ADR 0030](decisions/0030-busqueda-pacientes-un-campo.md)). Los detalles del referido van cifrados con `FieldCipher` (`packages/db/src/field-cipher.ts`): clave local `FIELD_ENCRYPTION_KEY` en desarrollo y KMS en la fase 4 ([ADR 0026](decisions/0026-cifrado-campos-busqueda.md)) |
+| `patients` / `code_counters` | código `P-000123` por organización (contador en la misma transacción), nombre, apellidos, fecha de nacimiento, teléfono (solo dígitos), fuente de referido, detalles del referido cifrados, estado, merged_into, `version` | Pertenecen a la organización y no se borran; se inactivan y reactivan con motivo ([ADR 0009](decisions/0009-editar-nacimiento-inactivar.md)). Se editan con `version` (409 si cambió) y la auditoría guarda solo los nombres de los campos (T-013). Búsqueda en un solo campo, parcial y sin tildes, con `pg_trgm` + `unaccent` (esquema `ext`, `app.search_text`) e índice GIN de trigramas ([ADR 0030](decisions/0030-busqueda-pacientes-un-campo.md)). Los detalles del referido van cifrados con `FieldCipher` (`packages/db/src/field-cipher.ts`): clave local `FIELD_ENCRYPTION_KEY` en desarrollo y KMS en la fase 4 ([ADR 0026](decisions/0026-cifrado-campos-busqueda.md)) |
 | `appointments` | sede, paciente, proveedor, tipo, inicio, estado, version | |
 | `kiosk_devices` / `kiosk_checkins` | sede, hash del token; datos enviados, estado, vencimiento | |
 | `encounters` / `encounter_events` | sede, paciente, cita?, ruta, estado, version; transiciones | Índice único parcial: una sola visita abierta por cita |

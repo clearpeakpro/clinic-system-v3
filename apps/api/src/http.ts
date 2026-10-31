@@ -4,8 +4,10 @@ import {
   createLabProviderSchema,
   createPatientSchema,
   ownClinicalRolesSchema,
+  patientStatusChangeSchema,
   phoneSharedBackSchema,
   searchPatientsSchema,
+  updatePatientSchema,
   deactivateCatalogItemSchema,
   deactivateLabProviderSchema,
   reactivateLabProviderSchema,
@@ -75,8 +77,11 @@ const PERMISSION = 'clinic:permission';
 
 /** Ruta sin autenticación obligatoria. */
 export const Public = () => SetMetadata(PUBLIC, true);
-/** El backend autoriza siempre, con los permisos de packages/shared/src/permissions.ts. */
-export const RequirePermission = (permission: Permission) => SetMetadata(PERMISSION, permission);
+/**
+ * El backend autoriza siempre, con los permisos de packages/shared/src/permissions.ts.
+ * Con varios, hacen falta todos (por ejemplo, patients.access y patients.deactivate).
+ */
+export const RequirePermission = (...permissions: [Permission, ...Permission[]]) => SetMetadata(PERMISSION, permissions);
 
 export class PermissionGuard implements CanActivate {
   readonly #reflector: Reflector;
@@ -89,8 +94,8 @@ export class PermissionGuard implements CanActivate {
     if (this.#reflector.getAllAndOverride<boolean>(PUBLIC, targets)) return true;
     const principal = context.switchToHttp().getRequest<FastifyRequest>().principal;
     if (!principal) throw new HttpError(401, 'unauthenticated');
-    const permission = this.#reflector.getAllAndOverride<Permission | undefined>(PERMISSION, targets);
-    if (permission !== undefined && !principal.permissions.has(permission)) throw new HttpError(403, 'forbidden');
+    const permissions = this.#reflector.getAllAndOverride<Permission[] | undefined>(PERMISSION, targets) ?? [];
+    if (!permissions.every((p) => principal.permissions.has(p))) throw new HttpError(403, 'forbidden');
     return true;
   }
 }
@@ -551,9 +556,12 @@ export class AdminLabProvidersController {
 }
 
 /**
- * Pacientes (S-PAC-01 a 04, T-012). Buscar y ver: patients.access; crear:
- * patients.create. La búsqueda va por POST: el criterio nunca queda en la URL
- * ni en los logs.
+ * Pacientes (S-PAC-01 a 05 y 11, T-012 y T-013). Buscar y ver:
+ * patients.access; crear: patients.create; editar: patients.access y, campo a
+ * campo, patients.edit, patients.edit_phone o patients.edit_birth_date (lo
+ * comprueba el servicio); inactivar y reactivar: patients.access y
+ * patients.deactivate. La búsqueda va por POST: el criterio nunca queda en la
+ * URL ni en los logs.
  */
 @Controller('patients')
 export class PatientsController {
@@ -575,10 +583,13 @@ export class PatientsController {
     return this.#patients.create(principalOf(request), parse(createPatientSchema, body), metaOf(request));
   }
 
-  /** «Volver y corregir» en el aviso del teléfono compartido: la elección se audita. */
+  /**
+   * «Volver y corregir» en el aviso del teléfono compartido, en el alta o en
+   * la edición: la elección se audita. El servicio exige poder escribir el teléfono.
+   */
   @Post('phone-shared/back')
   @HttpCode(204)
-  @RequirePermission('patients.create')
+  @RequirePermission('patients.access')
   async phoneSharedBack(@Req() request: FastifyRequest, @Body() body: unknown) {
     await this.#patients.phoneSharedBack(principalOf(request), parse(phoneSharedBackSchema, body), metaOf(request));
   }
@@ -587,6 +598,28 @@ export class PatientsController {
   @RequirePermission('patients.access')
   get(@Req() request: FastifyRequest, @Param('id') patientId: string) {
     return this.#patients.get(principalOf(request), id(patientId), metaOf(request));
+  }
+
+  /** S-PAC-11 «Guardar»: solo los campos cambiados, con la versión leída. */
+  @Post(':id')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  update(@Req() request: FastifyRequest, @Param('id') patientId: string, @Body() body: unknown) {
+    return this.#patients.update(principalOf(request), id(patientId), parse(updatePatientSchema, body), metaOf(request));
+  }
+
+  @Post(':id/deactivate')
+  @HttpCode(204)
+  @RequirePermission('patients.access', 'patients.deactivate')
+  async deactivate(@Req() request: FastifyRequest, @Param('id') patientId: string, @Body() body: unknown) {
+    await this.#patients.setStatus(principalOf(request), id(patientId), 'inactive', parse(patientStatusChangeSchema, body), metaOf(request));
+  }
+
+  @Post(':id/reactivate')
+  @HttpCode(204)
+  @RequirePermission('patients.access', 'patients.deactivate')
+  async reactivate(@Req() request: FastifyRequest, @Param('id') patientId: string, @Body() body: unknown) {
+    await this.#patients.setStatus(principalOf(request), id(patientId), 'active', parse(patientStatusChangeSchema, body), metaOf(request));
   }
 
   /** «Abrir existente» en «Posible paciente existente»: la elección se audita. */

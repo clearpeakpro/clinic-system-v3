@@ -201,7 +201,8 @@ describe('T-012 pacientes', () => {
       ]);
       expect(body.matches.every((m) => /^P-\d{6}$/.test(m.code))).toBe(true);
       expect(response.body).not.toContain('5550105');
-      const [check] = await readAudit(`action = 'patient.phone_shared_check'`);
+      // La del alta (sin paciente); la edición (T-013) también audita este evento.
+      const check = (await readAudit(`action = 'patient.phone_shared_check' and entity_id is null`)).at(-1);
       expect(check?.metadata).toMatchObject({ matches: 2 });
       expect(check?.metadata?.phoneHash).toMatch(/^[0-9a-f]{64}$/);
       expect(JSON.stringify(check)).not.toContain('5550105');

@@ -81,6 +81,8 @@ Sustituye a la nota informativa que aparecía después de crear («Paciente crea
 - su lectura se audita;
 - T-013 añade las pestañas.
 
+**Hecho en T-013 (2026-10-31):** pestañas, «Editar paciente» con el aviso del teléfono compartido («Guardar de todos modos» / «Volver y corregir»; auditoría `patient.phone_shared_check`, `patient.phone_shared_save_anyway` y `patient.phone_shared_back` con el paciente). Los pacientes inactivos no salen en la búsqueda por defecto, salvo por código o con «Incluir inactivos» ([ADR 0009](0009-editar-nacimiento-inactivar.md)).
+
 ### Aviso a los Administradores (excepción del ADR 0027)
 - **Título:** «El Propietario cambió sus roles clínicos».
 - **Cuerpo:** «Sedes: NOR1, NOR2. Puede revisarlo en Administración › Usuarios.».

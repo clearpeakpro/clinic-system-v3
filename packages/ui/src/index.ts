@@ -39,3 +39,4 @@ export {
 export { AsyncView, EmptyState, ErrorState, RefreshBar, SkeletonRows, Spinner, StaleDataBanner, type AsyncSource } from './components/states.tsx';
 export { SnackbarProvider, useSnackbar, type SnackbarMessage } from './components/snackbar.tsx';
 export { DataTable, type Column } from './components/table.tsx';
+export { Tabs, type TabItem } from './components/tabs.tsx';

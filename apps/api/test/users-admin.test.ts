@@ -385,6 +385,16 @@ describe('Administración › Usuarios', () => {
   it('el Propietario tiene permisos administrativos y ningún permiso clínico', async () => {
     const me = (await owner.get('/api/me')).json<{ roles: string[]; permissions: string[] }>();
     expect(me.roles).toEqual(['propietario']);
-    expect(me.permissions).toEqual(['admin.access', 'catalog.manage', 'locations.manage', 'members.invite', 'members.manage']);
+    // Fecha de nacimiento e inactivar (ADR 0009) solo sirven junto a patients.access.
+    expect(me.permissions).toEqual([
+      'admin.access',
+      'catalog.manage',
+      'locations.manage',
+      'members.invite',
+      'members.manage',
+      'patients.deactivate',
+      'patients.edit_birth_date',
+    ]);
+    expect(me.permissions).not.toContain('patients.access');
   });
 });
