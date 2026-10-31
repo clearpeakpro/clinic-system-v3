@@ -5,9 +5,10 @@ import type {
   CreatedPatient,
   CreatePatientInput,
   OwnClinicalRolesInput,
+  PatientProfile,
   PatientSearchResult,
-  PatientSummary,
   PhoneSharedBackInput,
+  UpdatePatientInput,
   GeneralPriceInput,
   LabCostChange,
   LocationPriceInput,
@@ -263,10 +264,16 @@ export const api = {
   // Catálogo activo para el personal (T-011): fuentes de referido del alta de paciente.
   catalog: () => request<CatalogList>('GET', '/api/catalog'),
 
-  // Pacientes (S-PAC-01 a 05, T-012). La búsqueda va por POST: el criterio no queda en la URL.
-  searchPatients: (q: string, offset: number) => request<PatientSearchResult>('POST', '/api/patients/search', { q, offset }),
+  // Pacientes (S-PAC-01 a 05 y 11, T-012 y T-013). La búsqueda va por POST: el criterio no queda en la URL.
+  searchPatients: (q: string, offset: number, includeInactive = false) =>
+    request<PatientSearchResult>('POST', '/api/patients/search', { q, offset, includeInactive }),
   createPatient: (input: CreatePatientInput) => request<CreatedPatient>('POST', '/api/patients', input),
-  patient: (id: string) => request<PatientSummary & { today: string }>('GET', `/api/patients/${id}`),
+  patient: (id: string) => request<PatientProfile>('GET', `/api/patients/${id}`),
+  updatePatient: (id: string, input: UpdatePatientInput) => request<{ version: number }>('POST', `/api/patients/${id}`, input),
+  deactivatePatient: (id: string, reason: string, expectedVersion: number) =>
+    request<null>('POST', `/api/patients/${id}/deactivate`, { reason, expectedVersion }),
+  reactivatePatient: (id: string, reason: string, expectedVersion: number) =>
+    request<null>('POST', `/api/patients/${id}/reactivate`, { reason, expectedVersion }),
   openExistingPatient: (id: string) => request<null>('POST', `/api/patients/${id}/open-existing`, {}),
   phoneSharedBack: (input: PhoneSharedBackInput) => request<null>('POST', '/api/patients/phone-shared/back', input),
   // Excepción del ADR 0027: el Propietario se asigna roles clínicos.
