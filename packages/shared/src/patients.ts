@@ -153,9 +153,14 @@ const personName = z
       .refine((v) => !CONTROL.test(v)),
   );
 
+/**
+ * `includeInactive`: la casilla «Incluir inactivos» de S-PAC-01 (T-013). La
+ * búsqueda por código encuentra siempre al paciente, también inactivo.
+ */
 export const searchPatientsSchema = z.object({
   q: z.string().max(200),
   offset: z.number().int().min(0).max(10_000).default(0),
+  includeInactive: z.boolean().default(false),
 });
 export type SearchPatientsInput = z.input<typeof searchPatientsSchema>;
 
@@ -164,18 +169,21 @@ export type SearchPatientsInput = z.input<typeof searchPatientsSchema>;
  * fuerte (S-PAC-03); también acepta el teléfono compartido. `confirmSharedPhone`:
  * «Crear de todos modos» en el aviso del teléfono (ADR 0030).
  */
+const birthDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const phone = z
+  .string()
+  .transform(phoneDigits)
+  .pipe(z.string().regex(/^\d{7,15}$/));
+const referralDetails = z.string().trim().max(REFERRAL_DETAILS_MAX);
+
 export const createPatientSchema = z
   .object({
     firstName: personName,
     lastName: personName,
-    birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    phone: z
-      .string()
-      .transform(phoneDigits)
-      .pipe(z.string().regex(/^\d{7,15}$/))
-      .nullable(),
+    birthDate,
+    phone: phone.nullable(),
     referralSourceId: z.uuid().nullable(),
-    referralDetails: z.string().trim().max(REFERRAL_DETAILS_MAX).nullable(),
+    referralDetails: referralDetails.nullable(),
     forceCreate: z.boolean().default(false),
     confirmSharedPhone: z.boolean().default(false),
   })
@@ -185,7 +193,7 @@ export type CreatePatientData = z.output<typeof createPatientSchema>;
 
 export type PatientStatus = 'active' | 'inactive';
 
-/** Una fila de la búsqueda (S-PAC-01) o el encabezado del perfil (S-PAC-05). */
+/** Una fila de la búsqueda (S-PAC-01) o la base del perfil (S-PAC-05). */
 export interface PatientSummary {
   id: string;
   code: string;
@@ -205,6 +213,55 @@ export interface PatientSearchResult {
   today: string;
 }
 
+/** S-PAC-05 Perfil del paciente: su lectura se audita (T-013). */
+export interface PatientProfile extends PatientSummary {
+  version: number;
+  referralSource: { id: string; name: string } | null;
+  /** Descifrados para mostrarlos; nunca van a la auditoría ni a los logs. */
+  referralDetails: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Hoy en la sede activa, para la edad. */
+  today: string;
+}
+
+/** Solo se agendan citas a pacientes activos (T-013; lo aplica T-015). */
+export function canSchedule(patient: { status: PatientStatus }): boolean {
+  return patient.status === 'active';
+}
+
+/**
+ * S-PAC-11 «Editar paciente» (T-013): solo los campos cambiados, con la
+ * versión leída (409 `version_conflict` si cambió). La fecha de nacimiento
+ * exige motivo (ADR 0009). El referido va junto: fuente y detalles; sin
+ * fuente, los detalles se borran. `confirmSharedPhone`: «Guardar de todos
+ * modos» en el aviso del teléfono compartido (ADR 0030).
+ */
+export const updatePatientSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    firstName: personName.optional(),
+    lastName: personName.optional(),
+    birthDate: birthDate.optional(),
+    birthDateReason: reasonSchema.optional(),
+    phone: phone.nullable().optional(),
+    referral: z
+      .object({ sourceId: z.uuid().nullable(), details: referralDetails.nullable() })
+      .transform((r) => ({ sourceId: r.sourceId, details: r.sourceId === null || !r.details ? null : r.details }))
+      .optional(),
+    confirmSharedPhone: z.boolean().default(false),
+  })
+  .refine((v) => v.birthDate === undefined || v.birthDateReason !== undefined, { message: 'reason_required', path: ['birthDateReason'] });
+export type UpdatePatientInput = z.input<typeof updatePatientSchema>;
+export type UpdatePatientData = z.output<typeof updatePatientSchema>;
+
+/** Inactivar y reactivar (ADR 0009): siempre con motivo. */
+export const patientStatusChangeSchema = z.object({
+  expectedVersion: z.number().int().positive(),
+  reason: reasonSchema,
+});
+export type PatientStatusChangeInput = z.infer<typeof patientStatusChangeSchema>;
+
 /** Candidato de «Posible paciente existente» (S-PAC-03). */
 export interface DuplicateCandidate {
   id: string;
@@ -223,12 +280,13 @@ export interface CreatedPatient {
   code: string;
 }
 
-/** «Volver y corregir» en el aviso del teléfono: el teléfono solo va a la auditoría como HMAC. */
+/**
+ * «Volver y corregir» en el aviso del teléfono: el teléfono solo va a la
+ * auditoría como HMAC. `patientId`: el paciente que se editaba (S-PAC-11).
+ */
 export const phoneSharedBackSchema = z.object({
-  phone: z
-    .string()
-    .transform(phoneDigits)
-    .pipe(z.string().regex(/^\d{7,15}$/)),
+  phone,
+  patientId: z.uuid().optional(),
 });
 export type PhoneSharedBackInput = z.input<typeof phoneSharedBackSchema>;
 

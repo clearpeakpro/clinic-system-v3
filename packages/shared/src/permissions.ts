@@ -21,6 +21,15 @@ export const PERMISSIONS = [
   'patients.access',
   // S-PAC-02 «Crear paciente» (T-012): Recepción. Buscar y ver: patients.access.
   'patients.create',
+  // S-PAC-11 «Editar paciente» (T-013): Recepción cambia nombre, apellidos,
+  // teléfono y referido; el Proveedor, solo el teléfono.
+  'patients.edit',
+  'patients.edit_phone',
+  // Fecha de nacimiento, inactivar y reactivar (ADR 0009): Propietario y
+  // Administrador, con motivo. Por sí solos no bastan: hace falta además
+  // patients.access, es decir, un rol clínico en la sede (ADR 0027).
+  'patients.edit_birth_date',
+  'patients.deactivate',
   'appointments.access',
   'nursing_queue.access',
   'provider_queue.access',
@@ -40,15 +49,17 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 // Propietario y Administrador son roles administrativos: ningún permiso
 // clínico implícito (docs/architecture.md, «Permisos»). Para ver la parte
 // clínica necesitan además un rol clínico en la sede. Por eso, a diferencia del
-// manual, su menú es solo «Administración».
+// manual, su menú es solo «Administración». Sus permisos de pacientes (fecha
+// de nacimiento e inactivar, ADR 0009) solo sirven junto a patients.access.
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  propietario: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access'],
-  administrador: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access'],
-  recepcion: ['panel.view', 'patients.access', 'patients.create', 'appointments.access', 'checkout.access', 'reports.location'],
+  propietario: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access', 'patients.edit_birth_date', 'patients.deactivate'],
+  administrador: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access', 'patients.edit_birth_date', 'patients.deactivate'],
+  recepcion: ['panel.view', 'patients.access', 'patients.create', 'patients.edit', 'appointments.access', 'checkout.access', 'reports.location'],
   enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
   proveedor: [
     'panel.view',
     'patients.access',
+    'patients.edit_phone',
     'appointments.access',
     'nursing_queue.access',
     'provider_queue.access',
