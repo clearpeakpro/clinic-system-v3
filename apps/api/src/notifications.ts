@@ -1,5 +1,5 @@
-import { notifications, notifyRealtime, type TenantDb, type Tx } from '@clinic/db';
-import { isNotificationKind, type NotificationKind } from '@clinic/shared';
+import { locations, notifications, notifyRealtime, type TenantDb, type Tx } from '@clinic/db';
+import { appointmentWhenLabel, isNotificationKind, type NotificationKind } from '@clinic/shared';
 import { and, count, desc, eq, gt, isNull, sql } from 'drizzle-orm';
 import type { Principal } from './principal.ts';
 import { HttpError, requireContext } from './services.ts';
@@ -17,6 +17,8 @@ export interface NotificationRow {
   id: string;
   kind: NotificationKind;
   code: string | null;
+  /** Avisos de citas (T-015): fecha y hora de la cita en su sede, «3 nov, 9:00 a. m.». */
+  when: string | null;
   locationId: string | null;
   entityType: string | null;
   entityId: string | null;
@@ -43,8 +45,9 @@ export class NotificationService {
     const ctx = requireContext(actor);
     return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       const rows = await tx
-        .select()
+        .select({ n: notifications, timezone: locations.timezone })
         .from(notifications)
+        .leftJoin(locations, eq(locations.id, notifications.locationId))
         .where(visible(actor.userId))
         .orderBy(desc(notifications.createdAt), desc(notifications.id))
         .limit(NOTIFICATIONS_LIMIT);
@@ -53,13 +56,14 @@ export class NotificationService {
         .from(notifications)
         .where(and(visible(actor.userId), isNull(notifications.readAt)));
       return {
-        rows: rows.flatMap((r) =>
+        rows: rows.flatMap(({ n: r, timezone }) =>
           isNotificationKind(r.kind)
             ? [
                 {
                   id: r.id,
                   kind: r.kind,
                   code: r.code,
+                  when: r.startsAt && timezone ? appointmentWhenLabel(r.startsAt, timezone) : null,
                   locationId: r.locationId,
                   entityType: r.entityType,
                   entityId: r.entityId,

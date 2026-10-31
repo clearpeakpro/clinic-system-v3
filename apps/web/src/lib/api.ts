@@ -175,6 +175,8 @@ export interface NotificationItem {
   kind: NotificationKind;
   /** Código humano de la entidad («NOR1-V-000123»); nunca nombres. */
   code: string | null;
+  /** Avisos de citas: fecha y hora de la cita en su sede («3 nov, 9:00 a. m.»). */
+  when: string | null;
   locationId: string | null;
   entityType: string | null;
   entityId: string | null;

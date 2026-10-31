@@ -1,7 +1,7 @@
 import { notificationText, type NotificationKind } from '@clinic/shared';
 import { Button, cn, EmptyState, ErrorState, FloatingPanel, Spinner, useSnackbar } from '@clinic/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import { Bell, BellRing, CalendarClock, CircleArrowUp, ClipboardList, CloudOff, RefreshCw, RefreshCwOff, Settings, ShieldAlert, Trash2, UserCog, UserRoundCheck, X, type LucideIcon } from 'lucide-react';
+import { Bell, BellRing, CalendarCheck, CalendarClock, CalendarX, CircleArrowUp, ClipboardList, CloudOff, RefreshCw, RefreshCwOff, Settings, ShieldAlert, Trash2, UserCog, UserRoundCheck, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type ComponentProps } from 'react';
 import { api, type NotificationItem } from '../lib/api.ts';
 import { failureMessage } from '../lib/errors.ts';
@@ -95,6 +95,8 @@ export function DegradedBanner() {
 const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
   'encounter.provider_assigned': UserRoundCheck,
   'appointment.changed': CalendarClock,
+  'appointment.assigned': CalendarCheck,
+  'appointment.reassigned': CalendarX,
   'order.created': ClipboardList,
   'order.changed': ClipboardList,
   'system.setup_incomplete': Settings,
@@ -116,7 +118,7 @@ export function NotificationList({ rows, now, onOpen }: { rows: NotificationItem
     <ul className="flex flex-col py-space-xs">
       {rows.map((item) => {
         const Icon = KIND_ICONS[item.kind];
-        const { title, body } = notificationText(item.kind, item.code);
+        const { title, body } = notificationText(item.kind, item.code, item.when);
         return (
           <li key={item.id}>
             <button

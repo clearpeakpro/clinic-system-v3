@@ -31,6 +31,13 @@ export const PERMISSIONS = [
   'patients.edit_birth_date',
   'patients.deactivate',
   'appointments.access',
+  // S-REC-09 a 17 (T-015): crear, editar, reprogramar, confirmar, cancelar y
+  // marcar no presentado. Recepción, en cualquier cita de la sede; Proveedor,
+  // solo en las suyas (lo comprueba el servidor: provider_scope).
+  'appointments.manage',
+  // «Registrar llegada» (S-REC-18, fase 3): Recepción. En T-015 el botón se ve
+  // deshabilitado («Llega en la fase 3») solo para quien lo tendrá.
+  'appointments.check_in',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -54,13 +61,24 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   propietario: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access', 'patients.edit_birth_date', 'patients.deactivate'],
   administrador: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access', 'patients.edit_birth_date', 'patients.deactivate'],
-  recepcion: ['panel.view', 'patients.access', 'patients.create', 'patients.edit', 'appointments.access', 'checkout.access', 'reports.location'],
+  recepcion: [
+    'panel.view',
+    'patients.access',
+    'patients.create',
+    'patients.edit',
+    'appointments.access',
+    'appointments.manage',
+    'appointments.check_in',
+    'checkout.access',
+    'reports.location',
+  ],
   enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
   proveedor: [
     'panel.view',
     'patients.access',
     'patients.edit_phone',
     'appointments.access',
+    'appointments.manage',
     'nursing_queue.access',
     'provider_queue.access',
     'orders_queue.access',

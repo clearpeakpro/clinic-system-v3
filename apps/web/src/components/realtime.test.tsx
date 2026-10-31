@@ -10,6 +10,7 @@ const item = (over: Partial<NotificationItem>): NotificationItem => ({
   id: 'n',
   kind: 'appointment.changed',
   code: null,
+  when: null,
   locationId: null,
   entityType: null,
   entityId: null,

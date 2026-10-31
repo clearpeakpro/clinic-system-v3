@@ -30,6 +30,8 @@ export interface NotificationPayload {
   entityType: string | null;
   entityId: string | null;
   code: string | null;
+  /** Avisos de citas (T-015): inicio de la cita, ISO. Ausente en los anteriores. */
+  startsAt?: string | null;
 }
 
 function keyFrom(secret: string): Buffer {
@@ -104,6 +106,7 @@ export async function enqueueNotification(
     entityType?: string;
     entityId?: string;
     code?: string;
+    startsAt?: Date;
   },
 ): Promise<string> {
   const id = uuidv7();
@@ -114,6 +117,7 @@ export async function enqueueNotification(
     entityType: event.entityType ?? null,
     entityId: event.entityId ?? null,
     code: event.code ?? null,
+    startsAt: event.startsAt ? event.startsAt.toISOString() : null,
   };
   await tx.insert(outbox).values({
     id,

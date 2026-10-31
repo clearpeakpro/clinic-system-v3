@@ -28,6 +28,8 @@ export const notifications = appSchema.table(
     entityId: uuid('entity_id'),
     /** Código humano de la entidad, sin datos del paciente. */
     code: text('code'),
+    /** Avisos de citas (T-015): su inicio, que se muestra en la hora de la sede («3 nov, 9:00 a. m.»). */
+    startsAt: timestamp('starts_at', { withTimezone: true }),
     /** Último evento del outbox entregado en esta fila (un aviso no leído se reemplaza). */
     eventId: uuid('event_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),

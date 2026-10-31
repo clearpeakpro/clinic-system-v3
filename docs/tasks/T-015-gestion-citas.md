@@ -33,3 +33,23 @@
 - reprogramar un horario solapado muestra el aviso;
 - cancelar sin motivo no se permite;
 - todo queda auditado.
+
+**Decisiones (2026-10-31, con el dueño del producto):**
+- **Permiso `appointments.manage`:** Recepción y Proveedor (el Proveedor, solo en sus citas: `provider_scope`). El Propietario y el Administrador lo tienen solo si además tienen uno de esos roles en la sede (ADR 0027), aunque el manual daba acceso completo al Administrador.
+- **Solapamiento del proveedor, como en Stitch:** se comprueba **antes de guardar**, al cambiar la fecha, la hora, la duración o el proveedor:
+  - banner ámbar arriba del formulario, «Ocupado» junto al Proveedor y «Se permite guardar como sobrecupo»;
+  - se vuelve a comprobar al guardar, y el aviso es igual al crear, editar y reprogramar;
+  - nunca bloquea.
+- **Solo desde hoy en la sede:** se puede crear o reprogramar una cita hoy a cualquier hora o en días futuros, nunca en días anteriores.
+  - Se valida en el formulario y en el servidor (`appointment_in_past`), con un mensaje claro.
+  - Las citas pasadas que ya existen se siguen viendo, y sus acciones siguen la matriz de estados.
+- **Avisos de la campana** (por el outbox, sin nombres de pacientes). El cuerpo lleva el código y la fecha y la hora en la sede: «Cita NOR1-A-000045 · 3 nov, 9:00 a. m.».
+  - «Cita asignada a usted»: al proveedor nuevo, cuando se crea una cita para él o se la asignan.
+  - «Cita reasignada»: al proveedor anterior, cuando la cita sale de su agenda.
+  - «Cita actualizada»: al proveedor de la cita, cuando otra persona la cambia.
+  - Nadie recibe un aviso por un cambio que hizo él mismo.
+- **Al tocar un aviso de cita:**
+  - abre el detalle en la agenda del día de la cita;
+  - si la cita es de otra sede de la persona, cambia antes a esa sede;
+  - si ya no tiene acceso a esa sede, solo marca el aviso como leído y muestra «No tiene acceso a esta cita.».
+- **Lo que no se construye de Stitch (S-REC-10):** «Expediente validado» y «Programación integrada con el expediente clínico», porque no existen en el modelo. El campo se llama «Notas», como en el manual.

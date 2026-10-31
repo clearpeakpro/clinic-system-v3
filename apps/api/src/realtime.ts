@@ -192,7 +192,7 @@ export class RealtimeGateway {
         this.#io.to(userRoom(message.org, message.user)).emit('notifications');
         break;
       case 'event':
-        this.#io.to(locationRoom(message.org, message.loc)).emit('event', { name: message.name, ids: message.ids });
+        this.#io.to(locationRoom(message.org, message.loc)).emit('event', { name: message.name, ids: message.ids, ...(message.status ? { status: message.status } : {}) });
         break;
     }
   }

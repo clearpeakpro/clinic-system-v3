@@ -16,11 +16,13 @@ export type RealtimeMessage =
   | { t: 'revalidate'; org: string; user?: string }
   /** Cambió la bandeja de una persona (aviso nuevo, leído o borrado). */
   | { t: 'notifications'; org: string; user: string }
-  /** Evento de pantalla para la sala de una sede: nombre e ids. */
-  | { t: 'event'; org: string; loc: string; name: string; ids: Record<string, string> };
+  /** Evento de pantalla para la sala de una sede: nombre, ids y, si aplica, el estado nuevo (T-015). */
+  | { t: 'event'; org: string; loc: string; name: string; ids: Record<string, string>; status?: string };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isId = (value: unknown): value is string => typeof value === 'string' && UUID_RE.test(value);
+/** Un estado es una constante como `CONFIRMED`: nunca texto libre. */
+const STATUS_RE = /^[A-Z][A-Z_]{0,31}$/;
 
 /** Valida un mensaje recibido; descarta lo que no tenga la forma esperada. */
 export function parseRealtimeMessage(raw: string | undefined): RealtimeMessage | null {
@@ -44,7 +46,9 @@ export function parseRealtimeMessage(raw: string | undefined): RealtimeMessage |
       if (!isId(m.org) || !isId(m.loc) || typeof m.name !== 'string' || typeof m.ids !== 'object' || m.ids === null) return null;
       const ids = m.ids as Record<string, unknown>;
       if (!Object.values(ids).every(isId)) return null;
-      return { t: 'event', org: m.org, loc: m.loc, name: m.name, ids: ids as Record<string, string> };
+      const event = { t: 'event' as const, org: m.org, loc: m.loc, name: m.name, ids: ids as Record<string, string> };
+      if (m.status === undefined) return event;
+      return typeof m.status === 'string' && STATUS_RE.test(m.status) ? { ...event, status: m.status } : null;
     }
     default:
       return null;

@@ -385,10 +385,10 @@ function Forms() {
 // Avisos ficticios para la hoja: solo códigos, nunca nombres.
 const SAMPLE_NOW = Date.parse('2026-10-29T15:00:00Z');
 const SAMPLE_NOTIFICATIONS: NotificationItem[] = [
-  { id: 'n1', kind: 'encounter.provider_assigned', code: 'NOR1-V-000123', locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T14:59:40Z', read: false },
-  { id: 'n2', kind: 'order.created', code: 'NOR1-O-000045', locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T14:48:00Z', read: false },
-  { id: 'n3', kind: 'appointment.changed', code: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T11:00:00Z', read: true },
-  { id: 'n4', kind: 'security.alert', code: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-26T15:00:00Z', read: true },
+  { id: 'n1', kind: 'encounter.provider_assigned', code: 'NOR1-V-000123', when: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T14:59:40Z', read: false },
+  { id: 'n2', kind: 'order.created', code: 'NOR1-O-000045', when: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T14:48:00Z', read: false },
+  { id: 'n3', kind: 'appointment.changed', code: 'NOR1-A-000045', when: '3 nov, 9:00 a. m.', locationId: null, entityType: null, entityId: null, createdAt: '2026-10-29T11:00:00Z', read: true },
+  { id: 'n4', kind: 'security.alert', code: null, when: null, locationId: null, entityType: null, entityId: null, createdAt: '2026-10-26T15:00:00Z', read: true },
 ];
 
 function Live() {
