@@ -1,22 +1,7 @@
 import { notificationText, type NotificationKind } from '@clinic/shared';
 import { Button, cn, EmptyState, ErrorState, FloatingPanel, Spinner, useSnackbar } from '@clinic/ui';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Bell,
-  BellRing,
-  CalendarClock,
-  CircleArrowUp,
-  ClipboardList,
-  CloudOff,
-  RefreshCw,
-  RefreshCwOff,
-  Settings,
-  ShieldAlert,
-  Trash2,
-  UserRoundCheck,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { Bell, BellRing, CalendarClock, CircleArrowUp, ClipboardList, CloudOff, RefreshCw, RefreshCwOff, Settings, ShieldAlert, Trash2, UserCog, UserRoundCheck, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type ComponentProps } from 'react';
 import { api, type NotificationItem } from '../lib/api.ts';
 import { failureMessage } from '../lib/errors.ts';
@@ -115,6 +100,7 @@ const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
   'system.setup_incomplete': Settings,
   'system.client_outdated': CircleArrowUp,
   'security.alert': ShieldAlert,
+  'membership.owner_clinical_roles': UserCog,
 };
 
 /** Lista del panel. Tocar un aviso lo marca como leído (y cierra el panel). */

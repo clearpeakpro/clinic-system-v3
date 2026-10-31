@@ -8,10 +8,13 @@ import { rolesAt, type Principal } from './principal.ts';
 export class HttpError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string) {
+  /** Datos que acompañan al código en la respuesta (p. ej. los candidatos de un duplicado). */
+  readonly details: Record<string, unknown> | undefined;
+  constructor(status: number, code: string, details?: Record<string, unknown>) {
     super(code);
     this.status = status;
     this.code = code;
+    this.details = details;
   }
 }
 

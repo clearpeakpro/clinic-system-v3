@@ -38,6 +38,7 @@ describe('pnpm demo:reset', () => {
     secureCookies: false,
     trustProxy: false,
     outboxKey: randomBytes(32).toString('hex'),
+    fieldEncryptionKey: randomBytes(32).toString('hex'),
   };
   const operatorUrl = withDatabase(superuser, DATABASE, 'clinic_operator', operatorPassword);
   const reset = (overrides: { operatorUrl?: string } = {}) =>

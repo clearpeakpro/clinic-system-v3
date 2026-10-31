@@ -10,6 +10,7 @@ import { applyTheme, prefs, type ThemePreference } from '../lib/storage.ts';
 import { NotFoundPage } from '../pages/not-found.tsx';
 import { Brand, BrandLogo } from './brand.tsx';
 import { IdleGuard } from './idle-guard.tsx';
+import { HeaderPatientSearch } from './patients/header-search.tsx';
 import { LogoutDialog } from './logout-dialog.tsx';
 import { DegradedBanner, LiveIndicator, NotificationCenter } from './realtime.tsx';
 
@@ -102,9 +103,11 @@ function Header({ me, locations, active }: { me: Me; locations: FlatLocation[]; 
     <header className="relative z-10 flex h-16 shrink-0 items-center gap-space-md bg-surface-container-lowest px-4 shadow-level-1 tab:px-space-lg dark:bg-surface-container-low">
       <LocationSelector locations={locations} active={active} />
       <div className="flex-1" />
-      {/* «Buscar pacientes» llega con la fase 2. */}
       <div data-slot="header-actions" className="flex items-center gap-space-sm tab:gap-space-md">
         <LiveIndicator />
+        {/* T-012: solo quien puede buscar pacientes (el servidor también lo exige). */}
+        {/* key: al cambiar de sede, el campo se vacía. */}
+        {me.permissions.includes('patients.access') ? <HeaderPatientSearch key={active.id} code={active.code} /> : null}
         <NotificationCenter organizationId={active.organizationId} />
       </div>
       <AccountMenu me={me} code={active.code} />

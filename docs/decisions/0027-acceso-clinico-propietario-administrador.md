@@ -41,3 +41,19 @@ Así se cumple el «mínimo necesario» de HIPAA y se mantiene lo ya decidido: P
   - el Propietario se asigna Recepción en NOR1 y ya ve Pacientes;
   - no puede asignarse Administrador;
   - un Administrador no puede usar esta excepción.
+
+## Cómo quedó implementada la excepción (T-012, 2026-10-30)
+
+- **Endpoint:** `POST /api/memberships/self/clinical-roles`, en `MembershipService.changeOwnClinicalRoles` de `apps/api/src/users.ts`.
+- **Qué recibe:** la lista completa de sus roles clínicos por sede (los que no vienen se quitan), el motivo y la versión de la membresía.
+- **Reglas:**
+  - si quien llama no es Propietario, 403 `owner_only`;
+  - Administrador o Propietario en la lista dan 403 `role_change_not_allowed`;
+  - asignar en una sede inactiva da 400; lo que ya tenía en una sede inactiva se puede quitar.
+- **Qué cambia:** solo sus filas clínicas; su rol de Propietario no se toca. `cannot_modify_self` sigue igual en `POST /api/memberships/:id/roles`.
+- **En la misma transacción:**
+  - auditoría `membership.own_clinical_roles_changed`, con el motivo y las sedes afectadas;
+  - un aviso `membership.owner_clinical_roles` por el outbox para cada Administrador activo de la organización (texto en el [ADR 0030](0030-busqueda-pacientes-un-campo.md));
+  - la revalidación de sus conexiones en vivo.
+- **En la web:** Administración › Usuarios, en su propia fila, «Mis roles clínicos».
+

@@ -33,3 +33,4 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0027. Propietario y Administrador sin acceso clínico implícito](0027-acceso-clinico-propietario-administrador.md) | Aceptada |
 | [0028. Laboratorios, costos por prueba y sugerencia de laboratorio](0028-laboratorios-costos.md) | Aceptada |
 | [0029. Precio de venta general con excepción por sede](0029-precio-general-excepcion-sede.md) | Aceptada |
+| [0030. Búsqueda de pacientes en un solo campo, duplicados y aviso del Propietario](0030-busqueda-pacientes-un-campo.md) | Aceptada |

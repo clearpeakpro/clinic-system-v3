@@ -14,7 +14,7 @@
    - parcial y sin distinguir tildes ni mayúsculas, con `pg_trgm` + `unaccent` («maria lop» encuentra a «María López García»);
    - por botón o Enter, nunca en vivo, con un máximo de resultados por página;
    - cada búsqueda se audita con el criterio guardado como hash.
-4. Alta (S-PAC-02) con detección de duplicados (S-PAC-03): antes de crear, se buscan coincidencias por nombre parecido + fecha de nacimiento, o por teléfono, y se muestra «Posible paciente existente» con «Abrir existente» y «Crear de todos modos». Esa elección se audita.
+4. Alta (S-PAC-02) con detección de duplicados (S-PAC-03): antes de crear, se buscan coincidencias por nombre parecido + fecha de nacimiento y se muestra «Posible paciente existente» con «Abrir existente» y «Crear de todos modos». Si solo coincide el teléfono, un diálogo informativo con «Volver y corregir» y «Crear de todos modos» (ADR 0030). Cada elección se audita.
 5. «¿Descartar cambios sin guardar?» (S-PAC-04), con el componente de T-005.
 6. **«Buscar pacientes» en la cabecera** (pendiente desde T-004): abre la búsqueda de S-PAC-01. Solo lo ve quien tiene permiso.
 7. Semilla: unos 20 pacientes ficticios por clínica, con nombres hispanos variados, tildes, homónimos y algún par de posibles duplicados para la demo.

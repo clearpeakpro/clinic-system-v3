@@ -28,6 +28,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
     secureCookies: false,
     trustProxy: false,
     outboxKey: randomBytes(32).toString('hex'),
+    fieldEncryptionKey: randomBytes(32).toString('hex'),
     ...DEFAULTS,
     ...overrides,
   };

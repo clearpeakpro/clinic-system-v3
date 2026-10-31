@@ -1,7 +1,8 @@
 import { eq, sql } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { locations, organizations, patients } from '../src/schema.ts';
+import { patients } from '../src/patients-schema.ts';
+import { locations, organizations } from '../src/schema.ts';
 import { DEMO } from '../src/seed.ts';
 import { createTenantDb, type TenantDb, type Tx } from '../src/with-tenant.ts';
 import { expectPgError, SQLSTATE } from './helpers.ts';
@@ -16,7 +17,7 @@ async function counts(tx: Tx) {
   // Secuencial: una transacción usa una sola conexión.
   const orgs = await tx.select({ id: organizations.id }).from(organizations);
   const locs = await tx.select({ organizationId: locations.organizationId }).from(locations);
-  const pats = await tx.select({ organizationId: patients.organizationId }).from(patients);
+  const pats = await tx.select({ id: patients.id, organizationId: patients.organizationId }).from(patients);
   return { orgs, locs, pats };
 }
 
@@ -24,6 +25,8 @@ function newPatient(orgId: string, locationId: string) {
   return {
     organizationId: orgId,
     registeredLocationId: locationId,
+    // Código fuera del rango del contador: estas filas no lo usan.
+    code: `P-9${String(Math.floor(Math.random() * 1e6)).padStart(6, '0')}`,
     firstName: 'Paciente',
     lastName: 'De Prueba',
     birthDate: '2000-01-01',
@@ -48,7 +51,8 @@ describe('aislamiento entre organizaciones como clinic_app', () => {
 
     expect(orgs.map((o) => o.id)).toEqual([A.id]);
     expect(locs).toHaveLength(A.locations.length);
-    expect(pats).toHaveLength(A.patients.length);
+    // Otras pruebas también dan de alta pacientes: se comprueban los de la semilla.
+    expect(pats.map((p) => p.id)).toEqual(expect.arrayContaining(A.patients.map((p) => p.id)));
     expect(locs.every((l) => l.organizationId === A.id)).toBe(true);
     expect(pats.every((p) => p.organizationId === A.id)).toBe(true);
 
@@ -176,7 +180,7 @@ describe('aislamiento entre organizaciones como clinic_app', () => {
 
       expect(b.pid).toBe(a.pid);
       expect(a.pats.every((p) => p.organizationId === A.id)).toBe(true);
-      expect(b.pats).toHaveLength(B.patients.length);
+      expect(b.pats.map((p) => p.id)).toEqual(expect.arrayContaining(B.patients.map((p) => p.id)));
       expect(b.pats.every((p) => p.organizationId === B.id)).toBe(true);
 
       // Tras las transacciones, la misma conexión queda sin contexto. El valor

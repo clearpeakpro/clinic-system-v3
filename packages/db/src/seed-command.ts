@@ -59,7 +59,7 @@ async function appliedMigrations(migratorUrl: string): Promise<number> {
  * Aplica las migraciones pendientes y carga la semilla. Devuelve cuántas
  * migraciones aplicó. Lanza `SeedCommandError` con un mensaje claro.
  */
-export async function runSeedCommand(migratorUrl: string): Promise<{ migrationsApplied: number }> {
+export async function runSeedCommand(migratorUrl: string, options: { fieldKey?: string } = {}): Promise<{ migrationsApplied: number }> {
   let migrationsApplied: number;
   try {
     const before = await appliedMigrations(migratorUrl);
@@ -69,7 +69,7 @@ export async function runSeedCommand(migratorUrl: string): Promise<{ migrationsA
     throw new SeedCommandError(seedErrorMessage(error, 'aplicar las migraciones pendientes'), { cause: error });
   }
   try {
-    await seed(migratorUrl);
+    await seed(migratorUrl, options.fieldKey ? { fieldKey: options.fieldKey } : {});
   } catch (error) {
     throw new SeedCommandError(seedErrorMessage(error, 'cargar la semilla'), { cause: error });
   }

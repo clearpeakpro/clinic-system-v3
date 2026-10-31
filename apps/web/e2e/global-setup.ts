@@ -117,6 +117,7 @@ export async function startStack(options: { demoReset?: boolean } = {}) {
     BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
     AUDIT_HMAC_KEY: randomBytes(32).toString('hex'),
     OUTBOX_KEY: outboxKey,
+    FIELD_ENCRYPTION_KEY: randomBytes(32).toString('hex'),
     PORT: String(E2E.apiPort),
     DEV_SEED_PASSWORD: E2E.password,
   };
@@ -135,7 +136,7 @@ export async function startStack(options: { demoReset?: boolean } = {}) {
     await bootstrap({ superuserUrl, migratorPassword, appPassword, operatorPassword });
     const migratorUrl = urlFor(superuserUrl, 'clinic_migrator', migratorPassword);
     await migrate(migratorUrl);
-    await seed(migratorUrl);
+    await seed(migratorUrl, { fieldKey: apiEnv.FIELD_ENCRYPTION_KEY });
     await finished(run('pnpm', ['exec', 'tsx', 'scripts/seed-dev-users.ts'], apiDir, apiEnv));
   }
 

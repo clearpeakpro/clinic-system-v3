@@ -2,8 +2,6 @@ import { sql } from 'drizzle-orm';
 import {
   boolean,
   check,
-  date,
-  foreignKey,
   integer,
   pgSchema,
   text,
@@ -14,6 +12,7 @@ import {
 import { v7 as uuidv7 } from 'uuid';
 
 // Las políticas RLS, FORCE y los GRANT están en migrations/0001_rls.sql.
+// Pacientes y contadores de códigos: patients-schema.ts (T-012).
 
 export const appSchema = pgSchema('app');
 
@@ -53,31 +52,5 @@ export const locations = appSchema.table(
     unique('locations_organization_id_code_key').on(t.organizationId, t.code),
     // De 2 a 8 caracteres, empieza por letra, solo A–Z y dígitos (decisión de T-007).
     check('locations_code_format', sql`${t.code} ~ '^[A-Z][A-Z0-9]{1,7}$'`),
-  ],
-);
-
-export const patients = appSchema.table(
-  'patients',
-  {
-    id: id(),
-    organizationId: uuid('organization_id')
-      .notNull()
-      .references(() => organizations.id),
-    registeredLocationId: uuid('registered_location_id').notNull(),
-    firstName: text('first_name').notNull(),
-    lastName: text('last_name').notNull(),
-    birthDate: date('birth_date').notNull(),
-    version: integer('version').notNull().default(1),
-    createdAt: createdAt(),
-  },
-  (t) => [
-    unique('patients_organization_id_id_key').on(t.organizationId, t.id),
-    // Compuesta: un paciente solo puede referenciar una sede de su organización.
-    // Las comprobaciones de claves foráneas no pasan por RLS.
-    foreignKey({
-      name: 'patients_registered_location_fk',
-      columns: [t.organizationId, t.registeredLocationId],
-      foreignColumns: [locations.organizationId, locations.id],
-    }),
   ],
 );

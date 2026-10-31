@@ -1,7 +1,10 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import pg from 'pg';
 import { appointmentTypes, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
-import { locations, organizations, patients } from './schema.ts';
+import { patients } from './patients-schema.ts';
+import { locations, organizations } from './schema.ts';
+import { nextCode } from './codes.ts';
+import { createLocalFieldCipher, type FieldCipher } from './field-cipher.ts';
 import { createTenantDb, type Tx } from './with-tenant.ts';
 
 // Datos ficticios. Los ids son fijos para que las pruebas puedan referirse a ellos.
@@ -10,31 +13,91 @@ import { createTenantDb, type Tx } from './with-tenant.ts';
 /** Todas las sedes de demostración están en la hora Central (Texas). */
 export const DEMO_TIMEZONE = 'America/Chicago';
 
+const N1 = '019a2000-0000-7000-8000-000000000011';
+const N2 = '019a2000-0000-7000-8000-000000000012';
+const S1 = '019a2000-0000-7000-8000-000000000021';
+const S2 = '019a2000-0000-7000-8000-000000000022';
+
+/** Paciente ficticio de la semilla (T-012): teléfono de la serie 555-01xx, reservada para ficción. */
+export interface DemoPatient {
+  id: string;
+  locationId: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  phone: string | null;
+  /** Código de la fuente de referido del catálogo. */
+  referralSource?: string;
+  /** Se guarda cifrado; solo si la semilla recibe la clave de cifrado de campos. */
+  referralDetails?: string;
+}
+
 export const DEMO = {
   norte: {
     id: '019a2000-0000-7000-8000-000000000001',
     name: 'Clínica Demo Norte',
     locations: [
-      { id: '019a2000-0000-7000-8000-000000000011', code: 'NOR1', name: 'Norte Centro', address: '1200 Avenida Ejemplo Norte, Dallas, TX 75201' },
-      { id: '019a2000-0000-7000-8000-000000000012', code: 'NOR2', name: 'Norte Oeste', address: '450 Calle Ficticia 12, Fort Worth, TX 76102' },
+      { id: N1, code: 'NOR1', name: 'Norte Centro', address: '1200 Avenida Ejemplo Norte, Dallas, TX 75201' },
+      { id: N2, code: 'NOR2', name: 'Norte Oeste', address: '450 Calle Ficticia 12, Fort Worth, TX 76102' },
     ],
+    /** 20 pacientes: tildes, homónimos, un posible duplicado y madre e hijo con el mismo teléfono. */
     patients: [
-      { id: '019a2000-0000-7000-8000-000000000101', locationId: '019a2000-0000-7000-8000-000000000011', firstName: 'Ana', lastName: 'Ficticia Uno' },
-      { id: '019a2000-0000-7000-8000-000000000102', locationId: '019a2000-0000-7000-8000-000000000012', firstName: 'Bruno', lastName: 'Ficticio Dos' },
-      { id: '019a2000-0000-7000-8000-000000000103', locationId: '019a2000-0000-7000-8000-000000000011', firstName: 'Carla', lastName: 'Ficticia Tres' },
+      { id: '019a2000-0000-7000-8000-000000000101', locationId: N1, firstName: 'María', lastName: 'López García', birthDate: '1985-02-03', phone: '2145550101', referralSource: 'RECOMENDACION', referralDetails: 'Recomendada por una vecina' },
+      { id: '019a2000-0000-7000-8000-000000000102', locationId: N2, firstName: 'José', lastName: 'Ramírez Santos', birthDate: '1978-11-22', phone: '8175550102' },
+      { id: '019a2000-0000-7000-8000-000000000103', locationId: N1, firstName: 'Carmen', lastName: 'Ruiz Ortega', birthDate: '1992-06-05', phone: '2145550103', referralSource: 'REDES' },
+      // Posible duplicado de María López García: misma fecha, nombre parecido.
+      { id: '019a2000-0000-7000-8000-000000000104', locationId: N2, firstName: 'Maria', lastName: 'Lopez', birthDate: '1985-02-03', phone: '2145550199' },
+      // Madre e hijo con el mismo teléfono: no son duplicados.
+      { id: '019a2000-0000-7000-8000-000000000105', locationId: N2, firstName: 'Lucía', lastName: 'Hernández Díaz', birthDate: '1970-08-18', phone: '8175550105', referralSource: 'LETRERO' },
+      { id: '019a2000-0000-7000-8000-000000000106', locationId: N2, firstName: 'Mateo', lastName: 'Hernández Díaz', birthDate: '2012-04-09', phone: '8175550105' },
+      // Homónimos con distinta fecha.
+      { id: '019a2000-0000-7000-8000-000000000107', locationId: N1, firstName: 'Juan', lastName: 'Pérez Gómez', birthDate: '1965-01-30', phone: '2145550107' },
+      { id: '019a2000-0000-7000-8000-000000000108', locationId: N1, firstName: 'Juan', lastName: 'Pérez Gómez', birthDate: '1990-09-14', phone: '2145550108' },
+      { id: '019a2000-0000-7000-8000-000000000109', locationId: N1, firstName: 'Sofía', lastName: 'Navarro Morales', birthDate: '1965-08-18', phone: '9725550109' },
+      { id: '019a2000-0000-7000-8000-000000000110', locationId: N2, firstName: 'Andrés', lastName: 'Muñoz Peña', birthDate: '2001-01-30', phone: null },
+      { id: '019a2000-0000-7000-8000-000000000111', locationId: N1, firstName: 'Valentina', lastName: 'Castillo Ríos', birthDate: '1999-12-01', phone: '2145550111', referralSource: 'REDES', referralDetails: 'Vio una publicación de la clínica' },
+      { id: '019a2000-0000-7000-8000-000000000112', locationId: N2, firstName: 'Ángel', lastName: 'Domínguez Vega', birthDate: '1958-03-27', phone: '8175550112' },
+      { id: '019a2000-0000-7000-8000-000000000113', locationId: N1, firstName: 'Gabriela', lastName: 'Jiménez Soto', birthDate: '1988-07-07', phone: '2145550113' },
+      { id: '019a2000-0000-7000-8000-000000000114', locationId: N2, firstName: 'Raúl', lastName: 'Ortiz Fuentes', birthDate: '1974-10-10', phone: '8175550114' },
+      { id: '019a2000-0000-7000-8000-000000000115', locationId: N1, firstName: 'Isabel', lastName: 'Moreno Cruz', birthDate: '1995-05-21', phone: '2145550115' },
+      { id: '019a2000-0000-7000-8000-000000000116', locationId: N1, firstName: 'Tomás', lastName: 'Gutiérrez León', birthDate: '1983-11-02', phone: '9725550116' },
+      { id: '019a2000-0000-7000-8000-000000000117', locationId: N1, firstName: 'Natalia', lastName: 'Vargas Rojas', birthDate: '2005-02-14', phone: '2145550117' },
+      { id: '019a2000-0000-7000-8000-000000000118', locationId: N2, firstName: 'Héctor', lastName: 'Medina Salas', birthDate: '1949-06-30', phone: '8175550118' },
+      { id: '019a2000-0000-7000-8000-000000000119', locationId: N1, firstName: 'Paula', lastName: 'Romero Aguilar', birthDate: '1991-09-09', phone: '2145550119' },
+      { id: '019a2000-0000-7000-8000-000000000120', locationId: N2, firstName: 'Óscar', lastName: 'Delgado Núñez', birthDate: '1980-04-04', phone: '8175550120' },
     ],
   },
   sur: {
     id: '019a2000-0000-7000-8000-000000000002',
     name: 'Clínica Demo Sur',
     locations: [
-      { id: '019a2000-0000-7000-8000-000000000021', code: 'SUR1', name: 'Sur Centro', address: '88 Avenida Demo Sur, San Antonio, TX 78205' },
-      { id: '019a2000-0000-7000-8000-000000000022', code: 'SUR2', name: 'Sur Este', address: '2500 Calle Ejemplo Este, Houston, TX 77002' },
+      { id: S1, code: 'SUR1', name: 'Sur Centro', address: '88 Avenida Demo Sur, San Antonio, TX 78205' },
+      { id: S2, code: 'SUR2', name: 'Sur Este', address: '2500 Calle Ejemplo Este, Houston, TX 77002' },
     ],
     patients: [
-      { id: '019a2000-0000-7000-8000-000000000201', locationId: '019a2000-0000-7000-8000-000000000021', firstName: 'Diego', lastName: 'Ficticio Cuatro' },
-      { id: '019a2000-0000-7000-8000-000000000202', locationId: '019a2000-0000-7000-8000-000000000022', firstName: 'Elena', lastName: 'Ficticia Cinco' },
-      { id: '019a2000-0000-7000-8000-000000000203', locationId: '019a2000-0000-7000-8000-000000000021', firstName: 'Fabio', lastName: 'Ficticio Seis' },
+      { id: '019a2000-0000-7000-8000-000000000201', locationId: S1, firstName: 'Diego', lastName: 'Torres Campos', birthDate: '1987-03-12', phone: '2105550131' },
+      { id: '019a2000-0000-7000-8000-000000000202', locationId: S2, firstName: 'Elena', lastName: 'Sánchez Mejía', birthDate: '1993-08-25', phone: '7135550132', referralSource: 'RECOMENDACION', referralDetails: 'Recomendada por su hermana' },
+      { id: '019a2000-0000-7000-8000-000000000203', locationId: S1, firstName: 'Fabio', lastName: 'Reyes Paredes', birthDate: '1979-12-30', phone: '2105550133' },
+      // Madre e hijo con el mismo teléfono.
+      { id: '019a2000-0000-7000-8000-000000000204', locationId: S2, firstName: 'Rosa', lastName: 'Martínez Flores', birthDate: '1960-05-05', phone: '7135550134' },
+      { id: '019a2000-0000-7000-8000-000000000205', locationId: S2, firstName: 'Daniel', lastName: 'Martínez Flores', birthDate: '2010-10-10', phone: '7135550134' },
+      // Posible duplicado: misma fecha, nombre parecido.
+      { id: '019a2000-0000-7000-8000-000000000206', locationId: S1, firstName: 'María Fernanda', lastName: 'Castro', birthDate: '1984-02-29', phone: '2105550136', referralSource: 'REDES' },
+      { id: '019a2000-0000-7000-8000-000000000207', locationId: S1, firstName: 'Maria Fernanda', lastName: 'Castro Luna', birthDate: '1984-02-29', phone: '2105550198' },
+      // Homónimos con distinta fecha.
+      { id: '019a2000-0000-7000-8000-000000000208', locationId: S2, firstName: 'Luis', lastName: 'García Herrera', birthDate: '1972-07-17', phone: '7135550138' },
+      { id: '019a2000-0000-7000-8000-000000000209', locationId: S2, firstName: 'Luis', lastName: 'García Herrera', birthDate: '1999-01-01', phone: '7135550139' },
+      { id: '019a2000-0000-7000-8000-000000000210', locationId: S1, firstName: 'Camila', lastName: 'Álvarez Ponce', birthDate: '2000-06-06', phone: '2105550140' },
+      { id: '019a2000-0000-7000-8000-000000000211', locationId: S1, firstName: 'Jorge', lastName: 'Mendoza Ibarra', birthDate: '1955-09-19', phone: null },
+      { id: '019a2000-0000-7000-8000-000000000212', locationId: S2, firstName: 'Adriana', lastName: 'Silva Cortés', birthDate: '1989-11-11', phone: '7135550142', referralSource: 'LETRERO' },
+      { id: '019a2000-0000-7000-8000-000000000213', locationId: S1, firstName: 'Ramón', lastName: 'Acosta Lara', birthDate: '1968-02-02', phone: '2105550143' },
+      { id: '019a2000-0000-7000-8000-000000000214', locationId: S2, firstName: 'Patricia', lastName: 'Guzmán Vela', birthDate: '1976-04-24', phone: '7135550144' },
+      { id: '019a2000-0000-7000-8000-000000000215', locationId: S1, firstName: 'Emilio', lastName: 'Cabrera Solís', birthDate: '1997-08-08', phone: '2105550145' },
+      { id: '019a2000-0000-7000-8000-000000000216', locationId: S2, firstName: 'Teresa', lastName: 'Ibáñez Quiroga', birthDate: '1950-12-12', phone: '7135550146' },
+      { id: '019a2000-0000-7000-8000-000000000217', locationId: S1, firstName: 'Nicolás', lastName: 'Rivas Molina', birthDate: '2003-03-03', phone: '2105550147' },
+      { id: '019a2000-0000-7000-8000-000000000218', locationId: S2, firstName: 'Mónica', lastName: 'Herrera Báez', birthDate: '1986-10-30', phone: '7135550148' },
+      { id: '019a2000-0000-7000-8000-000000000219', locationId: S1, firstName: 'Iván', lastName: 'Peña Villalobos', birthDate: '1994-01-15', phone: '2105550149' },
+      { id: '019a2000-0000-7000-8000-000000000220', locationId: S2, firstName: 'Lourdes', lastName: 'Campos Zúñiga', birthDate: '1962-07-04', phone: '7135550150' },
     ],
   },
 } as const;
@@ -186,14 +249,48 @@ async function seedCatalog(
 }
 
 /**
+ * Pacientes ficticios (T-012), idempotente: solo inserta los que faltan, cada
+ * uno con su código del contador. Los detalles del referido van cifrados y
+ * solo si hay clave.
+ */
+async function seedPatients(tx: Tx, organizationId: string, list: readonly DemoPatient[], cipher: FieldCipher | null): Promise<void> {
+  const existing = new Set((await tx.select({ id: patients.id }).from(patients)).map((p) => p.id));
+  const sources = new Map((await tx.select({ id: referralSources.id, code: referralSources.code }).from(referralSources)).map((r) => [r.code, r.id]));
+  for (const p of list) {
+    if (existing.has(p.id)) continue;
+    const referralSourceId = p.referralSource ? (sources.get(p.referralSource) ?? null) : null;
+    const details =
+      cipher && referralSourceId && p.referralDetails
+        ? await cipher.encrypt(p.referralDetails, { organizationId, table: 'patients', column: 'referral_details', recordId: p.id })
+        : null;
+    await tx.insert(patients).values({
+      id: p.id,
+      organizationId,
+      registeredLocationId: p.locationId,
+      code: await nextCode(tx, organizationId, 'patient'),
+      firstName: p.firstName,
+      lastName: p.lastName,
+      birthDate: p.birthDate,
+      phone: p.phone,
+      referralSourceId,
+      referralDetailsEnc: details,
+    });
+  }
+}
+
+/**
  * Carga la semilla como clinic_migrator con SET ROLE clinic_owner (solo en
  * desarrollo y pruebas). FORCE RLS aplica también al dueño, así que cada
  * organización se inserta dentro de su propio contexto. Es idempotente.
  */
 export async function seed(
   migratorUrl: string,
-  /** `catalog: false`: sin catálogo ni laboratorios, para una base con migraciones anteriores a T-011. */
-  options: { catalog?: boolean } = {},
+  options: {
+    /** Solo organizaciones y sedes, para una base con migraciones antiguas (prueba de T-008). */
+    minimal?: boolean;
+    /** FIELD_ENCRYPTION_KEY: sin ella, los pacientes se siembran sin detalles del referido. */
+    fieldKey?: string;
+  } = {},
 ): Promise<void> {
   const client = new pg.Client({ connectionString: migratorUrl });
   await client.connect();
@@ -217,22 +314,11 @@ export async function seed(
             target: locations.id,
             set: { timezone: sql`excluded.timezone`, address: sql`excluded.address` },
           });
-        await tx
-          .insert(patients)
-          .values(
-            org.patients.map(({ locationId, ...p }) => ({
-              ...p,
-              organizationId: org.id,
-              registeredLocationId: locationId,
-              birthDate: '1990-01-01',
-            })),
-          )
-          .onConflictDoNothing();
-        if (options.catalog !== false) {
-          const key = org.id === DEMO.norte.id ? 'norte' : 'sur';
-          await seedCatalog(tx, org.id, org.locations, DEMO_CATALOG.prices[key]);
-          await seedLabs(tx, org.id, DEMO_LABS.costs[key]);
-        }
+        if (options.minimal) return;
+        const key = org.id === DEMO.norte.id ? 'norte' : 'sur';
+        await seedCatalog(tx, org.id, org.locations, DEMO_CATALOG.prices[key]);
+        await seedLabs(tx, org.id, DEMO_LABS.costs[key]);
+        await seedPatients(tx, org.id, org.patients, options.fieldKey ? createLocalFieldCipher(options.fieldKey) : null);
       });
     }
   } finally {

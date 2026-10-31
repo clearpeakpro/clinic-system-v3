@@ -53,13 +53,13 @@ import {
   Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { EditAssignmentsDialog, EditNameDialog } from '../components/users/edit-dialogs.tsx';
+import { EditAssignmentsDialog, EditNameDialog, OwnClinicalRolesDialog } from '../components/users/edit-dialogs.tsx';
 import { InviteDialog } from '../components/users/invite-dialog.tsx';
 import { MfaResetDialog } from '../components/users/mfa-reset-dialog.tsx';
 import { SecretDialog, type Secret } from '../components/users/secret-dialog.tsx';
 import { api, ApiError, type InvitationRow, type MemberRow, type UserRow, type UsersList } from '../lib/api.ts';
 import { initials, ROLE_LABELS } from '../lib/format.ts';
-import { useActiveLocation } from '../lib/session.ts';
+import { keys, queryClient, useActiveLocation } from '../lib/session.ts';
 import {
   assignmentLines,
   isVersionConflict,
@@ -111,6 +111,7 @@ type Dialogs =
   | { kind: 'roles' | 'locations'; row: MemberRow }
   | { kind: 'disable' | 'reactivate' | 'password'; row: MemberRow }
   | { kind: 'mfa'; row: MemberRow }
+  | { kind: 'own-clinical'; row: MemberRow }
   | { kind: 'revoke'; row: InvitationRow }
   | null;
 
@@ -203,6 +204,19 @@ export function AdminUsersPage() {
           list={users.data}
           onClose={closeDialog}
           onSaved={() => { saved(); }}
+          onConflict={conflict}
+        />
+      ) : null}
+      {users.data && dialog?.kind === 'own-clinical' ? (
+        <OwnClinicalRolesDialog
+          row={dialog.row}
+          list={users.data}
+          onClose={closeDialog}
+          onSaved={() => {
+            saved('Guardado.');
+            // Sus permisos cambian (menú y Pacientes).
+            void queryClient.invalidateQueries({ queryKey: keys.me });
+          }}
           onConflict={conflict}
         />
       ) : null}
@@ -585,7 +599,8 @@ function StatusCell({ row, timeZone, onResend }: { row: UserRow; timeZone: strin
 
 /** Por qué una fila no tiene acciones (nota de rediseño de S-ADM-02: explicar en vez de fallar). */
 function unavailableReason(row: UserRow): string | null {
-  if (row.kind === 'member' && row.self) return 'Es su propia cuenta.';
+  // Excepción del ADR 0027: el Propietario puede cambiar sus propios roles clínicos.
+  if (row.kind === 'member' && row.self) return isOwner(row) ? null : 'Es su propia cuenta.';
   if (!row.manageable) return 'Su rol no permite gestionar a esta persona.';
   return null;
 }
@@ -638,6 +653,13 @@ function RowActions({ row, onAction, onResend }: { row: UserRow; onAction: (dial
 }
 
 function MemberActions({ row, onAction }: { row: MemberRow; onAction: (dialog: Dialogs) => void }) {
+  if (row.self) {
+    return (
+      <DropdownItem onSelect={() => { onAction({ kind: 'own-clinical', row }); }}>
+        <Stethoscope aria-hidden className="size-5" /> Mis roles clínicos
+      </DropdownItem>
+    );
+  }
   const active = row.status === 'active';
   const hasClinical = !withoutClinicalAccess(row.assignments);
   const shared = row.sharedAccount;

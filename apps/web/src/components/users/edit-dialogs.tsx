@@ -1,6 +1,6 @@
-import { assignmentsFor, displayNameSchema, needsLocation, reasonSchema, type Role } from '@clinic/shared';
+import { assignmentsFor, displayNameSchema, needsLocation, reasonSchema, SELF_ASSIGNABLE_ROLES, type Role } from '@clinic/shared';
 import { Banner, Button, Checkbox, ChipGroup, Dialog, Field, TextAreaField } from '@clinic/ui';
-import { MapPin, Pencil, UserCog } from 'lucide-react';
+import { MapPin, Pencil, Stethoscope, UserCog } from 'lucide-react';
 import { useState, type SubmitEvent } from 'react';
 import { api, type MemberRow, type UsersList } from '../../lib/api.ts';
 import { ROLE_LABELS } from '../../lib/format.ts';
@@ -181,6 +181,114 @@ export function EditAssignmentsDialog({ row, mode, list, onClose, onSaved, onCon
           onChange={(e) => {
             setReason(e.target.value);
             setErrors((current) => ({ ...current, reason: undefined }));
+          }}
+        />
+      </form>
+    </Dialog>
+  );
+}
+
+/**
+ * Excepción del ADR 0027: el Propietario se asigna o se quita, a sí mismo,
+ * roles clínicos (Recepción, Enfermería / asistente médico, Proveedor) por
+ * sede activa, con motivo. Su rol de Propietario no cambia. Queda auditado y
+ * los Administradores reciben un aviso.
+ */
+export function OwnClinicalRolesDialog({ row, list, onClose, onSaved, onConflict }: EditProps & { list: UsersList }) {
+  const clinical: readonly Role[] = SELF_ASSIGNABLE_ROLES;
+  const key = (role: Role, locationId: string) => `${role}:${locationId}`;
+  const initial = new Set(row.assignments.flatMap((a) => (a.locationId && clinical.includes(a.role) ? [key(a.role, a.locationId)] : [])));
+  const [selected, setSelected] = useState(initial);
+  const [reason, setReason] = useState('');
+  const [reasonError, setReasonError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  // Las sedes inactivas solo aparecen si ya tenía un rol en ellas: se puede quitar, no añadir.
+  const sites = list.locations.filter((l) => l.active || clinical.some((role) => initial.has(key(role, l.id))));
+
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const parsedReason = reasonSchema.safeParse(reason);
+    if (!parsedReason.success) {
+      setReasonError('Se requiere un motivo.');
+      return;
+    }
+    setBusy(true);
+    setServerError(null);
+    const roles = [...selected].map((k) => {
+      const [role, locationId] = k.split(':') as [Role, string];
+      return { role, locationId };
+    });
+    try {
+      await api.changeOwnClinicalRoles({ roles, reason: parsedReason.data, expectedVersion: row.version });
+      onSaved();
+    } catch (e) {
+      if (isVersionConflict(e)) onConflict();
+      else setServerError(userActionMessage(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => { if (!open && !busy) onClose(); }}
+      dismissible={false}
+      title="Mis roles clínicos"
+      description="Como Propietario, puede asignarse roles clínicos para atender en una sede. Su rol de Propietario no cambia y los Administradores reciben un aviso."
+      icon={<Stethoscope className="size-7" />}
+      footer={
+        <>
+          <Button variant="tonal" className="text-on-surface" disabled={busy} onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="own-clinical-roles-form" loading={busy}>
+            Guardar
+          </Button>
+        </>
+      }
+    >
+      <form id="own-clinical-roles-form" noValidate onSubmit={(e) => void submit(e)} className="flex flex-col gap-space-md">
+        <div aria-live="polite">{serverError ? <Banner tone="error" title={serverError} /> : null}</div>
+        {sites.map((site) => (
+          <ChipGroup key={site.id} label={`${site.name} (${site.code})${site.active ? '' : ' · inactiva'}`}>
+            <div className="flex w-full flex-col">
+              {clinical.map((role) => {
+                const k = key(role, site.id);
+                const on = selected.has(k);
+                return (
+                  <Checkbox
+                    key={role}
+                    label={`${role === 'enfermeria' ? 'Enfermería / asistente médico' : ROLE_LABELS[role]} en ${site.code}`}
+                    checked={on}
+                    onCheckedChange={(next) => {
+                      // En una sede inactiva solo se puede quitar.
+                      if (next && !site.active) return;
+                      setSelected((current) => {
+                        const copy = new Set(current);
+                        if (next) copy.add(k);
+                        else copy.delete(k);
+                        return copy;
+                      });
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </ChipGroup>
+        ))}
+        <TextAreaField
+          label="Motivo del cambio"
+          hint="Se guarda en la auditoría y lo ven los administradores: no incluya información de pacientes."
+          required
+          maxLength={500}
+          rows={2}
+          value={reason}
+          disabled={busy}
+          error={reasonError}
+          onChange={(e) => {
+            setReason(e.target.value);
+            setReasonError(null);
           }}
         />
       </form>

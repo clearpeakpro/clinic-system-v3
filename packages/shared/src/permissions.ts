@@ -19,6 +19,8 @@ export const PERMISSIONS = [
   // los afinará en permisos de acción.
   'panel.view',
   'patients.access',
+  // S-PAC-02 «Crear paciente» (T-012): Recepción. Buscar y ver: patients.access.
+  'patients.create',
   'appointments.access',
   'nursing_queue.access',
   'provider_queue.access',
@@ -42,7 +44,7 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   propietario: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access'],
   administrador: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access'],
-  recepcion: ['panel.view', 'patients.access', 'appointments.access', 'checkout.access', 'reports.location'],
+  recepcion: ['panel.view', 'patients.access', 'patients.create', 'appointments.access', 'checkout.access', 'reports.location'],
   enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
   proveedor: [
     'panel.view',

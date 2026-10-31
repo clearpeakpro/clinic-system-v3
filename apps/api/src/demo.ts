@@ -87,7 +87,7 @@ export async function resetDemo(options: ResetOptions): Promise<void> {
   });
   const migratorUrl = withDatabase(options.superuserUrl, database, 'clinic_migrator', options.migratorPassword);
   await migrate(migratorUrl);
-  await seed(migratorUrl);
+  await seed(migratorUrl, { fieldKey: options.config.fieldEncryptionKey });
 
   const app = await createApp({ config: options.config, logs: new MemoryLogSink() });
   try {

@@ -66,6 +66,8 @@ const row = (page: Page, email: string) => page.getByRole('row').filter({ hasTex
 // su página. Sin reintentos: al repetir, el Propietario ya estaría inscrito.
 test.describe.configure({ mode: 'serial', retries: 0 });
 let page: Page;
+/** La Administradora invitada en la segunda prueba: recibe el aviso de la tercera (T-012). */
+let invitedAdmin: Page;
 
 test.beforeAll(async ({ browser }) => {
   page = await newPage(browser);
@@ -182,6 +184,7 @@ test('un Administrador invitado se inscribe en el MFA al aceptar y no puede invi
   const path = await invite(page, 'nuevo.admin@example.test', 'Persona Administradora Ficticia', ['Administrador'], []);
 
   const admin = await newPage(browser);
+  invitedAdmin = admin;
   await admin.goto(path);
   await admin.getByLabel('Nombre para mostrar').fill('Persona Administradora Ficticia');
   await admin.getByLabel('Contraseña', { exact: true }).fill('frase de administración ficticia');
@@ -199,4 +202,38 @@ test('un Administrador invitado se inscribe en el MFA al aceptar y no puede invi
   const dialog = admin.getByRole('dialog', { name: 'Invitar usuario' });
   await expect(dialog.getByRole('button', { name: 'Proveedor', exact: true })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Administrador', exact: true })).toHaveCount(0);
+});
+
+test('T-012: el Propietario se asigna Recepción en NOR1 con motivo, ya ve Pacientes y la Administradora recibe el aviso', async () => {
+  test.setTimeout(120_000);
+  // Excepción del ADR 0027: en su propia fila, solo «Mis roles clínicos».
+  await page.reload();
+  await row(page, 'propietario.norte@example.test').getByRole('button', { name: /Más acciones/ }).click();
+  await page.getByRole('menuitem', { name: 'Mis roles clínicos' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Mis roles clínicos' });
+  await expect(dialog.getByRole('checkbox', { name: 'Administrador' })).toHaveCount(0);
+  await dialog.getByRole('checkbox', { name: 'Recepción en NOR1' }).click();
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(dialog.getByText('Se requiere un motivo.')).toBeVisible();
+  await dialog.getByLabel('Motivo del cambio').fill('Cubre la recepción esta semana');
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row(page, 'propietario.norte@example.test')).toContainText('Recepción');
+
+  // Con Recepción en la sede activa, el menú ofrece Pacientes.
+  await page.goto('/app/NOR1/pacientes');
+  await expect(page.getByRole('heading', { name: 'Pacientes', level: 1 })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Buscar paciente' }).fill('maria');
+  await page.getByRole('textbox', { name: 'Buscar paciente' }).press('Enter');
+  await expect(page.getByRole('table', { name: 'Resultados de la búsqueda de pacientes' })).toContainText('María López García');
+
+  // La Administradora recibe el aviso, con la sede y sin nombres (su página
+  // quedó con «Invitar usuario» abierto en la prueba anterior).
+  await invitedAdmin.getByRole('dialog', { name: 'Invitar usuario' }).getByRole('button', { name: 'Cancelar' }).click();
+  const bell = invitedAdmin.getByRole('button', { name: /^Notificaciones/ });
+  await expect(bell).toHaveAccessibleName('Notificaciones, 1 sin leer', { timeout: 20_000 });
+  await bell.click();
+  const item = invitedAdmin.getByRole('dialog', { name: 'Notificaciones' }).getByRole('button', { name: /El Propietario cambió sus roles clínicos/ });
+  await expect(item).toContainText('Sedes: NOR1. Puede revisarlo en Administración › Usuarios.');
+  await invitedAdmin.screenshot({ path: 'test-results/aviso-roles-propietario.png' });
 });

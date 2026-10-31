@@ -30,6 +30,11 @@ export class AuditService {
     this.#hmacKey = hmacKey;
   }
 
+  /** HMAC-SHA256 de un texto ya normalizado (p. ej. el criterio de una búsqueda de pacientes, T-012). */
+  hmac(value: string): string {
+    return createHmac('sha256', this.#hmacKey).update(value).digest('hex');
+  }
+
   /** HMAC-SHA256 del correo normalizado, con clave secreta de configuración (ADR 0023). */
   hmacEmail(email: string): string {
     return createHmac('sha256', this.#hmacKey).update(email.trim().toLowerCase()).digest('hex');

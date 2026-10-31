@@ -6,6 +6,7 @@ import {
   locations,
   membershipRoles,
   memberships,
+  enqueueNotification,
   notifyRealtime,
   outbox,
   session as sessionTable,
@@ -22,7 +23,9 @@ import {
   canManageMember,
   isRole,
   ORG_WIDE_ROLES,
+  SELF_ASSIGNABLE_ROLES,
   type ChangeRolesInput,
+  type OwnClinicalRolesInput,
   type Role,
 } from '@clinic/shared';
 import { symmetricDecrypt } from 'better-auth/crypto';
@@ -324,6 +327,97 @@ export class MembershipService {
       });
       // Sus sockets se revalidan ya: si pierde la sede activa, se cierran (T-009).
       await notifyRealtime(tx, { t: 'revalidate', org: ctx.organizationId, user: target.userId });
+    });
+  }
+
+  /**
+   * Excepción del ADR 0027 (la única a `cannot_modify_self`): el Propietario
+   * reemplaza sus propios roles clínicos (Recepción, Enfermería, Proveedor)
+   * por sede, con motivo. Su rol de Propietario no se toca. Solo en sedes
+   * activas; lo que ya tenía en una sede inactiva se conserva. En la misma
+   * transacción: auditoría y un aviso por el outbox a cada Administrador
+   * activo de la organización, con las sedes afectadas.
+   */
+  async changeOwnClinicalRoles(actor: Principal, input: OwnClinicalRolesInput, meta: RequestMeta): Promise<void> {
+    const ctx = requireContext(actor);
+    if (!rolesInOrganization(actor.assignments, ctx.organizationId).includes('propietario')) throw new HttpError(403, 'owner_only');
+    const clinical: readonly Role[] = SELF_ASSIGNABLE_ROLES;
+    if (input.roles.some((r) => !clinical.includes(r.role))) throw new HttpError(403, 'role_change_not_allowed');
+
+    await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const [membership] = await tx
+        .select({ id: memberships.id, version: memberships.version })
+        .from(memberships)
+        .where(eq(memberships.userId, actor.userId))
+        .for('update');
+      if (!membership) throw new HttpError(404, 'membership_not_found');
+      assertVersion(membership.version, input.expectedVersion);
+      const current = (
+        await tx
+          .select({ role: membershipRoles.role, locationId: membershipRoles.locationId })
+          .from(membershipRoles)
+          .where(eq(membershipRoles.membershipId, membership.id))
+      ).filter((r): r is { role: Role; locationId: string } => isRole(r.role) && clinical.includes(r.role) && r.locationId !== null);
+      const next = uniqueAssignments(input.roles) as { role: Role; locationId: string }[];
+      const key = (a: { role: string; locationId: string }) => `${a.role}:${a.locationId}`;
+      const currentKeys = new Set(current.map(key));
+      const nextKeys = new Set(next.map(key));
+      const added = next.filter((a) => !currentKeys.has(key(a)));
+      const removed = current.filter((a) => !nextKeys.has(key(a)));
+      if (added.length === 0 && removed.length === 0) return;
+
+      const touched = [...new Set([...added, ...removed].map((a) => a.locationId))];
+      const sites = await tx
+        .select({ id: locations.id, code: locations.code, active: locations.active })
+        .from(locations)
+        .where(inArray(locations.id, touched));
+      if (sites.length !== touched.length) throw new HttpError(400, 'invalid_location');
+      // Solo se asigna en sedes activas (en una inactiva, se puede quitar).
+      if (added.some((a) => !sites.find((s) => s.id === a.locationId)?.active)) throw new HttpError(400, 'location_inactive');
+
+      await tx
+        .delete(membershipRoles)
+        .where(and(eq(membershipRoles.membershipId, membership.id), inArray(membershipRoles.role, [...clinical])));
+      if (next.length > 0) {
+        await tx.insert(membershipRoles).values(next.map((a) => ({ organizationId: ctx.organizationId, membershipId: membership.id, locationId: a.locationId, role: a.role })));
+      }
+      await this.#bumpVersion(tx, membership.id);
+      const codes = sites.map((s) => s.code).sort().join(', ');
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'membership.own_clinical_roles_changed',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: ctx.locationId,
+        entityType: 'membership',
+        entityId: membership.id,
+        reason: input.reason,
+        ...meta,
+        metadata: {
+          roles: [...new Set(next.map((a) => a.role))].sort().join(','),
+          added: added.length,
+          removed: removed.length,
+          locations: codes,
+        },
+      });
+      // Aviso a los Administradores activos de la organización (ADR 0027 y 0030).
+      const admins = await tx
+        .selectDistinct({ userId: memberships.userId })
+        .from(membershipRoles)
+        .innerJoin(memberships, eq(memberships.id, membershipRoles.membershipId))
+        .where(and(eq(membershipRoles.role, 'administrador'), eq(memberships.status, 'active')));
+      for (const admin of admins) {
+        if (admin.userId === actor.userId) continue;
+        await enqueueNotification(tx, this.#config.outboxKey, {
+          organizationId: ctx.organizationId,
+          userId: admin.userId,
+          kind: 'membership.owner_clinical_roles',
+          entityType: 'membership',
+          entityId: membership.id,
+          code: codes,
+        });
+      }
+      // Sus permisos cambian: sus sockets se revalidan ya (T-009).
+      await notifyRealtime(tx, { t: 'revalidate', org: ctx.organizationId, user: actor.userId });
     });
   }
 
