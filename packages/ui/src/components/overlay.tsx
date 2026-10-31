@@ -27,6 +27,8 @@ export interface DialogProps {
    * izquierda (formularios de administración, S-ADM-03 y S-ADM-09).
    */
   fullScreenOnPhone?: boolean;
+  /** En el teléfono es una hoja inferior, hasta el 95 % de la altura (detalle de la cita, S-REC-09). */
+  sheetOnPhone?: boolean;
   /** Al cerrarse: `preventDefault()` y enfocar otro elemento (p. ej., el campo a corregir). */
   onCloseAutoFocus?: (event: Event) => void;
 }
@@ -49,6 +51,7 @@ export function Dialog({
   inline = false,
   wide = false,
   fullScreenOnPhone = false,
+  sheetOnPhone = false,
   onCloseAutoFocus,
 }: DialogProps) {
   const content = (
@@ -62,6 +65,9 @@ export function Dialog({
         fullScreenOnPhone &&
           !inline &&
           'max-tab:inset-0 max-tab:h-dvh max-tab:max-h-none max-tab:w-full max-tab:max-w-none max-tab:translate-x-0 max-tab:translate-y-0 max-tab:rounded-none max-tab:border-0',
+        sheetOnPhone &&
+          !inline &&
+          'max-tab:top-auto max-tab:bottom-0 max-tab:left-0 max-tab:max-h-[95dvh] max-tab:w-full max-tab:max-w-none max-tab:translate-x-0 max-tab:translate-y-0 max-tab:rounded-b-none',
       )}
       {...(inline ? { onOpenAutoFocus: (e: Event) => { e.preventDefault(); } } : {})}
       {...(onCloseAutoFocus ? { onCloseAutoFocus } : {})}

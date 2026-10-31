@@ -1,6 +1,7 @@
 import { QueryClient, useQuery } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { api, ApiError, type LocationChoice, type Me, type NotificationsList } from './api.ts';
+import { agendaPrefs } from './appointments.ts';
 import { patientSearch } from './patients.ts';
 import { RealtimeClient, type LiveState } from './realtime.ts';
 
@@ -72,6 +73,7 @@ export async function endSession(kind: 'voluntary' | 'everywhere' | 'idle'): Pro
     queryClient.clear();
     // La búsqueda de pacientes (T-012) vive en memoria fuera de la caché.
     patientSearch.submit(null);
+    agendaPrefs.reset();
   }
 }
 

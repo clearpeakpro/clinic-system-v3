@@ -6,10 +6,12 @@ import { AcceptInvitationPage } from './pages/accept-invitation.tsx';
 import { AdminCatalogPage, catalogTabOf } from './pages/admin-catalog.tsx';
 import { AdminLocationsPage } from './pages/admin-locations.tsx';
 import { AdminUsersPage } from './pages/admin-users.tsx';
+import { AppointmentsPage } from './pages/appointments.tsx';
 import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
+import { PanelPage } from './pages/panel.tsx';
 import { PatientPage } from './pages/patient.tsx';
 import { PatientsPage } from './pages/patients.tsx';
 import { ProfilePage } from './pages/profile.tsx';
@@ -22,6 +24,7 @@ import { SelectLocationPage } from './pages/select-location.tsx';
 // /invitacion/<token> (S-GEN-09) y /restablecer/<token> (S-GEN-10).
 // T-006b: /app/<SEDE>/perfil (S-GEN-21). T-007: /admin/sedes (S-ADM-10).
 // T-012: /app/<SEDE>/pacientes y /app/<SEDE>/pacientes/<id> (S-PAC-01 y 05).
+// T-014: /app/<SEDE>/citas?fecha=AAAA-MM-DD (S-REC-06 a 09) y el subtítulo del Panel.
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -120,6 +123,39 @@ const appPatientRoute = createRoute({
   },
 });
 
+// S-REC-01 Panel: por ahora el título y «{sede} · N citas hoy» (T-014).
+const appPanelRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'panel',
+  component: function Panel() {
+    const me = useMe();
+    const { sede } = appPanelRoute.useParams();
+    if (me.data && !me.data.permissions.includes('panel.view')) return <NotFoundPage />;
+    return <PanelPage sede={sede} />;
+  },
+});
+
+interface AgendaSearch {
+  fecha?: string;
+}
+
+// S-REC-06 Citas. La fecha va en la URL (el historial del navegador funciona);
+// la valida el servidor: sin ella, o si no es válida, es hoy en la sede.
+const appAppointmentsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'citas',
+  validateSearch: (search: Record<string, unknown>): AgendaSearch =>
+    typeof search.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.fecha) ? { fecha: search.fecha } : {},
+  component: function Appointments() {
+    const me = useMe();
+    const { sede } = appAppointmentsRoute.useParams();
+    const { fecha } = appAppointmentsRoute.useSearch();
+    // El backend autoriza siempre; aquí solo se oculta (Recepción y Proveedor, ADR 0027).
+    if (me.data && !me.data.permissions.includes('appointments.access')) return <NotFoundPage />;
+    return <AppointmentsPage sede={sede} fecha={fecha} />;
+  },
+});
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -207,7 +243,7 @@ const routeTree = rootRoute.addChildren([
   invitationRoute,
   resetRoute,
   selectRoute,
-  appRoute.addChildren([appIndexRoute, appProfileRoute, appPatientsRoute, appPatientRoute, appDestinationRoute]),
+  appRoute.addChildren([appIndexRoute, appProfileRoute, appPatientsRoute, appPatientRoute, appPanelRoute, appAppointmentsRoute, appDestinationRoute]),
   adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminCatalogIndexRoute, adminCatalogRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);

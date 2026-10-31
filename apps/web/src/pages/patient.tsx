@@ -1,6 +1,6 @@
-import { ageLabel, ageOn, canSchedule, formatPhone, type PatientProfile } from '@clinic/shared';
+import { ageLabel, ageOn, canSchedule, formatPhone, type PatientAppointments, type PatientProfile } from '@clinic/shared';
 import { AsyncView, Button, CodeText, DateTimeText, EmptyState, SemanticChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   ArrowLeft,
@@ -28,6 +28,7 @@ import {
   VersionConflictDialog,
   type PatientEditScope,
 } from '../components/patients/edit-patient-dialog.tsx';
+import { PatientAppointmentsTab, UpcomingAppointment, type PatientAppointmentsQuery } from '../components/patients/patient-appointments.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { formatDay } from '../lib/catalog.ts';
 import { patientInitials } from '../lib/patients.ts';
@@ -44,6 +45,8 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // ni «Fusionar con…» (S-PAC-13) ni Documentos. «Nueva cita» se conecta en
 // T-015. Cada apertura se audita en el servidor (patient.read) y no se guarda
 // en caché. La pestaña no va en la URL: al volver, el perfil abre en Resumen.
+// T-014: la pestaña Citas (S-PAC-07) y la «Próxima cita» del Resumen, en solo
+// lectura; sin acceso a Citas (Enfermería, ADR 0027) no se muestran.
 
 type TabKey = 'resumen' | 'citas' | 'visitas' | 'saldos';
 
@@ -69,7 +72,18 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
     deactivate: permissions.includes('patients.deactivate'),
   };
   const canAppointments = permissions.includes('appointments.access');
+  const tabs = canAppointments ? TABS : TABS.filter((t) => t.key !== 'citas');
   const [tab, setTab] = useState<TabKey>('resumen');
+  const appointments: PatientAppointmentsQuery = useInfiniteQuery<PatientAppointments, ApiError>({
+    queryKey: ['patient-appointments', patientId],
+    queryFn: ({ pageParam }) => api.patientAppointments(patientId, pageParam as number),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.nextOffset ?? undefined,
+    enabled: canAppointments,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
   const [dialog, setDialog] = useState<null | 'edit' | 'status' | 'conflict'>(null);
   const patient = useQuery({
     queryKey: ['patient', patientId],
@@ -118,15 +132,16 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
         {(p) => (
           <>
             <ProfileHeader patient={p} />
-            <Tabs label="Secciones del perfil" items={TABS} value={tab} onValueChange={setTab}>
+            <Tabs label="Secciones del perfil" items={tabs} value={tab} onValueChange={setTab}>
               {tab === 'resumen' ? (
                 <Summary
                   patient={p}
                   timeZone={timeZone}
+                  {...(canAppointments ? { appointments } : {})}
                   {...(canOpenEditor(scope) ? { onEdit: () => { setDialog('edit'); } } : {})}
                 />
-              ) : tab === 'citas' ? (
-                <EmptyState icon={CalendarDays} title="Aún no hay citas." description="Las citas del paciente se mostrarán aquí." />
+              ) : tab === 'citas' && canAppointments ? (
+                <PatientAppointmentsTab query={appointments} sede={sede} timeZone={timeZone} />
               ) : tab === 'visitas' ? (
                 <EmptyState icon={History} title="Aún no hay visitas." description={PHASE_3} />
               ) : (
@@ -199,14 +214,26 @@ function ProfileHeader({ patient: p }: { patient: PatientProfile }) {
   );
 }
 
-/** S-PAC-06 Resumen: próxima cita (T-014), última visita (fase 3) y los datos de admisión. */
-function Summary({ patient: p, timeZone, onEdit }: { patient: PatientProfile; timeZone: string; onEdit?: () => void }) {
+/** S-PAC-06 Resumen: próxima cita (T-014, solo con acceso a Citas), última visita (fase 3) y los datos de admisión. */
+function Summary({
+  patient: p,
+  timeZone,
+  appointments,
+  onEdit,
+}: {
+  patient: PatientProfile;
+  timeZone: string;
+  appointments?: PatientAppointmentsQuery;
+  onEdit?: () => void;
+}) {
   return (
     <div className="flex flex-col gap-space-md">
       <div className="grid gap-space-md tab:grid-cols-2">
-        <Card icon={<CalendarClock className="size-6" />} title="Próxima cita">
-          <p className="text-body-md text-on-surface-variant">Aún no hay citas.</p>
-        </Card>
+        {appointments ? (
+          <Card icon={<CalendarClock className="size-6" />} title="Próxima cita">
+            <UpcomingAppointment query={appointments} timeZone={timeZone} />
+          </Card>
+        ) : null}
         <Card icon={<SquareCheckBig className="size-6" />} title="Última visita">
           <p className="text-body-md text-on-surface-variant">Aún no hay visitas. {PHASE_3}</p>
         </Card>

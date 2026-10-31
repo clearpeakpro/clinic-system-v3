@@ -40,6 +40,19 @@
 - **Código por sede:** se guarda completo (`NOR1-A-000045`) y se muestra el corto (`A-000045`). Cada sede tiene su contador en `code_counters`.
 - **Semilla:** el único proveedor ficticio de Norte está en NOR2, así que se añade una proveedora ficticia en NOR1 (`proveedora.nor1@example.test`) para que la agenda de NOR1 tenga citas con proveedor.
 
+**Cómo quedó (2026-10-31):**
+- **API** (`apps/api/src/appointments.ts`):
+  - `GET /api/appointments?date=`: el día de la sede activa, con los proveedores para el filtro. Auditoría `appointment.list`.
+  - `GET /api/appointments/:id`: el detalle. Auditoría `appointment.view`.
+  - `GET /api/patients/:id/appointments`: la pestaña Citas y la próxima cita, solo de las sedes donde quien llama tiene Citas. Auditoría `patient.appointments_read`.
+  - `GET /api/appointments/today-count`: «N citas hoy». Exige `panel.view` y no `appointments.access`, porque en el manual todos los roles del Panel ven el subtítulo (también Enfermería) y el total no lleva PHI.
+- **Web:**
+  - `/app/<SEDE>/citas?fecha=AAAA-MM-DD` y el Panel con su subtítulo;
+  - el detalle se abre en un diálogo de 560 px y, en el teléfono, en una hoja inferior (sin arrastre);
+  - las citas Canceladas y No se presentó se atenúan con el color secundario, no con transparencia, para mantener el contraste (axe).
+- **Tiempo real:** la agenda todavía no escucha `appointment.changed`, porque en esta tarea nada cambia una cita. Llega con T-015, junto con las acciones.
+- **Cambios de horario:** los prueban la API y la E2E con citas propias el 1 de noviembre de 2026, el 7 de noviembre de 2027 y el 14 de marzo de 2027. La semilla es relativa al día en que se siembra.
+
 **Terminada cuando:**
 - la agenda de NOR1 muestra solo citas de NOR1, en hora Central, incluido un día con cambio de horario (prueba);
 - los filtros funcionan;

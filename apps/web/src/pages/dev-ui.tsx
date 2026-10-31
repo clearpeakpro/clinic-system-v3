@@ -1,5 +1,6 @@
-import { VISIT_ROUTES, VISIT_STATUSES } from '@clinic/shared';
+import { APPOINTMENT_STATUSES, VISIT_ROUTES, VISIT_STATUSES } from '@clinic/shared';
 import {
+  AppointmentStatusChip,
   Button,
   ChipGroup,
   CodeField,
@@ -112,6 +113,10 @@ export function DevUiPage() {
         <Section n={1} title="Chips de estado de la visita">
           <div className="flex flex-wrap gap-space-sm">
             {VISIT_STATUSES.map((s) => <VisitStatusChip key={s} status={s} />)}
+          </div>
+          <p className="text-body-md text-on-surface-variant">Estados de la cita (T-014):</p>
+          <div className="flex flex-wrap gap-space-sm">
+            {APPOINTMENT_STATUSES.map((s) => <AppointmentStatusChip key={s} status={s} />)}
           </div>
           <p className="text-body-md text-on-surface-variant">Tonos generales (S-GEN-30):</p>
           <div className="flex flex-wrap gap-space-sm">
