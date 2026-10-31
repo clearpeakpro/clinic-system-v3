@@ -1,6 +1,7 @@
 import { QueryClient, useQuery } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { api, ApiError, type LocationChoice, type Me, type NotificationsList } from './api.ts';
+import { patientSearch } from './patients.ts';
 import { RealtimeClient, type LiveState } from './realtime.ts';
 
 // Estado de sesión en memoria (TanStack Query). Sin persistencia: al cerrar
@@ -69,6 +70,8 @@ export async function endSession(kind: 'voluntary' | 'everywhere' | 'idle'): Pro
     // Si el servidor no responde, la sesión vence sola (límite + 2 min).
   } finally {
     queryClient.clear();
+    // La búsqueda de pacientes (T-012) vive en memoria fuera de la caché.
+    patientSearch.submit(null);
   }
 }
 

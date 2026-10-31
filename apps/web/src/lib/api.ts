@@ -2,6 +2,11 @@ import type {
   CatalogKind,
   CatalogList,
   CreateLabProviderInput,
+  CreatedPatient,
+  CreatePatientInput,
+  OwnClinicalRolesInput,
+  PatientSearchResult,
+  PatientSummary,
   GeneralPriceInput,
   LabCostChange,
   LocationPriceInput,
@@ -19,11 +24,14 @@ export class ApiError extends Error {
   readonly code: string;
   /** Segundos de Retry-After (respuestas 429), para el mensaje de S-GEN-28. */
   readonly retryAfterSeconds: number | undefined;
-  constructor(status: number, code: string, retryAfterSeconds?: number) {
+  /** El resto del cuerpo del error (p. ej. los candidatos de un posible duplicado, S-PAC-03). */
+  readonly details: Record<string, unknown>;
+  constructor(status: number, code: string, retryAfterSeconds?: number, details: Record<string, unknown> = {}) {
     super(code);
     this.status = status;
     this.code = code;
     this.retryAfterSeconds = retryAfterSeconds;
+    this.details = details;
   }
 }
 
@@ -49,6 +57,7 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
       response.status,
       typeof code === 'string' ? code : `http_${String(response.status)}`,
       Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      data && typeof data === 'object' ? (data as Record<string, unknown>) : {},
     );
   }
   return data as T;
@@ -249,6 +258,17 @@ export const api = {
   deactivateLabProvider: (id: string, reason: string, expectedVersion: number) =>
     request<null>('POST', `/api/admin/lab-providers/${id}/deactivate`, { reason, expectedVersion }),
   reactivateLabProvider: (id: string, expectedVersion: number) => request<null>('POST', `/api/admin/lab-providers/${id}/reactivate`, { expectedVersion }),
+
+  // Catálogo activo para el personal (T-011): fuentes de referido del alta de paciente.
+  catalog: () => request<CatalogList>('GET', '/api/catalog'),
+
+  // Pacientes (S-PAC-01 a 05, T-012). La búsqueda va por POST: el criterio no queda en la URL.
+  searchPatients: (q: string, offset: number) => request<PatientSearchResult>('POST', '/api/patients/search', { q, offset }),
+  createPatient: (input: CreatePatientInput) => request<CreatedPatient>('POST', '/api/patients', input),
+  patient: (id: string) => request<PatientSummary & { today: string }>('GET', `/api/patients/${id}`),
+  openExistingPatient: (id: string) => request<null>('POST', `/api/patients/${id}/open-existing`, {}),
+  // Excepción del ADR 0027: el Propietario se asigna roles clínicos.
+  changeOwnClinicalRoles: (input: OwnClinicalRolesInput) => request<null>('POST', '/api/memberships/self/clinical-roles', input),
 
   // Centro de notificaciones (S-GEN-15)
   notifications: () => request<NotificationsList>('GET', '/api/notifications'),

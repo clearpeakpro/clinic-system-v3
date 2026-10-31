@@ -10,6 +10,8 @@ import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
+import { PatientPage } from './pages/patient.tsx';
+import { PatientsPage } from './pages/patients.tsx';
 import { ProfilePage } from './pages/profile.tsx';
 import { ResetPasswordPage } from './pages/reset-password.tsx';
 import { SelectLocationPage } from './pages/select-location.tsx';
@@ -19,6 +21,7 @@ import { SelectLocationPage } from './pages/select-location.tsx';
 // T-006a: /admin/usuarios (S-ADM-02) y las páginas públicas
 // /invitacion/<token> (S-GEN-09) y /restablecer/<token> (S-GEN-10).
 // T-006b: /app/<SEDE>/perfil (S-GEN-21). T-007: /admin/sedes (S-ADM-10).
+// T-012: /app/<SEDE>/pacientes y /app/<SEDE>/pacientes/<id> (S-PAC-01 y 05).
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -93,6 +96,29 @@ const appIndexRoute = createRoute({
 
 // S-GEN-21 Perfil: para todos, sin permiso extra y fuera del menú lateral.
 const appProfileRoute = createRoute({ getParentRoute: () => appRoute, path: 'perfil', component: ProfilePage });
+
+// T-012: /app/<SEDE>/pacientes (S-PAC-01) y /app/<SEDE>/pacientes/<id> (encabezado de S-PAC-05).
+const appPatientsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'pacientes',
+  component: function Patients() {
+    const me = useMe();
+    // El backend autoriza siempre; aquí solo se oculta.
+    if (me.data && !me.data.permissions.includes('patients.access')) return <NotFoundPage />;
+    return <PatientsPage />;
+  },
+});
+
+const appPatientRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'pacientes/$id',
+  component: function Patient() {
+    const me = useMe();
+    const { sede, id } = appPatientRoute.useParams();
+    if (me.data && !me.data.permissions.includes('patients.access')) return <NotFoundPage />;
+    return <PatientPage key={id} sede={sede} patientId={id} />;
+  },
+});
 
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -181,7 +207,7 @@ const routeTree = rootRoute.addChildren([
   invitationRoute,
   resetRoute,
   selectRoute,
-  appRoute.addChildren([appIndexRoute, appProfileRoute, appDestinationRoute]),
+  appRoute.addChildren([appIndexRoute, appProfileRoute, appPatientsRoute, appPatientRoute, appDestinationRoute]),
   adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminCatalogIndexRoute, adminCatalogRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);
