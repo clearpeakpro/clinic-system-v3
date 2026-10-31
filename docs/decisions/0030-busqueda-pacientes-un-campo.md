@@ -37,6 +37,24 @@ El manual (S-PAC-01) y Stitch tienen cinco campos de búsqueda: Nombre, Apellido
 - **Solo al pulsar Enter o «Buscar»**, nunca en vivo.
 - **Auditoría:** cada búsqueda se audita con el criterio como HMAC, nunca con sus valores.
 
+### Búsqueda en la cabecera (cambio del 2026-10-31)
+- **Campo en la cabecera:** en lugar de un botón «Buscar pacientes» que abría un panel, hay un campo con la lupa como botón integrado a la derecha. Solo lo ve quien tiene `patients.access`.
+- **Mismas reglas que la pantalla Pacientes:** un solo campo, mínimo de 3 letras para el nombre y búsqueda solo con Enter o la lupa.
+- **Resultados en un panel bajo el campo:**
+  - hasta 8 pacientes, con código, nombre, fecha de nacimiento y edad;
+  - al final, «Ver todos los resultados», que abre Pacientes con esa búsqueda, pasada en memoria y nunca en la URL;
+  - elegir un paciente abre su perfil;
+  - los errores de validación se muestran en el panel.
+- **Código:** si se escribe o escanea un código que existe, se abre directamente el perfil.
+- **El campo se vacía:** al elegir un paciente, al cerrar el panel (Esc o clic fuera), al cambiar de sede y al cerrar sesión.
+- **Tamaños:**
+  - escritorio: unos 360 px;
+  - tableta: más estrecho, y se ensancha al enfocarlo;
+  - teléfono: solo la lupa, que despliega el campo a todo el ancho de la cabecera.
+- **Teclado:**
+  - atajo «/» para enfocar el campo;
+  - patrón combobox con lista de resultados: flechas para moverse, Enter para abrir y Esc para cerrar.
+
 ### Posible paciente existente
 - **Bloquea el alta:** misma fecha de nacimiento y nombre completo parecido (similitud de trigramas ≥ 0.6, sin tildes ni mayúsculas). Se ofrecen «Abrir existente» y «Crear de todos modos».
 - **El mismo teléfono por sí solo no es un duplicado:** una familia puede compartirlo.
@@ -65,3 +83,4 @@ El manual (S-PAC-01) y Stitch tienen cinco campos de búsqueda: Nombre, Apellido
   - «Maria Lopez» frente a «María López García» lo supera;
   - una madre y su hijo, no.
 - **El selector de paciente de Citas** (S-REC-12, T-015) usará el mismo campo.
+- **La búsqueda de la cabecera** está en `apps/web/src/components/patients/header-search.tsx`. Su E2E (`apps/web/e2e/patients.spec.ts`) cubre el panel, el teclado, el código escaneado, el campo vacío al cerrar y el teléfono, con axe.

@@ -106,7 +106,8 @@ function Header({ me, locations, active }: { me: Me; locations: FlatLocation[]; 
       <div data-slot="header-actions" className="flex items-center gap-space-sm tab:gap-space-md">
         <LiveIndicator />
         {/* T-012: solo quien puede buscar pacientes (el servidor también lo exige). */}
-        {me.permissions.includes('patients.access') ? <HeaderPatientSearch code={active.code} /> : null}
+        {/* key: al cambiar de sede, el campo se vacía. */}
+        {me.permissions.includes('patients.access') ? <HeaderPatientSearch key={active.id} code={active.code} /> : null}
         <NotificationCenter organizationId={active.organizationId} />
       </div>
       <AccountMenu me={me} code={active.code} />
