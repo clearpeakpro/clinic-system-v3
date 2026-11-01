@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 import { api, ApiError, type LocationChoice, type Me, type NotificationsList } from './api.ts';
 import { agendaPrefs } from './appointments.ts';
 import { patientSearch } from './patients.ts';
-import { RealtimeClient, type LiveState } from './realtime.ts';
+import { RealtimeClient, type LiveState, type ScreenEvent } from './realtime.ts';
 
 // Estado de sesión en memoria (TanStack Query). Sin persistencia: al cerrar
 // sesión se borra todo (S-GEN-17, S-GEN-20).
@@ -30,11 +30,41 @@ export const useLocations = () => useQuery<LocationChoice[], ApiError>({ queryKe
 export const useNotifications = (organizationId: string) =>
   useQuery<NotificationsList, ApiError>({ queryKey: keys.notifications(organizationId), queryFn: api.notifications });
 
+/** Ráfagas de eventos en vivo: una sola relectura cada 500 ms (S-REC-01). */
+export const EVENT_BATCH_MS = 500;
+
+/**
+ * Eventos de pantalla de la sede activa (el servidor solo envía los de esa
+ * sede). `appointment.changed` (T-015): se relee la agenda de todos los días,
+ * el detalle de esa cita, «N citas hoy» del Panel y las citas del perfil. Los
+ * mensajes solo traen ids y estado: los datos se vuelven a pedir por HTTP.
+ */
+export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) => void, delay = EVENT_BATCH_MS) {
+  let pending: Set<string> | null = null;
+  return (event: ScreenEvent) => {
+    if (event.name !== 'appointment.changed') return;
+    const first = pending === null;
+    pending ??= new Set();
+    const id = event.ids.appointment;
+    if (id) pending.add(id);
+    if (!first) return;
+    setTimeout(() => {
+      const ids = pending ?? new Set<string>();
+      pending = null;
+      invalidate(['agenda']);
+      invalidate(['today-count']);
+      invalidate(['patient-appointments']);
+      for (const appointmentId of ids) invalidate(['appointment', appointmentId]);
+    }, delay);
+  };
+}
+
 /** Conexión en vivo de la pestaña (T-009). */
 export const realtime = new RealtimeClient({
   resync: () => void queryClient.invalidateQueries({ refetchType: 'active' }),
   sessionChanged: () => void queryClient.invalidateQueries({ queryKey: keys.me }),
   notifications: () => void queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+  event: createEventBatcher((queryKey) => void queryClient.invalidateQueries({ queryKey })),
 });
 
 export function useLiveState(): LiveState {
