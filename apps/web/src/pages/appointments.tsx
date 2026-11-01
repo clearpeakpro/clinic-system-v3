@@ -5,6 +5,7 @@ import {
   APPOINTMENT_STATUSES,
   shortAppointmentCode,
   type AgendaAppointment,
+  type AppointmentSaved,
   type AgendaDay,
   type AppointmentStatus,
 } from '@clinic/shared';
@@ -19,6 +20,7 @@ import {
   EmptyState,
   SegmentedControl,
   SelectField,
+  useSnackbar,
   type Column,
   type StatusTone,
 } from '@clinic/ui';
@@ -27,7 +29,8 @@ import { useNavigate } from '@tanstack/react-router';
 import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Clock, LayoutList, Rows3, Stethoscope } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { AppointmentCard } from '../components/appointments/appointment-card.tsx';
-import { AppointmentDetailDialog } from '../components/appointments/appointment-detail-dialog.tsx';
+import { AppointmentDetailDialog, useAfterAppointmentChange } from '../components/appointments/appointment-detail-dialog.tsx';
+import { AppointmentFormDialog } from '../components/appointments/appointment-form-dialog.tsx';
 import { AGENDA_STRIPE } from '../components/catalog/catalog-dialog.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import {
@@ -53,10 +56,13 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // (S-REC-09), en solo lectura (T-014). De Stitch: título con la fecha larga,
 // barra con «<», la fecha, «>», «Hoy», el conmutador Día / Lista y el
 // proveedor; los chips de estado con su número («Todos» con el total); las
-// secciones por hora con «N citas» y las tarjetas. «Nueva cita» se ve
-// deshabilitada hasta T-015 y «Sin cita» no aparece hasta la fase 3. La fecha
-// va en la URL (?fecha=AAAA-MM-DD); sin ella, o si no es válida, el servidor
-// devuelve hoy en la sede. Todo en la zona horaria de la sede.
+// secciones por hora con «N citas» y las tarjetas. «Nueva cita» (T-015)
+// abre S-REC-10 con el día mostrado (o hoy, si es anterior); «Sin cita» no
+// aparece hasta la fase 3. La fecha va en la URL (?fecha=AAAA-MM-DD); sin
+// ella, o si no es válida, el servidor devuelve hoy en la sede. ?cita=<id>
+// abre el detalle (avisos de la campana). Todo en la zona horaria de la sede.
+// La agenda se actualiza sola cuando otra persona cambia una cita (evento en
+// vivo appointment.changed de la sede activa).
 
 const VIEWS = [
   { value: 'day', label: 'Día', icon: <Rows3 aria-hidden className="size-[18px]" /> },
@@ -75,15 +81,26 @@ const TONE_TEXT: Record<StatusTone, string> = {
 
 const citas = (n: number) => (n === 1 ? '1 cita' : `${String(n)} citas`);
 
-export function AppointmentsPage({ sede, fecha }: { sede: string; fecha: string | undefined }) {
+export function AppointmentsPage({ sede, fecha, cita }: { sede: string; fecha: string | undefined; cita?: string | undefined }) {
   const me = useMe();
+  const snackbar = useSnackbar();
+  const afterChange = useAfterAppointmentChange();
+  const canManage = me.data?.permissions.includes('appointments.manage') ?? false;
+  const canCreatePatient = me.data?.permissions.includes('patients.create') ?? false;
+  const [creating, setCreating] = useState(false);
   const active = useActiveLocation();
   const navigate = useNavigate();
   const roles = me.data?.roles ?? [];
   const isProvider = roles.includes('proveedor');
   const prefs = useAgendaPrefs(initialProviderFilter(roles));
   const [statuses, setStatuses] = useState<AppointmentStatus[]>([]);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(cita ?? null);
+  // Un aviso de la campana con la agenda ya abierta.
+  const [seenCita, setSeenCita] = useState(cita);
+  if (cita !== seenCita) {
+    setSeenCita(cita);
+    if (cita) setOpenId(cita);
+  }
   const dateInput = useRef<HTMLInputElement>(null);
 
   // Solo con la sede de la URL ya activa (al cambiarla por URL, el marco cambia el contexto).
@@ -104,6 +121,22 @@ export function AppointmentsPage({ sede, fecha }: { sede: string; fecha: string 
   const goTo = (date: string | undefined) => {
     void navigate({ to: '/app/$sede/citas', params: { sede }, search: date ? { fecha: date } : {} });
   };
+  const closeDetail = () => {
+    setOpenId(null);
+    // Sin ?cita en la URL, para que «Atrás» no lo vuelva a abrir.
+    if (cita) void navigate({ to: '/app/$sede/citas', params: { sede }, search: fecha ? { fecha } : {}, replace: true });
+  };
+  const created = (saved: AppointmentSaved) => {
+    setCreating(false);
+    void afterChange();
+    const message = `Cita ${shortAppointmentCode(saved.code)} creada.`;
+    snackbar({ message: saved.warnings.includes('provider_overlap') ? `${message} El proveedor ya tiene una cita en ese horario.` : message });
+  };
+  const newButton = (
+    <Button onClick={() => { setCreating(true); }}>
+      <CalendarPlus aria-hidden className="size-5" /> Nueva cita
+    </Button>
+  );
   const toggleStatus = (status: AppointmentStatus) => {
     setStatuses((current) => (current.includes(status) ? current.filter((s) => s !== status) : [...current, status]));
   };
@@ -130,14 +163,7 @@ export function AppointmentsPage({ sede, fecha }: { sede: string; fecha: string 
           </h1>
           <p className="text-body-lg text-on-surface-variant">{shown ? longDay(shown) : ' '}</p>
         </div>
-        <span className="flex flex-col items-end">
-          <Button disabled aria-describedby="new-appointment-note">
-            <CalendarPlus aria-hidden className="size-5" /> Nueva cita
-          </Button>
-          <span id="new-appointment-note" className="text-caption text-on-surface-variant">
-            Llega con la agenda
-          </span>
-        </span>
+        {canManage ? <span className="hidden tab:inline-flex">{newButton}</span> : null}
       </header>
 
       <div className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">
@@ -226,7 +252,12 @@ export function AppointmentsPage({ sede, fecha }: { sede: string; fecha: string 
                 }
               />
             ) : (
-              <EmptyState icon={CalendarDays} title="No hay citas" description="No hay nada programado para este día." />
+              <EmptyState
+                icon={CalendarDays}
+                title="No hay citas"
+                description="No hay nada programado para este día."
+                {...(canManage ? { action: newButton } : {})}
+              />
             )
           }
         >
@@ -242,8 +273,26 @@ export function AppointmentsPage({ sede, fecha }: { sede: string; fecha: string 
         </AsyncView>
       ) : null}
 
-      {openId && data ? (
-        <AppointmentDetailDialog appointmentId={openId} sede={sede} myMembershipId={data.myMembershipId} onClose={() => { setOpenId(null); }} />
+      {canManage ? (
+        <Button
+          className="fixed right-4 bottom-24 z-20 size-14 rounded-full p-0 shadow-level-3 tab:hidden"
+          aria-label="Nueva cita"
+          title="Nueva cita"
+          onClick={() => { setCreating(true); }}
+        >
+          <CalendarPlus aria-hidden className="size-6" />
+        </Button>
+      ) : null}
+      {openId && data ? <AppointmentDetailDialog appointmentId={openId} sede={sede} myMembershipId={data.myMembershipId} onClose={closeDetail} /> : null}
+      {creating && data ? (
+        <AppointmentFormDialog
+          // El día mostrado; si ya pasó, hoy (solo desde hoy en la sede).
+          mode={{ kind: 'create', date: data.date < data.today ? data.today : data.date, patient: null }}
+          canCreatePatient={canCreatePatient}
+          onClose={() => { setCreating(false); }}
+          onSaved={created}
+          onConflict={() => { setCreating(false); }}
+        />
       ) : null}
     </section>
   );
