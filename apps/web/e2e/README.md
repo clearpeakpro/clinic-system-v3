@@ -1,13 +1,16 @@
 # Pruebas E2E (Playwright)
 
-`pnpm test:e2e` compila la web y ejecuta dos configuraciones:
+`pnpm test:e2e` compila la web y ejecuta tres configuraciones:
 
-- `playwright.config.ts`: los flujos de cada rol (todas las `*.spec.ts` salvo `demo.spec.ts`);
-- `playwright.demo.config.ts`: el guion de la demo (`demo.spec.ts`, ver `docs/DEMO-FASE-1.md`).
+- `playwright.config.ts`: los flujos de cada rol (todas las `*.spec.ts` salvo las de las demos);
+- `playwright.demo.config.ts`: el guion de la demo de la fase 1 (`demo.spec.ts`, ver `docs/DEMO-FASE-1.md`);
+- `playwright.demo2.config.ts`: el guion de la demo de la fase 2 (`demo-fase-2.spec.ts`, ver `docs/DEMO-FASE-2.md`).
+
+Los dos guiones comparten sus ayudantes (`demo-helpers.ts`: ventanas, inicio y cierre de sesión, MFA).
 
 ## Base de datos desechable
 
-Cada configuración levanta su propio Postgres 16 con Testcontainers (`global-setup.ts` y `global-setup-demo.ts`):
+Cada configuración levanta su propio Postgres 16 con Testcontainers (`global-setup.ts`, y `global-setup-demo.ts` para las dos demos):
 
 - lo prepara con bootstrap, migraciones y la semilla ficticia; la demo lo prepara con el mismo `demo:reset` que usa la persona;
 - arranca la API (y el worker) contra él;

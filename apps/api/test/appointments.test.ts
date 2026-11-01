@@ -133,12 +133,14 @@ describe('T-014 agenda y detalle de la cita', () => {
   });
 
   it('la agenda de NOR1 muestra solo citas de NOR1, ordenadas por hora y código, en la zona de la sede', async () => {
-    const date = '2026-12-02';
-    const late = await insert({ at: '2026-12-02T16:00:00Z' });
-    const early = await insert({ at: '2026-12-02T15:00:00Z', minutes: 30 });
-    const tie = await insert({ at: '2026-12-02T16:00:00Z' });
-    await insert({ at: '2026-12-02T15:30:00Z', site: 1 });
-    await insert({ at: '2026-12-02T15:30:00Z', org: SUR });
+    // Fechas fijas en el pasado: las pruebas relativas a hoy (también las de
+    // appointment-commands, en la misma base) nunca llegan a ellas.
+    const date = '2025-12-02';
+    const late = await insert({ at: '2025-12-02T16:00:00Z' });
+    const early = await insert({ at: '2025-12-02T15:00:00Z', minutes: 30 });
+    const tie = await insert({ at: '2025-12-02T16:00:00Z' });
+    await insert({ at: '2025-12-02T15:30:00Z', site: 1 });
+    await insert({ at: '2025-12-02T15:30:00Z', org: SUR });
     const agenda = await day(recepcion, date);
     expect(agenda.date).toBe(date);
     expect(agenda.timeZone).toBe('America/Chicago');
@@ -156,9 +158,9 @@ describe('T-014 agenda y detalle de la cita', () => {
   });
 
   it('desde Sur no se ve nada de Norte: ni en la agenda ni en el detalle', async () => {
-    const norte = await insert({ at: '2026-12-03T15:00:00Z' });
-    const sur = await insert({ at: '2026-12-03T15:00:00Z', org: SUR });
-    const agenda = await day(surRecepcion, '2026-12-03');
+    const norte = await insert({ at: '2025-12-03T15:00:00Z' });
+    const sur = await insert({ at: '2025-12-03T15:00:00Z', org: SUR });
+    const agenda = await day(surRecepcion, '2025-12-03');
     expect(agenda.appointments.map((a) => a.id)).toEqual([sur.id]);
     expect((await surRecepcion.get(`/api/appointments/${norte.id}`)).statusCode).toBe(404);
     expect((await recepcion.get(`/api/appointments/${sur.id}`)).statusCode).toBe(404);

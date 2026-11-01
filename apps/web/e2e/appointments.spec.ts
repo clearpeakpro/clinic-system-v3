@@ -5,7 +5,7 @@ import pg from 'pg';
 import { E2E } from './global-setup.ts';
 
 // T-014: agenda (S-REC-06 a 09), «N citas hoy» del Panel y citas del perfil
-// (S-PAC-07), con las citas ficticias de la semilla (20 por sede: ayer, hoy y
+// (S-PAC-07), con las citas ficticias de la semilla (21 por sede: ayer, hoy y
 // los próximos días, relativas al día en que se siembra). Las citas de los
 // días con cambio de horario se crean aquí, lejos de las de la semilla.
 // Todas las sedes ficticias están en la hora Central.
