@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:e2e": "vite build && playwright test && playwright test -c playwright.demo.config.ts",
+    "test:e2e": "vite build && playwright test && playwright test -c playwright.demo.config.ts && playwright test -c playwright.demo2.config.ts",
     "test:a11y": "playwright test -c playwright.a11y.config.ts"
   },
   "dependencies": {

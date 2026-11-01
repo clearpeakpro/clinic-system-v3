@@ -242,11 +242,11 @@ Ficticia-dev-123
 
 **Ventana de incógnito:**
 - **Usuario:** `proveedora.nor1@example.test`
-- **Haga:** inicie sesión, pulse «Pacientes», busque `gabriela jimenez` y abra el perfil de **Gabriela Jiménez Soto**. Pulse «Editar».
+- **Haga:** inicie sesión, pulse «Pacientes», busque `hector medina` y abra el perfil de **Héctor Medina Salas**. Pulse «Editar».
 - **Debe ver:** «Su rol solo puede actualizar el teléfono.». La Proveedora solo cambia el teléfono.
 
 **Ventana normal (Recepción):**
-- **Haga:** abra también el perfil de Gabriela Jiménez Soto y pulse «Editar».
+- **Haga:** abra también el perfil de Héctor Medina Salas y pulse «Editar».
 - **Debe ver:** la «Fecha de nacimiento» está **bloqueada**: Recepción no puede cambiarla.
 - **Haga:** cambie el teléfono a `2145550163` y pulse «Guardar».
 - **Debe ver:** «Paciente actualizado.» y el teléfono **(214) 555-0163**.
@@ -270,7 +270,7 @@ Ficticia-dev-123
 - **Debe ver:** debajo del título, «Norte Centro · **7 citas hoy**».
 
 **Ventana normal (Recepción):**
-- **Haga:** en el perfil de Gabriela Jiménez Soto, pulse **«Nueva cita»**. Complete:
+- **Haga:** en el perfil de Héctor Medina Salas, pulse **«Nueva cita»**. Complete:
   - Tipo de cita: **Consulta general** (la duración se pone sola: 20 minutos);
   - Fecha: hoy (ya viene puesta);
   - Hora: **la próxima hora en punto**. Por ejemplo, si son las 3:20 p. m., elija 4:00 p. m. Si ya pasó de las 11:00 p. m., elija 11:30 p. m.;
@@ -287,21 +287,21 @@ Ficticia-dev-123
 - **Haga:** pulse la campana.
 - **Debe ver:** **«Cita asignada a usted»**, con «Cita NOR1-A-… · {hoy}, {la hora}». El aviso no lleva el nombre del paciente.
 - **Haga:** pulse el aviso.
-- **Debe ver:** se abre «Citas» en el día de hoy, con el detalle de la cita de **Gabriela Jiménez Soto**, **Programada**. Pulse «Cerrar».
+- **Debe ver:** se abre «Citas» en el día de hoy, con el detalle de la cita de **Héctor Medina Salas**, **Programada**. Pulse «Cerrar».
 
 ### Paso 13. Confirmar, y «Registrar llegada» todavía no
 
 **Ventana:** normal (Recepción).
 
-- **Haga:** pulse «Citas» en el menú y pulse la tarjeta de Gabriela Jiménez Soto.
+- **Haga:** pulse «Citas» en el menú y pulse la tarjeta de Héctor Medina Salas.
 - **Debe ver:** el detalle de la cita y el botón **«Registrar llegada» deshabilitado**, con el texto **«Llega en la fase 3»**.
 - **Haga:** pulse «Confirmar».
 - **Debe ver:** «Cita confirmada.» y el estado **Confirmada** (azul, con su icono).
-- **Debe ver en la ventana de incógnito (Diana), sin tocar nada:** la tarjeta de Gabriela también dice **Confirmada**, y la campana suma un aviso, «Cita actualizada».
+- **Debe ver en la ventana de incógnito (Diana), sin tocar nada:** la tarjeta de Héctor también dice **Confirmada**, y la campana suma un aviso, «Cita actualizada».
 
 ### Paso 14. Reprogramar encima de otra cita: el aviso de solapamiento
 
-**Ventana:** normal (Recepción), con el detalle de la cita de Gabriela abierto.
+**Ventana:** normal (Recepción), con el detalle de la cita de Héctor abierto.
 
 - **Haga:** pulse «Reprogramar». Cambie la Fecha a **mañana** y la Hora a **9:00 a. m.**
 - **Debe ver:** antes de guardar, un aviso ámbar: «Diana Doctora (ficticia) ya tiene una cita que se solapa a las 9:00 a. m.». Es solo un aviso: no impide guardar.
@@ -309,13 +309,13 @@ Ficticia-dev-123
 - **Debe ver:** «Cita reprogramada. El proveedor ya tiene una cita en ese horario.».
 - **Debe ver en la ventana de incógnito (Diana), sin tocar nada:** la cita desaparece de su agenda de hoy y la campana suma otro aviso, «Cita actualizada».
 - **Haga (Diana):** pulse la campana y el aviso «Cita actualizada» más reciente.
-- **Debe ver:** se abre la agenda de **mañana**, con el detalle de la cita de Gabriela a las 9:00 a. m. Pulse «Cerrar».
+- **Debe ver:** se abre la agenda de **mañana**, con el detalle de la cita de Héctor a las 9:00 a. m. Pulse «Cerrar».
 
 ### Paso 15. Cancelar exige un motivo
 
 **Ventana:** normal (Recepción).
 
-- **Haga:** en «Citas», pulse «Día siguiente» (la flecha de la derecha) para ver **mañana**. Pulse la tarjeta de las **10:30 a. m.**
+- **Haga:** en «Citas», pulse «Día siguiente» (la flecha de la derecha) para ver **mañana**. Pulse la tarjeta de las **10:30 a. m.** (Juan Pérez Gómez)
 - **Haga:** pulse «Cancelar cita». En el diálogo «¿Cancelar esta cita?», pulse «Cancelar cita» sin escribir nada.
 - **Debe ver:** «Se requiere un motivo.».
 - **Haga:** pulse «Volver».
