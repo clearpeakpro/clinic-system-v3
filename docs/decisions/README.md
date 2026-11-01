@@ -9,7 +9,7 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0003. Un solo «Enviar al proveedor»](0003-enviar-al-proveedor.md) | Aceptada |
 | [0004. Cobrar después de completar la visita](0004-cobro-tras-completar.md) | Aceptada |
 | [0005. La ruta se puede cambiar en la llegada](0005-ruta-en-llegada.md) | Aceptada |
-| [0006. Alergias y antecedentes a nivel del paciente](0006-alergias-por-paciente.md) | Aceptada |
+| [0006. Alergias y antecedentes a nivel del paciente](0006-alergias-por-paciente.md) | Aceptada (precisada por el [ADR 0036](0036-valoracion-paciente-visita.md)) |
 | [0007. Búsqueda parcial y sin tildes](0007-busqueda-pacientes.md) | Aceptada |
 | [0008. Historial de notificaciones](0008-historial-notificaciones.md) | Aceptada |
 | [0009. Editar fecha de nacimiento e inactivar pacientes](0009-editar-nacimiento-inactivar.md) | Aceptada (revisada 2026-10-31: Propietario o Administrador con rol clínico) |
@@ -17,7 +17,7 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0011. Roles nuevos de v3](0011-roles-v3.md) | Aprobada en principio — falta detalle |
 | [0012. Accesos que faltaban en el prototipo](0012-accesos-faltantes.md) | Aceptada |
 | [0013. Modelo de cobro del SaaS](0013-precio-saas.md) | Aprobada en principio — falta detalle |
-| [0014. Kiosco de autorregistro](0014-kiosco.md) | Aceptada (revisada 2026-10-24) |
+| [0014. Kiosco de autorregistro](0014-kiosco.md) | Aceptada (revisada 2026-10-24; precisada por el [ADR 0031](0031-kiosco-idioma-consentimientos-ruta.md)) |
 | [0015. Terminología y tono unificados](0015-terminologia.md) | Aceptada |
 | [0016. Alcance de V1](0016-alcance-v1.md) | Aceptada |
 | [0017. Entornos A/B/C y presupuesto de US$25](0017-entornos-presupuesto.md) | Aceptada |
@@ -34,3 +34,11 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0028. Laboratorios, costos por prueba y sugerencia de laboratorio](0028-laboratorios-costos.md) | Aceptada |
 | [0029. Precio de venta general con excepción por sede](0029-precio-general-excepcion-sede.md) | Aceptada |
 | [0030. Búsqueda de pacientes en un solo campo, duplicados y aviso del Propietario](0030-busqueda-pacientes-un-campo.md) | Aceptada |
+| [0031. Kiosco: idioma, consentimientos y ruta](0031-kiosco-idioma-consentimientos-ruta.md) | Aceptada |
+| [0032. Fusionar pacientes duplicados](0032-fusionar-pacientes.md) | Aceptada |
+| [0033. Acciones administrativas en el flujo clínico](0033-acciones-administrativas-flujo-clinico.md) | Aceptada |
+| [0034. Membresías en la fase 3](0034-membresias-fase-3.md) | Aceptada |
+| [0035. Reparto del importe con seguro](0035-reparto-importe-seguro.md) | Aceptada |
+| [0036. Valoración: datos del paciente y de la visita](0036-valoracion-paciente-visita.md) | Aceptada |
+| [0037. Recibo de 80 mm en español e inglés](0037-recibo-80mm-es-en.md) | Aceptada |
+| [0038. Reporte diario de la sede antes del piloto](0038-reporte-diario-antes-piloto.md) | Aceptada |

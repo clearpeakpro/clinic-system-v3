@@ -35,7 +35,7 @@ Se mantiene el stack: React + Vite + TypeScript, Tailwind + shadcn/ui, NestJS + 
 | Tiempo real | WebSockets (Socket.IO) + Postgres LISTEN/NOTIFY |
 | Autenticación | Better Auth 1.7.7 (ADR 0023, aceptado con condiciones tras la prueba T-002). Los permisos clínicos son siempre nuestros. |
 | Archivos | S3 (SSE-KMS, URLs firmadas) |
-| PDF | Plantillas HTML impresas con Playwright en el worker. En B, un trabajo a la vez. |
+| PDF | Plantillas HTML impresas con Playwright en el worker. En B, un trabajo a la vez. El recibo de Caja no usa PDF: es un ticket de 80 mm que arma el servidor y se imprime desde el navegador ([ADR 0037](decisions/0037-recibo-80mm-es-en.md)). |
 | Correo | Amazon SES |
 | Infraestructura como código | AWS CDK (TypeScript) |
 | Pruebas | Vitest, Testcontainers (Postgres), Playwright |
@@ -215,7 +215,8 @@ Si falla el punto 3, 5 o 6, se pasa al plan B: autenticación propia con bibliot
 
 Especificación funcional en `docs/manual/11_kiosco.md`.
 
-- **El motivo no decide nada clínico.** Recepción elige la ruta. La sugerencia motivo → ruta queda desactivada hasta que el director médico de cada organización apruebe por escrito una tabla configurable; esa aprobación se audita.
+- **El motivo no decide nada clínico.** Recepción elige siempre la ruta. En V1 no hay sugerencias motivo → ruta ni tabla configurable ([ADR 0031](decisions/0031-kiosco-idioma-consentimientos-ruta.md)); si una organización las pide, llegarán con un ADR nuevo y la aprobación escrita y auditada de su director médico.
+- **Idioma y consentimientos (ADR 0031):** el kiosco está en español e inglés, y el idioma elegido no se guarda. Los consentimientos se firman en papel en Recepción.
 - **Credencial del dispositivo** (persistente, no es PHI): se vincula con un código de un solo uso. Es un token atado a la organización y la sede con el único permiso `kiosk.submit`, del que solo se guarda el hash en `kiosk_devices`. Va en una cookie httpOnly + Secure, dura 90 días, se renueva al usarse y se puede revocar. Ningún endpoint de lectura la acepta.
 - **Datos del paciente** (nunca persistentes en la tableta): solo existen en la memoria de la página. Nada se guarda en localStorage, sessionStorage, IndexedDB ni en la caché del service worker. El autocompletado está desactivado.
 - **Limpieza del formulario:** al enviar, tras 60 s de inactividad (con aviso de 10 s), al ocultarse la pestaña y al recargar. La pantalla «Listo» no muestra el nombre del paciente.
