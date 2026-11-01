@@ -1,7 +1,17 @@
 import { z } from 'zod';
 import type { AppointmentStatus } from './appointments.ts';
 import type { PatientSummary } from './patients.ts';
-import { VISIT_ROUTES, type VisitRoute, type VisitStatus } from './visit.ts';
+import { expectedVersionSchema, reasonSchema } from './schemas.ts';
+import {
+  CLOSE_OUTCOMES,
+  VISIT_ROUTES,
+  VISIT_STATUSES,
+  type EncounterAbilities,
+  type EncounterEventAction,
+  type VisitAction,
+  type VisitRoute,
+  type VisitStatus,
+} from './visit.ts';
 
 // Llegada con cita y sin cita (T-017; S-REC-18 a 27). Esquemas de entrada,
 // textos y tipos de respuesta, los mismos en la web y en la API. Los valores
@@ -185,13 +195,125 @@ export interface ArrivalResult {
   appointment: { id: string; status: AppointmentStatus; version: number } | null;
 }
 
-/** Visita mínima (`/visitas/<id>` hasta T-018): código, estado y ruta. */
-export interface EncounterSummary {
+// --- Pantalla de la visita (T-018; S-CLI-04 a 12, S-CLI-24, S-PAC-08) -------
+
+/** Pasos regulares que se piden por `POST /encounters/:id/transition`: ni la apertura ni los cierres. */
+export const REGULAR_VISIT_ACTIONS = [
+  'send_to_nurse',
+  'send_to_procedure',
+  'start_nursing',
+  'send_to_provider',
+  'start_consult',
+  'ready_for_checkout',
+  'start_checkout',
+  'complete',
+] as const satisfies readonly VisitAction[];
+export type RegularVisitAction = (typeof REGULAR_VISIT_ACTIONS)[number];
+
+/** Acción regular de la barra (S-CLI-07). */
+export const encounterTransitionSchema = z.object({ action: z.enum(REGULAR_VISIT_ACTIONS), expectedVersion: expectedVersionSchema });
+export type EncounterTransitionInput = z.input<typeof encounterTransitionSchema>;
+
+/** «Cerrar visita» (S-CLI-09): resultado y motivo obligatorio (máx. 500). */
+export const closeEncounterSchema = z.object({ outcome: z.enum(CLOSE_OUTCOMES), reason: reasonSchema, expectedVersion: expectedVersionSchema });
+export type CloseEncounterInput = z.input<typeof closeEncounterSchema>;
+
+/** «Cambio excepcional de estado» (S-CLI-10): destino y motivo obligatorio. */
+export const forceEncounterSchema = z.object({ status: z.enum(VISIT_STATUSES), reason: reasonSchema, expectedVersion: expectedVersionSchema });
+export type ForceEncounterInput = z.input<typeof forceEncounterSchema>;
+
+/** «Asignar proveedor» o «Asignarme» (S-CLI-05/06). */
+export const assignProviderSchema = z.object({ providerMembershipId: z.uuid(), expectedVersion: expectedVersionSchema });
+export type AssignProviderInput = z.input<typeof assignProviderSchema>;
+
+/** Diálogo «Cobertura» (S-CLI-12): la misma cobertura que la llegada (3A: sin membresía) y la versión de la cobertura. */
+export const updateCoverageSchema = z.object({ coverage: arrivalCoverageSchema, expectedVersion: expectedVersionSchema });
+export type UpdateCoverageInput = z.input<typeof updateCoverageSchema>;
+
+/** Respuesta de cada cambio de la visita: sin datos del paciente. La pantalla vuelve a leer la visita. */
+export interface EncounterSaved {
+  id: string;
+  status: VisitStatus;
+  version: number;
+}
+
+/** Cobertura de la visita (S-CLI-11), descifrada para quien abre la visita. Importes en centavos. */
+export interface EncounterCoverage {
+  type: CoverageType;
+  insurerName: string | null;
+  memberId: string | null;
+  term: InsuranceTerm | null;
+  amountCents: number | null;
+  coinsuranceBp: number | null;
+  version: number;
+}
+
+/** Proveedor de la visita o de la lista de S-CLI-06. */
+export interface EncounterProvider {
+  membershipId: string;
+  name: string;
+}
+
+/** Una entrada del historial (S-CLI-24). */
+export interface EncounterTimelineEntry {
+  id: string;
+  action: EncounterEventAction;
+  fromStatus: VisitStatus | null;
+  toStatus: VisitStatus;
+  forced: boolean;
+  /** Motivo (cerrar o forzar), descifrado. */
+  reason: string | null;
+  occurredAt: string;
+  /** Versión de la visita tras el cambio. */
+  version: number;
+  /** «Usted», el nombre de la persona, «Kiosco» o «Sistema». */
+  actor: { kind: 'me' | 'user' | 'kiosk' | 'system'; name: string | null };
+}
+
+/** La visita completa (S-CLI-04): encabezado, cobertura, historial y lo que puede hacer quien la abre. */
+export interface EncounterDetail {
   id: string;
   code: string;
   status: VisitStatus;
   route: VisitRoute;
   version: number;
+  arrivedAt: string;
+  closedAt: string | null;
+  /** Desde cuándo está en el estado actual (último cambio del historial). */
+  statusSince: string;
+  /** Motivo del último cierre, si la visita está cerrada («Motivo: …» del banner). */
+  closeReason: string | null;
+  /** Hora del servidor (reloj inyectable): base de los cronómetros. */
+  serverNow: string;
+  /** Día de hoy en la sede (AAAA-MM-DD), para la edad. */
+  today: string;
+  patient: { id: string; code: string; firstName: string; lastName: string; birthDate: string };
+  location: { id: string; code: string; name: string; timezone: string };
+  appointmentType: { id: string; name: string } | null;
+  provider: EncounterProvider | null;
+  /** Membresía de quien abre la visita (para «Usted»). */
+  myMembershipId: string;
+  coverage: EncounterCoverage | null;
+  timeline: EncounterTimelineEntry[];
+  abilities: EncounterAbilities;
+}
+
+/** Filas de la pestaña Visitas del perfil (S-PAC-08), de la más reciente a la más antigua. */
+export const PATIENT_ENCOUNTERS_PAGE_SIZE = 50;
+
+export interface PatientEncounterRow {
+  id: string;
+  code: string;
+  arrivedAt: string;
+  status: VisitStatus;
+  route: VisitRoute;
+  location: { id: string; code: string; name: string };
+  provider: EncounterProvider | null;
+}
+
+export interface PatientEncounters {
+  encounters: PatientEncounterRow[];
+  nextOffset: number | null;
 }
 
 /** Ruta inicial del paso «Ruta»: la sugerida por el tipo, o «Estándar». */

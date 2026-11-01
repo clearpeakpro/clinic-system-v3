@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Role } from '../src/permissions.ts';
 import {
+  closeAction,
+  encounterAbilities,
   forceTargets,
+  isCloseAction,
   isDirectRoute,
+  reopens,
+  visitForce,
   isOpenVisitStatus,
   VISIT_ACTIONS,
   VISIT_ROUTES,
@@ -116,11 +121,77 @@ describe('máquina de estados de la visita', () => {
     }
   });
 
-  it('forzar: cualquier otro estado que no sea un cierre; desde una cerrada, reabre', () => {
-    expect(forceTargets('CHECKED_IN')).not.toContain('CHECKED_IN');
-    expect(forceTargets('CHECKED_IN')).not.toContain('LEFT_EARLY');
-    expect(forceTargets('CHECKED_IN')).not.toContain('CANCELLED');
-    expect(forceTargets('CANCELLED')).toContain('CHECKED_IN');
-    expect(forceTargets('COMPLETED')).toHaveLength(8);
+  it('forzar (S-CLI-10): sin el actual, sin los cierres y sin los destinos regulares de ese estado y esa ruta', () => {
+    // Estándar desde «Registrado»: la acción regular lleva a «Esperando enfermería».
+    expect(forceTargets('CHECKED_IN', 'STANDARD')).toEqual([
+      'WITH_NURSE',
+      'WAITING_FOR_PROVIDER',
+      'WITH_PROVIDER',
+      'PROCEDURE_PENDING',
+      'READY_FOR_CHECKOUT',
+      'CHECKOUT',
+      'COMPLETED',
+    ]);
+    // Ruta directa: la regular lleva a «Procedimiento pendiente».
+    expect(forceTargets('CHECKED_IN', 'INJECTION_ONLY')).toContain('WAITING_FOR_NURSE');
+    expect(forceTargets('CHECKED_IN', 'INJECTION_ONLY')).not.toContain('PROCEDURE_PENDING');
+    // «Con proveedor» tiene dos salidas regulares.
+    const withProvider = forceTargets('WITH_PROVIDER', 'STANDARD');
+    expect(withProvider).not.toContain('PROCEDURE_PENDING');
+    expect(withProvider).not.toContain('READY_FOR_CHECKOUT');
+    for (const from of VISIT_STATUSES) {
+      for (const route of VISIT_ROUTES) {
+        const targets = forceTargets(from, route);
+        expect(targets).not.toContain(from);
+        expect(targets).not.toContain('LEFT_EARLY');
+        expect(targets).not.toContain('CANCELLED');
+        for (const t of VISIT_TRANSITIONS.filter((x) => x.from === from && !isCloseAction(x.action))) {
+          if (visitTransition(from, t.action, { route, roles: ALL_ROLES }).ok) expect(targets).not.toContain(t.to);
+        }
+      }
+    }
+    // Desde una cerrada no hay acciones regulares: reabre a cualquier estado abierto o la completa.
+    expect(forceTargets('CANCELLED', 'STANDARD')).toHaveLength(9);
+    expect(forceTargets('COMPLETED', 'STANDARD')).toHaveLength(8);
+    expect(reopens('CANCELLED', 'CHECKED_IN')).toBe(true);
+    expect(reopens('CANCELLED', 'COMPLETED')).toBe(false);
+    expect(reopens('CHECKED_IN', 'WITH_NURSE')).toBe(false);
+    expect(visitForce('CHECKED_IN', 'WAITING_FOR_NURSE', 'STANDARD')).toEqual({ ok: false, reason: 'invalid_transition' });
+    expect(visitForce('CHECKED_IN', 'WITH_NURSE', 'STANDARD')).toEqual({ ok: true, to: 'WITH_NURSE' });
+    expect(visitForce('CHECKED_IN', 'LEFT_EARLY', 'STANDARD')).toMatchObject({ ok: false });
+  });
+
+  it('cierres: «Se retiró antes» y «Cancelada» con su acción', () => {
+    expect(closeAction('LEFT_EARLY')).toBe('close_left_early');
+    expect(closeAction('CANCELLED')).toBe('close_cancelled');
+    expect(VISIT_ACTIONS.filter(isCloseAction)).toEqual(['close_left_early', 'close_cancelled']);
+  });
+
+  it('capacidades de la pantalla por estado, ruta, roles y permisos', () => {
+    const base = { route: 'STANDARD' as const, canManage: false, canForce: false, isMine: false };
+    expect(encounterAbilities({ ...base, status: 'CHECKED_IN', roles: ['recepcion'], canManage: true })).toEqual({
+      actions: ['send_to_nurse'],
+      close: true,
+      forceTargets: [],
+      assignProvider: true,
+      assignSelf: false,
+      editCoverage: true,
+    });
+    // Enfermería: solo lectura en «Registrado».
+    expect(encounterAbilities({ ...base, status: 'CHECKED_IN', roles: ['enfermeria'] })).toEqual({
+      actions: [],
+      close: false,
+      forceTargets: [],
+      assignProvider: false,
+      assignSelf: false,
+      editCoverage: false,
+    });
+    // Proveedor: «Asignarme» si no es suya; no si ya lo es.
+    expect(encounterAbilities({ ...base, status: 'WAITING_FOR_PROVIDER', roles: ['proveedor'] })).toMatchObject({ actions: ['start_consult'], assignSelf: true });
+    expect(encounterAbilities({ ...base, status: 'WAITING_FOR_PROVIDER', roles: ['proveedor'], isMine: true }).assignSelf).toBe(false);
+    // Cerrada: sin acciones; quien puede forzar la reabre.
+    const closed = encounterAbilities({ ...base, status: 'CANCELLED', roles: ['recepcion', 'administrador'], canManage: true, canForce: true });
+    expect(closed).toMatchObject({ actions: [], close: false, assignProvider: false, assignSelf: false, editCoverage: false });
+    expect(closed.forceTargets).toContain('CHECKED_IN');
   });
 });

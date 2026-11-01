@@ -394,6 +394,7 @@ describe('Administración › Usuarios', () => {
       'members.manage',
       'patients.deactivate',
       'patients.edit_birth_date',
+      'visits.force_state',
     ]);
     expect(me.permissions).not.toContain('patients.access');
   });

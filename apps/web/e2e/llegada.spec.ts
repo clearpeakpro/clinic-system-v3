@@ -139,13 +139,15 @@ test('Recepción registra la llegada de una cita de hoy y la proveedora la ve en
   // La proveedora, sin recargar.
   await expect(card).toContainText('Llegó', { timeout: 15_000 });
 
-  // «Abrir visita»: la versión mínima hasta T-018.
+  // «Abrir visita»: la pantalla de la visita (S-CLI-04, T-018) con la ruta y la cobertura elegidas.
   const code = /NOR1-V-\d{6}/.exec((await recepcion.locator('main').textContent()) ?? '')?.[0] ?? '';
   await recepcion.getByRole('button', { name: 'Abrir visita' }).click();
   await expect(recepcion).toHaveURL(/\/app\/NOR1\/visitas\/[0-9a-f-]+$/);
   await expect(recepcion.locator('main')).toContainText(code);
   await expect(recepcion.locator('main')).toContainText('Registrado');
-  await expect(recepcion.getByText('La pantalla de la visita llega en T-018.')).toBeVisible();
+  await expect(recepcion.getByRole('heading', { name: 'Ximena Llegada Cita', level: 1 })).toBeVisible();
+  await expect(recepcion.locator('main')).toContainText('Solo laboratorio');
+  await expect(recepcion.getByRole('region', { name: 'Cobertura' })).toContainText('Aseguradora Ficticia Del Norte');
 
   // Visita sin cita de un paciente nuevo (S-REC-19), creado desde el selector.
   await recepcion.getByRole('link', { name: 'Citas' }).first().click();

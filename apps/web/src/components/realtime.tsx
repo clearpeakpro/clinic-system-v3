@@ -264,7 +264,17 @@ export function NotificationCenter({ organizationId }: { organizationId: string 
             setOpen(false);
             if (!item.read) void run(() => api.readNotification(item.id), 'marcar la notificación como leída');
             // Avisos de citas (T-015): el detalle en la agenda del día de la cita, en su sede
-            // (la URL hace el cambio de sede). Los demás enlaces llegan con su fase.
+            // (la URL hace el cambio de sede). «Paciente asignado a usted» (T-018): la
+            // visita en su sede (S-CLI-04). Los demás enlaces llegan con su fase.
+            if (item.kind === 'encounter.provider_assigned' && item.entityId) {
+              const site = flatten(locations.data ?? []).find((l) => l.id === item.locationId);
+              if (!item.canOpen || !site) {
+                snackbar({ message: 'No tiene acceso a esta visita.' });
+                return;
+              }
+              void navigate({ to: '/app/$sede/visitas/$id', params: { sede: site.code, id: item.entityId } });
+              return;
+            }
             if (isAppointmentNotification(item.kind) && item.entityId) {
               const site = flatten(locations.data ?? []).find((l) => l.id === item.locationId);
               if (!item.canOpen || !site) {
