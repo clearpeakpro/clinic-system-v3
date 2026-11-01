@@ -1,13 +1,14 @@
-import { notificationText, type NotificationKind } from '@clinic/shared';
+import { isAppointmentNotification, notificationText, type NotificationKind } from '@clinic/shared';
 import { Button, cn, EmptyState, ErrorState, FloatingPanel, Spinner, useSnackbar } from '@clinic/ui';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { Bell, BellRing, CalendarCheck, CalendarClock, CalendarX, CircleArrowUp, ClipboardList, CloudOff, RefreshCw, RefreshCwOff, Settings, ShieldAlert, Trash2, UserCog, UserRoundCheck, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type ComponentProps } from 'react';
 import { api, type NotificationItem } from '../lib/api.ts';
 import { failureMessage } from '../lib/errors.ts';
 import { notificationAge } from '../lib/format.ts';
 import type { LiveStatus } from '../lib/realtime.ts';
-import { keys, realtime, useLiveState, useNotifications } from '../lib/session.ts';
+import { flatten, keys, realtime, useLiveState, useLocations, useNotifications } from '../lib/session.ts';
 
 // Cabecera del marco en tiempo real (T-009): indicador «En vivo» (S-GEN-14),
 // banner de modo degradado (S-GEN-19) y campana con el centro de
@@ -188,6 +189,8 @@ export function NotificationCenter({ organizationId }: { organizationId: string 
   const query = useNotifications(organizationId);
   const queryClient = useQueryClient();
   const snackbar = useSnackbar();
+  const navigate = useNavigate();
+  const locations = useLocations();
   const unread = query.data?.unread ?? 0;
   const rows = query.data?.rows ?? [];
 
@@ -259,8 +262,21 @@ export function NotificationCenter({ organizationId }: { organizationId: string 
           now={now}
           onOpen={(item) => {
             setOpen(false);
-            // Los enlaces a cada pantalla llegan con su fase; por ahora solo se marca como leído.
             if (!item.read) void run(() => api.readNotification(item.id), 'marcar la notificación como leída');
+            // Avisos de citas (T-015): el detalle en la agenda del día de la cita, en su sede
+            // (la URL hace el cambio de sede). Los demás enlaces llegan con su fase.
+            if (isAppointmentNotification(item.kind) && item.entityId) {
+              const site = flatten(locations.data ?? []).find((l) => l.id === item.locationId);
+              if (!item.canOpen || !site) {
+                snackbar({ message: 'No tiene acceso a esta cita.' });
+                return;
+              }
+              void navigate({
+                to: '/app/$sede/citas',
+                params: { sede: site.code },
+                search: { ...(item.day ? { fecha: item.day } : {}), cita: item.entityId },
+              });
+            }
           }}
         />
       )}

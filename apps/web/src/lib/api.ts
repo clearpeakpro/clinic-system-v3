@@ -1,6 +1,13 @@
 import type {
   AgendaDay,
   AppointmentDetail,
+  AppointmentFormOptions,
+  AppointmentOverlap,
+  AppointmentOverlapInput,
+  AppointmentSaved,
+  CreateAppointmentInput,
+  RescheduleAppointmentInput,
+  UpdateAppointmentInput,
   PatientAppointments,
   CatalogKind,
   CatalogList,
@@ -40,11 +47,11 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
   const response = await fetch(path, {
     method,
     credentials: 'same-origin',
-    headers: body === undefined ? {} : { 'content-type': 'application/json' },
+    headers: { ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...extraHeaders },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const text = await response.text();
@@ -177,6 +184,10 @@ export interface NotificationItem {
   code: string | null;
   /** Avisos de citas: fecha y hora de la cita en su sede («3 nov, 9:00 a. m.»). */
   when: string | null;
+  /** Avisos de citas: día de la cita en su sede (`AAAA-MM-DD`). */
+  day: string | null;
+  /** Avisos de citas: ¿tiene acceso a Citas en esa sede? */
+  canOpen: boolean;
   locationId: string | null;
   entityType: string | null;
   entityId: string | null;
@@ -284,6 +295,18 @@ export const api = {
   // Citas (S-REC-06 a 09 y S-PAC-07, T-014): sin fecha, hoy en la sede activa.
   agenda: (date?: string) => request<AgendaDay>('GET', `/api/appointments${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   appointment: (id: string) => request<AppointmentDetail>('GET', `/api/appointments/${id}`),
+  // T-015: gestión de citas (S-REC-10 a 17).
+  appointmentFormOptions: () => request<AppointmentFormOptions>('GET', '/api/appointments/form-options'),
+  appointmentOverlap: (input: AppointmentOverlapInput) => request<AppointmentOverlap>('POST', '/api/appointments/overlap', input),
+  /** La clave la genera el formulario al abrirse: reintentar el mismo envío no crea dos citas. */
+  createAppointment: (input: CreateAppointmentInput, idempotencyKey: string) =>
+    request<AppointmentSaved>('POST', '/api/appointments', input, { 'idempotency-key': idempotencyKey }),
+  updateAppointment: (id: string, input: UpdateAppointmentInput) => request<AppointmentSaved>('POST', `/api/appointments/${id}`, input),
+  rescheduleAppointment: (id: string, input: RescheduleAppointmentInput) => request<AppointmentSaved>('POST', `/api/appointments/${id}/reschedule`, input),
+  confirmAppointment: (id: string, expectedVersion: number) => request<AppointmentSaved>('POST', `/api/appointments/${id}/confirm`, { expectedVersion }),
+  cancelAppointment: (id: string, reason: string, expectedVersion: number) =>
+    request<AppointmentSaved>('POST', `/api/appointments/${id}/cancel`, { reason, expectedVersion }),
+  markNoShow: (id: string, expectedVersion: number) => request<AppointmentSaved>('POST', `/api/appointments/${id}/no-show`, { expectedVersion }),
   todayAppointmentCount: () => request<{ count: number; today: string }>('GET', '/api/appointments/today-count'),
   patientAppointments: (patientId: string, offset: number) =>
     request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),

@@ -148,8 +148,27 @@ describe('T-015 gestión de citas', () => {
         eventId: id,
       }),
     );
-    const list = (await proveedor.get('/api/notifications')).json<{ rows: { id: string; code: string; when: string | null }[] }>();
-    expect(list.rows.find((r) => r.id === id)).toMatchObject({ code: 'NOR1-A-999999', when: '3 nov, 9:00 a. m.' });
+    // Otro de NOR2, donde no tiene acceso a Citas: al tocarlo solo se marca como leído.
+    const other = uuidv7();
+    await createTenantDb(app.pool).withTenant(NORTE.id, (tx) =>
+      tx.insert(notifications).values({
+        id: other,
+        organizationId: NORTE.id,
+        userId: proveedorStaff.userId,
+        locationId: NORTE.locations[1].id,
+        kind: 'appointment.changed',
+        entityType: 'appointment',
+        entityId: other,
+        code: 'NOR2-A-999999',
+        startsAt: new Date('2026-11-04T05:30:00Z'),
+        eventId: other,
+      }),
+    );
+    type Row = { id: string; code: string; when: string | null; day: string | null; canOpen: boolean };
+    const list = (await proveedor.get('/api/notifications')).json<{ rows: Row[] }>();
+    expect(list.rows.find((r) => r.id === id)).toMatchObject({ code: 'NOR1-A-999999', when: '3 nov, 9:00 a. m.', day: '2026-11-03', canOpen: true });
+    // 5:30 UTC del 4 de noviembre es el 3 de noviembre en la hora Central.
+    expect(list.rows.find((r) => r.id === other)).toMatchObject({ when: '3 nov, 11:30 p. m.', day: '2026-11-03', canOpen: false });
   });
 
   it('Idempotency-Key: la repetición devuelve la misma cita; con otro contenido, 409', async () => {

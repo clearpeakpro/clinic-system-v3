@@ -11,6 +11,8 @@ const item = (over: Partial<NotificationItem>): NotificationItem => ({
   kind: 'appointment.changed',
   code: null,
   when: null,
+  day: null,
+  canOpen: false,
   locationId: null,
   entityType: null,
   entityId: null,
