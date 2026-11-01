@@ -67,8 +67,8 @@ test('Recepción ve la agenda de hoy de NOR1: horas, tarjetas, filtros, vista Li
   await nav(page).getByRole('link', { name: 'Citas' }).click();
   await expect(page).toHaveURL(/\/app\/NOR1\/citas$/);
   await expect(page.getByRole('heading', { name: 'Citas', level: 1 })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Nueva cita' })).toBeDisabled();
-  await expect(page.getByText('Llega con la agenda')).toBeVisible();
+  // T-015: «Nueva cita» ya está activa (su flujo, en appointment-management.spec.ts).
+  await expect(page.getByRole('button', { name: 'Nueva cita' }).first()).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Sin cita' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Hoy' })).toHaveCount(0);
 

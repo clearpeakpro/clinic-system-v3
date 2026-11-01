@@ -74,11 +74,10 @@ test('Recepción edita el teléfono; la otra ventana recibe el conflicto de vers
     await openProfile(page, 'NOR1', 'gabriela jimenez', 'Gabriela Jiménez Soto');
   }
 
-  // Encabezado, «Nueva cita» deshabilitada hasta la agenda y las pestañas.
+  // Encabezado, «Nueva cita» (T-015) y las pestañas.
   await expect(first.getByText('7 jul 1988 (')).toBeVisible();
   await expect(first.getByText('(214) 555-0113').first()).toBeVisible();
-  await expect(first.getByRole('button', { name: 'Nueva cita' })).toBeDisabled();
-  await expect(first.getByText('Llega con la agenda')).toBeVisible();
+  await expect(first.getByRole('button', { name: 'Nueva cita' })).toBeEnabled();
   await expect(first.getByRole('button', { name: 'Fusionar con…' })).toHaveCount(0);
   const tabs = first.getByRole('tablist', { name: 'Secciones del perfil' });
   await expect(tabs.getByRole('tab')).toHaveText(['Resumen', 'Citas', 'Visitas', 'Saldos']);
@@ -260,5 +259,5 @@ test('el Propietario con Recepción cambia la fecha de nacimiento con motivo, in
   await reactivate.getByLabel('Motivo').fill('Volvió a la clínica');
   await reactivate.getByRole('button', { name: 'Reactivar' }).click();
   await expect(page.getByText('Paciente reactivado.', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Nueva cita' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Nueva cita' })).toBeEnabled();
 });

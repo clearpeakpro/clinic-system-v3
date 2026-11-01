@@ -328,11 +328,9 @@ function Actions({
           <UserX aria-hidden className="size-5" /> Marcar no presentado
         </Button>
       ) : null}
-      {actions.length === 0 ? (
-        <Button variant="outline" onClick={onClose}>
-          Cerrar
-        </Button>
-      ) : null}
+      <Button variant="tonal" className="text-on-surface" onClick={onClose}>
+        Cerrar
+      </Button>
       {has('edit') ? (
         <Button variant="outline" disabled={busy} onClick={() => { onAction('edit'); }}>
           <Pencil aria-hidden className="size-5" /> Editar
@@ -364,7 +362,7 @@ function Actions({
 
 /** S-REC-13 Reprogramar: fecha, hora y duración, con el mismo aviso de solapamiento que el formulario. */
 function RescheduleDialog({
-  appointment: a,
+  appointment: opened,
   onClose,
   onSaved,
   onConflict,
@@ -374,6 +372,8 @@ function RescheduleDialog({
   onSaved: (saved: AppointmentSaved) => void;
   onConflict: () => void;
 }) {
+  // La versión que se vio al abrir (concurrencia optimista).
+  const [a] = useState(opened);
   const [date, setDate] = useState(localDay(a.startsAt, a.timeZone));
   const [time, setTime] = useState(localClock(a.startsAt, a.timeZone));
   const [duration, setDuration] = useState(String(a.durationMinutes));

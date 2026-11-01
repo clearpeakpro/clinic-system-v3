@@ -125,7 +125,7 @@ function initial(mode: Mode): Values {
 }
 
 export function AppointmentFormDialog({
-  mode,
+  mode: openedWith,
   canCreatePatient,
   onClose,
   onSaved,
@@ -138,6 +138,9 @@ export function AppointmentFormDialog({
   /** 409 version_conflict: quien abrió el formulario muestra S-REC-16. */
   onConflict: () => void;
 }) {
+  // La cita tal como estaba al abrir: si otra persona la cambia mientras tanto,
+  // guardar da 409 y S-REC-16 (concurrencia optimista, sin «guardar igualmente»).
+  const [mode] = useState(openedWith);
   const editing = mode.kind === 'edit';
   const options = useQuery<AppointmentFormOptions, ApiError>({ queryKey: ['appointment-form-options'], queryFn: api.appointmentFormOptions, staleTime: 0 });
   const catalog = useQuery<CatalogList, ApiError>({ queryKey: ['catalog'], queryFn: api.catalog, staleTime: 0 });
