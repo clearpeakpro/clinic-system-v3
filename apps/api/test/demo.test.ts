@@ -151,7 +151,8 @@ describe('pnpm demo:aviso', () => {
   it('escribe en el outbox un aviso «Cita actualizada» con un código de su sede, sin datos personales', async () => {
     const staff = await createStaff(app, 'demo-aviso', [{ org: NORTE, location: 0, role: 'proveedor' }]);
     const { code } = await sendDemoNotification(app, app.config.outboxKey, staff.email);
-    expect(code).toMatch(/^NOR1-C-\d{6}$/);
+    // La cita de la sede más cercana a ahora (T-015) o, sin citas, un código inventado.
+    expect(code).toMatch(/^NOR1-[AC]-\d{6}$/);
     const { rows } = await app.pool.query<{ id: string; payload: string }>(
       'select id, payload from app.outbox where kind = $1 order by created_at desc limit 1',
       [NOTIFICATION_EVENT],
@@ -169,6 +170,15 @@ describe('pnpm demo:aviso', () => {
     expect(rows).toEqual([]);
     const payload = decryptNotificationPayload(app.config.outboxKey, { organizationId: NORTE.id, eventId: row?.id ?? '' }, row?.payload ?? '');
     expect(payload).toMatchObject({ userId: staff.userId, kind: 'appointment.changed', code, locationId: NORTE.locations[0].id });
+    if (code.includes('-A-')) {
+      // Apunta a esa cita real, con su hora: tocar el aviso abre su detalle.
+      const check = new pg.Client({ connectionString: inject('operatorUrl') });
+      await check.connect();
+      const { rows: found } = await check.query<{ id: string }>('select id from app.appointments where organization_id = $1 and code = $2', [NORTE.id, code]);
+      await check.end();
+      expect(payload).toMatchObject({ entityType: 'appointment', entityId: found[0]?.id });
+      expect(payload.startsAt).toEqual(expect.any(String));
+    }
   });
 
   it('un correo que no existe da un mensaje claro', async () => {

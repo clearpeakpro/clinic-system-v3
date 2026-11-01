@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { bootstrap, createTenantDb, enqueueNotification, locations, migrate, seed, user as userTable } from '@clinic/db';
-import { eq } from 'drizzle-orm';
+import { appointments, bootstrap, createTenantDb, enqueueNotification, locations, migrate, seed, user as userTable } from '@clinic/db';
+import { eq, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { createApp, type ClinicApp } from './app.ts';
@@ -125,8 +125,11 @@ async function verifyOperator(operatorUrl: string): Promise<void> {
 export class DemoUserError extends Error {}
 
 /**
- * Escribe en el outbox un aviso ficticio «Cita actualizada» para la persona,
- * en la primera de sus sedes, con un código inventado. Lo entrega el worker.
+ * Escribe en el outbox un aviso «Cita actualizada» para la persona, en la
+ * primera de sus sedes. Desde T-015, tocar un aviso de cita abre su detalle:
+ * por eso apunta a la cita (ficticia, de la semilla) más cercana a ahora en
+ * esa sede, con su código y su hora. Si la sede no tiene citas, usa un código
+ * inventado. Lo entrega el worker.
  */
 export async function sendDemoNotification(
   app: Pick<ClinicApp, 'pool' | 'resolver'>,
@@ -147,16 +150,25 @@ export async function sendDemoNotification(
       .where(assignment.locationId ? eq(locations.id, assignment.locationId) : eq(locations.active, true))
       .orderBy(locations.code)
       .limit(1);
-    const code = `${site?.code ?? 'DEMO'}-C-${String(Math.floor(Math.random() * 900_000) + 100_000)}`;
+    const [nearest] = site
+      ? await tx
+          .select({ id: appointments.id, code: appointments.code, startsAt: appointments.startsAt })
+          .from(appointments)
+          .where(eq(appointments.locationId, site.id))
+          .orderBy(sql`abs(extract(epoch from (${appointments.startsAt} - now())))`)
+          .limit(1)
+      : [];
+    const code = nearest?.code ?? `${site?.code ?? 'DEMO'}-C-${String(Math.floor(Math.random() * 900_000) + 100_000)}`;
     await enqueueNotification(tx, outboxKey, {
       organizationId: assignment.organizationId,
       userId: found.id,
       kind: 'appointment.changed',
       ...(site ? { locationId: site.id } : {}),
       entityType: 'appointment',
-      // Entidad nueva en cada aviso: así no reemplaza al anterior.
-      entityId: randomUUID(),
+      // Sin cita, una entidad nueva en cada aviso: así no reemplaza al anterior.
+      entityId: nearest?.id ?? randomUUID(),
       code,
+      ...(nearest ? { startsAt: nearest.startsAt } : {}),
     });
     return { code };
   });
