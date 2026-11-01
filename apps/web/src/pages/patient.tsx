@@ -1,4 +1,4 @@
-import { ageLabel, ageOn, canSchedule, formatPhone, shortAppointmentCode, type PatientAppointments, type PatientProfile } from '@clinic/shared';
+import { ageLabel, ageOn, canSchedule, formatPhone, shortAppointmentCode, type PatientAppointments, type PatientEncounters, type PatientProfile } from '@clinic/shared';
 import { AsyncView, Button, CodeText, DateTimeText, EmptyState, SemanticChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -31,6 +31,7 @@ import {
 import { useAfterAppointmentChange } from '../components/appointments/appointment-detail-dialog.tsx';
 import { AppointmentFormDialog } from '../components/appointments/appointment-form-dialog.tsx';
 import { PatientAppointmentsTab, UpcomingAppointment, type PatientAppointmentsQuery } from '../components/patients/patient-appointments.tsx';
+import { LastEncounter, PatientEncountersTab, type PatientEncountersQuery } from '../components/patients/patient-encounters.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { formatDay } from '../lib/catalog.ts';
 import { patientInitials } from '../lib/patients.ts';
@@ -59,7 +60,7 @@ const TABS: readonly TabItem<TabKey>[] = [
   { key: 'saldos', label: 'Saldos', icon: Wallet },
 ];
 
-/** Las visitas, los saldos y la última visita llegan con la fase 3 (T-013). */
+/** Los saldos llegan con la fase 3B (T-027 y siguientes). */
 const PHASE_3 = 'Llega en la fase 3.';
 
 export function PatientPage({ sede, patientId }: { sede: string; patientId: string }) {
@@ -84,6 +85,16 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
     initialPageParam: 0,
     getNextPageParam: (last) => last.nextOffset ?? undefined,
     enabled: canAppointments,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+  // T-018: pestaña Visitas (S-PAC-08) y «Última visita»; se releen con encounter.changed.
+  const encounters: PatientEncountersQuery = useInfiniteQuery<PatientEncounters, ApiError>({
+    queryKey: ['patient-encounters', patientId],
+    queryFn: ({ pageParam }) => api.patientEncounters(patientId, pageParam as number),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.nextOffset ?? undefined,
     staleTime: 0,
     gcTime: 0,
     retry: false,
@@ -136,13 +147,14 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
                 <Summary
                   patient={p}
                   timeZone={timeZone}
+                  encounters={encounters}
                   {...(canAppointments ? { appointments } : {})}
                   {...(canOpenEditor(scope) ? { onEdit: () => { setDialog('edit'); } } : {})}
                 />
               ) : tab === 'citas' && canAppointments ? (
                 <PatientAppointmentsTab query={appointments} sede={sede} timeZone={timeZone} />
               ) : tab === 'visitas' ? (
-                <EmptyState icon={History} title="Aún no hay visitas." description={PHASE_3} />
+                <PatientEncountersTab query={encounters} timeZone={timeZone} />
               ) : (
                 <EmptyState icon={Wallet} title="No hay saldos pendientes." description={PHASE_3} />
               )}
@@ -227,16 +239,18 @@ function ProfileHeader({ patient: p }: { patient: PatientProfile }) {
   );
 }
 
-/** S-PAC-06 Resumen: próxima cita (T-014, solo con acceso a Citas), última visita (fase 3) y los datos de admisión. */
+/** S-PAC-06 Resumen: próxima cita (T-014, solo con acceso a Citas), última visita (T-018) y los datos de admisión. */
 function Summary({
   patient: p,
   timeZone,
   appointments,
+  encounters,
   onEdit,
 }: {
   patient: PatientProfile;
   timeZone: string;
   appointments?: PatientAppointmentsQuery;
+  encounters: PatientEncountersQuery;
   onEdit?: () => void;
 }) {
   return (
@@ -248,7 +262,7 @@ function Summary({
           </Card>
         ) : null}
         <Card icon={<SquareCheckBig className="size-6" />} title="Última visita">
-          <p className="text-body-md text-on-surface-variant">Aún no hay visitas. {PHASE_3}</p>
+          <LastEncounter query={encounters} timeZone={timeZone} />
         </Card>
       </div>
       <Card

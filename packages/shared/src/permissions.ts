@@ -38,6 +38,13 @@ export const PERMISSIONS = [
   // «Registrar llegada» (S-REC-18, fase 3): Recepción. En T-015 el botón se ve
   // deshabilitado («Llega en la fase 3») solo para quien lo tendrá.
   'appointments.check_in',
+  // Pantalla de la visita (T-018; S-CLI-04 a 12). Verla: patients.access.
+  // Asignar proveedor y editar la cobertura: Recepción. Los pasos del flujo
+  // los decide la máquina de estados (visit.ts) con el rol dueño de cada uno.
+  'visits.manage',
+  // «Forzar estado…» y reabrir (S-CLI-10, ADR 0033): Propietario y
+  // Administrador, solo junto a patients.access (un rol clínico en la sede).
+  'visits.force_state',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -57,10 +64,29 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 // clínico implícito (docs/architecture.md, «Permisos»). Para ver la parte
 // clínica necesitan además un rol clínico en la sede. Por eso, a diferencia del
 // manual, su menú es solo «Administración». Sus permisos de pacientes (fecha
-// de nacimiento e inactivar, ADR 0009) solo sirven junto a patients.access.
+// de nacimiento e inactivar, ADR 0009) y el de forzar el estado de una visita
+// (ADR 0033) solo sirven junto a patients.access.
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  propietario: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access', 'patients.edit_birth_date', 'patients.deactivate'],
-  administrador: ['members.invite', 'members.manage', 'locations.manage', 'catalog.manage', 'admin.access', 'patients.edit_birth_date', 'patients.deactivate'],
+  propietario: [
+    'members.invite',
+    'members.manage',
+    'locations.manage',
+    'catalog.manage',
+    'admin.access',
+    'patients.edit_birth_date',
+    'patients.deactivate',
+    'visits.force_state',
+  ],
+  administrador: [
+    'members.invite',
+    'members.manage',
+    'locations.manage',
+    'catalog.manage',
+    'admin.access',
+    'patients.edit_birth_date',
+    'patients.deactivate',
+    'visits.force_state',
+  ],
   recepcion: [
     'panel.view',
     'patients.access',
@@ -69,6 +95,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'appointments.access',
     'appointments.manage',
     'appointments.check_in',
+    'visits.manage',
     'checkout.access',
     'reports.location',
   ],

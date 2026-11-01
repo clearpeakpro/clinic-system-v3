@@ -135,6 +135,8 @@ export const encounterEvents = appSchema.table(
     reasonEnc: text('reason_enc'),
     /** «Forzar estado…» (S-CLI-10, T-018): chip «Forzado» del historial. */
     forced: boolean('forced').notNull().default(false),
+    /** Versión de la visita tras el cambio («v{versión}» del historial, S-CLI-24; T-018). */
+    encounterVersion: integer('encounter_version').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
   },
   (t) => [
@@ -154,6 +156,7 @@ export const encounterEvents = appSchema.table(
     check('encounter_events_from_status_check', sql`${t.fromStatus} is null or ${t.fromStatus} in (${inList(VISIT_STATUS_VALUES)})`),
     check('encounter_events_actor_type_check', sql`${t.actorType} in (${inList(ENCOUNTER_ACTOR_TYPE_VALUES)})`),
     check('encounter_events_actor_check', sql`(${t.actorType} = 'user') = (${t.actorMembershipId} is not null)`),
+    check('encounter_events_version_check', sql`${t.encounterVersion} >= 1`),
     index('encounter_events_encounter_idx').on(t.organizationId, t.encounterId, t.occurredAt),
   ],
 );

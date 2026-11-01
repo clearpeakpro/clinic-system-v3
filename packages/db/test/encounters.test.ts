@@ -73,6 +73,7 @@ describe('visitas', () => {
         action: 'check_in',
         toStatus: 'CHECKED_IN',
         actorType: 'system',
+        encounterVersion: 1,
         occurredAt: new Date(),
       });
       await tx.insert(coverages).values({ organizationId: NORTE.id, encounterId: id, type: 'self_pay' });
@@ -120,6 +121,7 @@ describe('visitas', () => {
           action: 'check_in',
           toStatus: 'CHECKED_IN',
           actorType: 'system',
+          encounterVersion: 1,
           occurredAt: new Date(),
         }),
       ),

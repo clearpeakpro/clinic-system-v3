@@ -86,7 +86,7 @@ test('Recepción edita el teléfono; la otra ventana recibe el conflicto de vers
   await expectAccessible(first);
   await first.locator('main').screenshot({ path: 'test-results/perfil-resumen.png' });
   await tabs.getByRole('tab', { name: 'Visitas' }).click();
-  await expect(first.getByRole('tabpanel', { name: 'Visitas' })).toContainText('Llega en la fase 3.');
+  await expect(first.getByRole('tabpanel', { name: 'Visitas' })).toContainText('Aún no hay visitas.');
   await first.keyboard.press('ArrowRight');
   await expect(first.getByRole('tabpanel', { name: 'Saldos' })).toContainText('No hay saldos pendientes.');
   await expectAccessible(first);

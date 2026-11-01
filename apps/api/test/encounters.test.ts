@@ -14,7 +14,7 @@ import {
   INSURANCE_TERM_VALUES,
   VISIT_STATUS_VALUES,
 } from '@clinic/db';
-import { COVERAGE_TYPES, INSURANCE_TERMS, VISIT_STATUSES, type ArrivalContext, type ArrivalResult, type EncounterSummary } from '@clinic/shared';
+import { COVERAGE_TYPES, INSURANCE_TERMS, VISIT_STATUSES, type ArrivalContext, type ArrivalResult, type EncounterDetail } from '@clinic/shared';
 import { eq } from 'drizzle-orm';
 import { io, type Socket } from 'socket.io-client';
 import { v7 as uuidv7 } from 'uuid';
@@ -336,12 +336,12 @@ describe('T-017 llegada', () => {
     expect((await arrive(surRecepcion, walkIn(patientId))).statusCode).toBe(404);
   });
 
-  it('la visita mínima: código, estado y ruta, para cualquier rol clínico de la sede; lectura auditada', async () => {
+  it('la visita: código, estado y ruta, para cualquier rol clínico de la sede; lectura auditada', async () => {
     const patientId = await newPatient();
     const created = (await arrive(recepcion, walkIn(patientId))).json<ArrivalResult>();
     const response = await enfermeria.get(`/api/encounters/${created.encounter.id}`);
     expect(response.statusCode, response.body).toBe(200);
-    expect(response.json<EncounterSummary>()).toEqual({ id: created.encounter.id, code: created.encounter.code, status: 'CHECKED_IN', route: 'STANDARD', version: 1 });
+    expect(response.json<EncounterDetail>()).toMatchObject({ id: created.encounter.id, code: created.encounter.code, status: 'CHECKED_IN', route: 'STANDARD', version: 1 });
     expect((await recepcionNor2.get(`/api/encounters/${created.encounter.id}`)).statusCode).toBe(404);
     expect((await adminSinRol.get(`/api/encounters/${created.encounter.id}`)).statusCode).toBe(403);
     expect((await readAudit(`action = 'encounter.view' and entity_id = $1`, [created.encounter.id])).length).toBe(1);

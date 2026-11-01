@@ -4,6 +4,11 @@ import {
   appointmentVersionSchema,
   arrivalSchema,
   type ArrivalInput,
+  assignProviderSchema,
+  closeEncounterSchema,
+  encounterTransitionSchema,
+  forceEncounterSchema,
+  updateCoverageSchema,
   cancelAppointmentSchema,
   createAppointmentSchema,
   type CreateAppointmentInput,
@@ -822,11 +827,74 @@ export class EncountersController {
     return this.#encounters.arrive(principalOf(request), body as ArrivalInput, key, metaOf(request));
   }
 
-  /** Código, estado y ruta (la pantalla de la visita llega en T-018). */
+  /** S-CLI-06: proveedores activos de la sede (quien asigna: Recepción). */
+  @Get('providers')
+  @RequirePermission('patients.access', 'visits.manage')
+  providers(@Req() request: FastifyRequest) {
+    return this.#encounters.providers(principalOf(request));
+  }
+
+  /** S-CLI-04: la visita con su cobertura, su historial y lo que puede hacer quien la abre. Lectura auditada. */
   @Get(':id')
   @RequirePermission('patients.access')
   get(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
-    return this.#encounters.summary(principalOf(request), id(encounterId), metaOf(request));
+    return this.#encounters.detail(principalOf(request), id(encounterId), metaOf(request));
+  }
+
+  /** S-CLI-07: un paso regular; la máquina de estados comprueba el rol dueño. */
+  @Post(':id/transition')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  transition(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    return this.#encounters.transition(principalOf(request), id(encounterId), parse(encounterTransitionSchema, body), metaOf(request));
+  }
+
+  /** S-CLI-09 «Cerrar visita», con motivo. */
+  @Post(':id/close')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  close(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    return this.#encounters.close(principalOf(request), id(encounterId), parse(closeEncounterSchema, body), metaOf(request));
+  }
+
+  /** S-CLI-10 «Forzar estado…»: Propietario o Administrador, solo con un rol clínico en la sede (ADR 0033). */
+  @Post(':id/force')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'visits.force_state')
+  force(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    return this.#encounters.force(principalOf(request), id(encounterId), parse(forceEncounterSchema, body), metaOf(request));
+  }
+
+  /** S-CLI-05/06: asignar proveedor (Recepción) o «Asignarme» (Proveedor); lo decide el servicio. */
+  @Post(':id/provider')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  assignProvider(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    return this.#encounters.assignProvider(principalOf(request), id(encounterId), parse(assignProviderSchema, body), metaOf(request));
+  }
+
+  /** S-CLI-12: corregir la cobertura (Recepción). El servicio convierte los importes a centavos. */
+  @Post(':id/coverage')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'visits.manage')
+  coverage(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    parse(updateCoverageSchema, body);
+    return this.#encounters.updateCoverage(principalOf(request), id(encounterId), body, metaOf(request));
+  }
+}
+
+/** S-PAC-08 Pestaña Visitas del perfil (T-018): en las sedes donde quien llama tiene un rol clínico. */
+@Controller('patients')
+export class PatientEncountersController {
+  readonly #encounters: EncounterService;
+  constructor(@Inject(EncounterService) encounters: EncounterService) {
+    this.#encounters = encounters;
+  }
+
+  @Get(':id/encounters')
+  @RequirePermission('patients.access')
+  list(@Req() request: FastifyRequest, @Param('id') patientId: string, @Query('offset') offset: unknown) {
+    return this.#encounters.forPatient(principalOf(request), id(patientId), parse(offsetSchema, offset ?? '0'), metaOf(request));
   }
 }
 
@@ -866,6 +934,7 @@ export function createApiModule(providers: ApiProviders) {
       PatientAppointmentsController,
       ArrivalsController,
       EncountersController,
+      PatientEncountersController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },

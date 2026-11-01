@@ -61,6 +61,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
         invalidate(['appointment', appointmentId]);
         invalidate(['arrival', 'appointment', appointmentId]);
       }
+      // T-018: también la pestaña Visitas y «Última visita» del perfil (S-PAC-08).
+      if (ids.encounters.size > 0) invalidate(['patient-encounters']);
       for (const encounterId of ids.encounters) invalidate(['encounter', encounterId]);
     }, delay);
   };
