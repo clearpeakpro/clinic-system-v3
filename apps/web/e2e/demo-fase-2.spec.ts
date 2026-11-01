@@ -353,9 +353,13 @@ test('guion de la demo de la fase 2 (docs/DEMO-FASE-2.md)', async ({ browser }) 
     await expect(normal.getByText('Cita reprogramada. El proveedor ya tiene una cita en ese horario.', { exact: true })).toBeVisible();
 
     await expect(cards(incognito).filter({ hasText: patient })).toHaveCount(0, { timeout: 15_000 });
-    await expect(bell(incognito)).toHaveAccessibleName(`Notificaciones, ${String(before + 1)} sin leer`, { timeout: 15_000 });
+    // S-GEN-15: el aviso sin leer de la misma cita se reemplaza; el número no sube.
     await bell(incognito).click();
-    await incognito.getByRole('dialog', { name: 'Notificaciones' }).getByRole('button', { name: /Cita actualizada/ }).first().click();
+    const updated = incognito.getByRole('dialog', { name: 'Notificaciones' }).getByRole('button', { name: /Cita actualizada/ });
+    await expect(updated).toHaveCount(1);
+    await expect(updated).toContainText(', 9:00 a. m.', { timeout: 15_000 });
+    await expect(bell(incognito)).toHaveAccessibleName(`Notificaciones, ${String(before)} sin leer`);
+    await updated.click();
     await expect(incognito).toHaveURL(new RegExp(`/app/NOR1/citas\\?fecha=${tomorrow}&cita=`));
     await expect(detail(incognito)).toContainText(patient);
     await expect(detail(incognito)).toContainText('9:00 – 9:20 a. m.');

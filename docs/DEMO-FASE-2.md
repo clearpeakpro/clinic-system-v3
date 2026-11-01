@@ -307,8 +307,10 @@ Ficticia-dev-123
 - **Debe ver:** antes de guardar, un aviso ámbar: «Diana Doctora (ficticia) ya tiene una cita que se solapa a las 9:00 a. m.». Es solo un aviso: no impide guardar.
 - **Haga:** pulse «Reprogramar».
 - **Debe ver:** «Cita reprogramada. El proveedor ya tiene una cita en ese horario.».
-- **Debe ver en la ventana de incógnito (Diana), sin tocar nada:** la cita desaparece de su agenda de hoy y la campana suma otro aviso, «Cita actualizada».
-- **Haga (Diana):** pulse la campana y el aviso «Cita actualizada» más reciente.
+- **Debe ver en la ventana de incógnito (Diana), sin tocar nada:** la cita desaparece de su agenda de hoy.
+- **Haga (Diana):** pulse la campana.
+- **Debe ver:** el mismo aviso «Cita actualizada» del paso 13, ahora con la fecha de **mañana** y **9:00 a. m.** El número de la campana no sube: si ya hay un aviso sin leer de esa cita, el nuevo lo reemplaza.
+- **Haga (Diana):** pulse ese aviso.
 - **Debe ver:** se abre la agenda de **mañana**, con el detalle de la cita de Héctor a las 9:00 a. m. Pulse «Cerrar».
 
 ### Paso 15. Cancelar exige un motivo
