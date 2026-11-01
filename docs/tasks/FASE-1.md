@@ -40,8 +40,8 @@
 
 | Qué | Origen | Fase |
 | --- | --- | --- |
-| Generar los avisos «Cita actualizada» y sus enlaces al tocarlos | T-009 | 2 |
-| Botón «Buscar pacientes» de la cabecera (S-GEN-12) | T-004 | 2 |
+| Generar los avisos «Cita actualizada» y sus enlaces al tocarlos | T-009 | 2 (hecho en T-015) |
+| Botón «Buscar pacientes» de la cabecera (S-GEN-12) | T-004 | 2 (hecho en T-012) |
 | Generar los avisos «Paciente asignado a usted» y «Orden asignada…» | T-009 | 3 |
 | `Idempotency-Key` en llegada, kiosco, pagos y anulaciones (ya existe `IdempotencyService`) | T-008 | 3 |
 | P-13: anclaje de la cadena de auditoría en S3 con Object Lock | T-008 | 4 |

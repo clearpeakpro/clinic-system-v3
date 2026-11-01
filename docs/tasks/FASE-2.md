@@ -50,3 +50,51 @@ Todo sigue aislado entre las dos clínicas ficticias.
   - sin sugerencia por costo con seguro;
   - cambio del laboratorio sugerido con motivo obligatorio y auditado;
   - los costos, nunca visibles para Enfermería ni Proveedor.
+
+## Cierre de la fase 2 (T-016, 2026-11-01)
+
+**Guion:** [`docs/DEMO-FASE-2.md`](../DEMO-FASE-2.md). Lo recorre `apps/web/e2e/demo-fase-2.spec.ts`, con su propia base preparada con `pnpm demo:reset` (`playwright.demo2.config.ts`).
+
+**Qué quedó hecho:**
+
+| Objetivo de la fase | Tareas | E2E |
+| --- | --- | --- |
+| Catálogo de cada clínica con precio general y precio propio por sede, con vigencia e historial | [T-011](T-011-catalogo-precios.md) ([ADR 0029](../decisions/0029-precio-general-excepcion-sede.md)) | `catalog.spec.ts` |
+| Laboratorios, costos por prueba y la función `suggestLabs()` | [T-011b](T-011b-laboratorios-costos.md) ([ADR 0028](../decisions/0028-laboratorios-costos.md)) | `catalog.spec.ts` |
+| Búsqueda de pacientes en un campo (también en la cabecera, por fecha MMDDAAAA, teléfono y código), alta con duplicados y teléfono compartido, y la excepción del Propietario | [T-012](T-012-pacientes-busqueda-alta.md) ([ADR 0027](../decisions/0027-acceso-clinico-propietario-administrador.md), [ADR 0030](../decisions/0030-busqueda-pacientes-un-campo.md)) | `patients.spec.ts`, `users.spec.ts` |
+| Perfil y edición del paciente, con conflicto de versión, fecha de nacimiento con motivo, inactivar y reactivar | [T-013](T-013-perfil-paciente.md) ([ADR 0009](../decisions/0009-editar-nacimiento-inactivar.md)) | `patient-profile.spec.ts` |
+| Agenda Día y Lista y detalle de la cita, en la hora de la sede | [T-014](T-014-agenda-vistas.md) | `appointments.spec.ts` |
+| Crear, editar, confirmar, reprogramar (con aviso de solapamiento), cancelar y marcar no presentado, en vivo y con avisos en la campana | [T-015](T-015-gestion-citas.md) | `citas-gestion.spec.ts` |
+| Semilla completa en `pnpm demo:reset`, guion y su E2E | T-016 | `demo-fase-2.spec.ts` |
+
+Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pruebas de aislamiento con el rol real en cada tabla nueva.
+
+**Ajustes de T-016:**
+- La semilla añade una cita de ayer a las 4:00 p. m., **Programada** y sin marcar, en cada sede (21 por sede). Así el guion puede marcar «No se presentó» a cualquier hora.
+- El guion corrige la fecha de nacimiento con la **Propietaria** después de asignarse Recepción, no con el Administrador: desde T-013 hace falta un rol clínico en la sede, y el Administrador no puede asignárselo él mismo (ADR 0009 revisado y ADR 0027).
+
+**Lo que pasa a fases siguientes.** Todavía no existe `FASE-3.md`: la tarea se nombra por su flujo, y se le pondrá número al desglosar la fase 3.
+
+| Qué | Origen | Fase y tarea |
+| --- | --- | --- |
+| Usar `suggestLabs()` en la orden, cambiar el laboratorio sugerido con motivo y la cobertura de la visita (detalle en «Para la fase 3», arriba) | T-011b, [ADR 0028](../decisions/0028-laboratorios-costos.md) | 3 · Órdenes |
+| Tomar el precio vigente de la sede, calculado en el servidor, en la orden y en la Caja | T-011, [ADR 0029](../decisions/0029-precio-general-excepcion-sede.md) | 3 · Órdenes y Caja |
+| «Registrar llegada» (hoy deshabilitado, con «Llega en la fase 3»), «Sin cita», las pestañas Visitas y Saldos y la «Última visita» del perfil | T-013, T-014, T-015 | 3 · Llegada y visita |
+| Avisos «Paciente asignado a usted» y «Orden asignada…» | T-009 | 3 · Llegada y Órdenes |
+| `Idempotency-Key` en llegada, kiosco, pagos y anulaciones (ya existe `IdempotencyService`) | T-008, [ADR 0019](../decisions/0019-operaciones-criticas.md) | 3 · Llegada, Kiosco y Caja |
+| Kiosco: idioma, consentimientos y tabla motivo → ruta (P-06, pendiente de decisión) | [ADR 0014](../decisions/0014-kiosco.md) | 3 · Kiosco |
+| Planes de membresía y reglas de bono | T-011 | 3 o 5 |
+| Pestaña Documentos del perfil (necesita S3) | T-013 | 4 |
+| Cifrado de campos con AWS KMS, sin cambiar el código que usa `FieldCipher` | [ADR 0026](../decisions/0026-cifrado-campos-busqueda.md) | 4 |
+| Fusionar pacientes duplicados (S-PAC-13; `merged_into` ya existe): pendiente nuevo **P-16** | T-012, T-013 | Antes del piloto |
+
+**Decisiones pendientes:** ninguna era de la fase 2. Se añade P-16 (fusionar pacientes) a [`PENDIENTES.md`](../decisions/PENDIENTES.md). P-06 (kiosco) es la única que bloquea una parte de la fase 3.
+
+**Límites conocidos:**
+- La búsqueda de pacientes solo se hace al pulsar Enter o «Buscar», nunca mientras se escribe ([ADR 0030](../decisions/0030-busqueda-pacientes-un-campo.md)).
+- En local, el cifrado de campos usa una clave de desarrollo (`FIELD_ENCRYPTION_KEY`); KMS llega en la fase 4.
+- Los avisos y los eventos en vivo no llevan nombres de pacientes: solo el código de la cita, la fecha y la hora.
+- Un aviso sin leer de la misma cita y del mismo tipo se reemplaza por el nuevo (S-GEN-15): el número de la campana no sube con cada cambio.
+- La web agrupa los cambios en vivo cada 500 ms; sin conexión, se actualiza sola cada 30 segundos.
+- Las citas solo se crean o reprograman para hoy o días futuros en la sede, y «No se presentó» solo después de la hora de la cita.
+- El Propietario y el Administrador sin rol clínico no ven Pacientes ni Citas. Solo el Propietario puede asignarse un rol clínico (con motivo, auditado y con aviso a los Administradores).
