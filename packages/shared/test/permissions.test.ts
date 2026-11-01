@@ -87,13 +87,13 @@ describe('permisos', () => {
 
   it('destinos del menú según el manual', () => {
     expect([...permissionsFor(['recepcion'])].sort()).toEqual(
-      ['appointments.access', 'checkout.access', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location'],
+      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location'],
     );
     expect([...permissionsFor(['enfermeria'])].sort()).toEqual(
       ['nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access'],
     );
     expect([...permissionsFor(['proveedor'])].sort()).toEqual(
-      ['appointments.access', 'nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access', 'patients.edit_phone', 'provider_queue.access'],
+      ['appointments.access', 'appointments.manage', 'nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access', 'patients.edit_phone', 'provider_queue.access'],
     );
   });
 });

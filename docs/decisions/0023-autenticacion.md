@@ -82,6 +82,7 @@ Con esto, el estado pasa de «Aceptada con condiciones» a «Aceptada». Las reg
 - **Por IP (Better Auth):** el límite propio de Better Auth, que en 1.7.7 solo existe por IP y solo se activa por defecto en producción. Aquí se activa **en todos los entornos** (`rateLimit.enabled: true`, en memoria).
   - **Inicio de sesión (`/sign-in/*`): 30 intentos por minuto por IP**, configurable (`SIGN_IN_IP_MAX_ATTEMPTS`, `SIGN_IN_IP_WINDOW_SECONDS`). La regla de 1.7.7 (3 cada 10 s) era demasiado estricta, porque todo el personal de una clínica comparte la misma IP pública: con ella, la cuarta persona que entraba en 10 s recibía 429.
   - **Verificación en dos pasos (`/two-factor/*`): 20 peticiones por minuto por IP**, configurable (`TWO_FACTOR_IP_MAX_ATTEMPTS`, `TWO_FACTOR_IP_WINDOW_SECONDS`). Cambiado en T-006a (2026-10-28), por la misma razón: con la regla de 1.7.7 (3 cada 10 s), varias personas que configuraban o usaban el MFA a la vez desde la clínica recibían «Demasiados intentos».
+  - En producción, la API se niega a arrancar si `SIGN_IN_IP_MAX_ATTEMPTS` o `TWO_FACTOR_IP_MAX_ATTEMPTS` pasa de **100** (T-015, 2026-10-31). Un valor más alto solo se usa en el entorno de las E2E (1000), donde toda la suite inicia sesión desde una misma IP.
   - El resto conserva las reglas de 1.7.7: `/sign-up*` y `/change-password`, 3 cada 10 s por IP y ruta.
   - La IP la pone el servidor (`x-clinic-client-ip`).
 - **Por cuenta (nuestro):** Better Auth no lo tiene.

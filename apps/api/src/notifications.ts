@@ -1,7 +1,7 @@
-import { notifications, notifyRealtime, type TenantDb, type Tx } from '@clinic/db';
-import { isNotificationKind, type NotificationKind } from '@clinic/shared';
+import { locations, notifications, notifyRealtime, type TenantDb, type Tx } from '@clinic/db';
+import { appointmentWhenLabel, isAppointmentNotification, isNotificationKind, permissionsFor, type NotificationKind } from '@clinic/shared';
 import { and, count, desc, eq, gt, isNull, sql } from 'drizzle-orm';
-import type { Principal } from './principal.ts';
+import { rolesAt, type Principal } from './principal.ts';
 import { HttpError, requireContext } from './services.ts';
 
 // Centro de notificaciones (S-GEN-15, ADR 0008; T-009). Cada persona ve solo
@@ -17,6 +17,12 @@ export interface NotificationRow {
   id: string;
   kind: NotificationKind;
   code: string | null;
+  /** Avisos de citas (T-015): fecha y hora de la cita en su sede, «3 nov, 9:00 a. m.». */
+  when: string | null;
+  /** Avisos de citas: día de la cita en su sede (`AAAA-MM-DD`), para abrir la agenda de ese día. */
+  day: string | null;
+  /** Avisos de citas: ¿tiene hoy acceso a Citas en esa sede? Si no, al tocarlo solo se marca como leído. */
+  canOpen: boolean;
   locationId: string | null;
   entityType: string | null;
   entityId: string | null;
@@ -28,6 +34,10 @@ export interface NotificationsList {
   rows: NotificationRow[];
   unread: number;
 }
+
+/** Día calendario de un instante en una zona horaria (`AAAA-MM-DD`). */
+const localDate = (value: Date, timeZone: string) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(value);
 
 const visible = (userId: string) =>
   and(eq(notifications.userId, userId), isNull(notifications.dismissedAt), gt(notifications.createdAt, sql`now() - interval '30 days'`));
@@ -43,8 +53,9 @@ export class NotificationService {
     const ctx = requireContext(actor);
     return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       const rows = await tx
-        .select()
+        .select({ n: notifications, timezone: locations.timezone })
         .from(notifications)
+        .leftJoin(locations, eq(locations.id, notifications.locationId))
         .where(visible(actor.userId))
         .orderBy(desc(notifications.createdAt), desc(notifications.id))
         .limit(NOTIFICATIONS_LIMIT);
@@ -53,13 +64,19 @@ export class NotificationService {
         .from(notifications)
         .where(and(visible(actor.userId), isNull(notifications.readAt)));
       return {
-        rows: rows.flatMap((r) =>
+        rows: rows.flatMap(({ n: r, timezone }) =>
           isNotificationKind(r.kind)
             ? [
                 {
                   id: r.id,
                   kind: r.kind,
                   code: r.code,
+                  when: r.startsAt && timezone ? appointmentWhenLabel(r.startsAt, timezone) : null,
+                  day: r.startsAt && timezone ? localDate(r.startsAt, timezone) : null,
+                  canOpen:
+                    isAppointmentNotification(r.kind) &&
+                    r.locationId !== null &&
+                    permissionsFor(rolesAt(actor.assignments, ctx.organizationId, r.locationId)).has('appointments.access'),
                   locationId: r.locationId,
                   entityType: r.entityType,
                   entityId: r.entityId,

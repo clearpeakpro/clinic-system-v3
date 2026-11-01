@@ -18,7 +18,9 @@ import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
 import { CatalogService } from './catalog.ts';
 import { LabProviderService } from './lab-providers.ts';
+import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
+import { IdempotencyService } from './idempotency.ts';
 import { PatientService } from './patients.ts';
 import { ProfileService } from './profile.ts';
 import { RealtimeGateway } from './realtime.ts';
@@ -51,6 +53,7 @@ export async function createApp({ config, logs }: AppDeps) {
     labProviders: new LabProviderService(tenantDb, audit),
     patients: new PatientService(tenantDb, audit, fieldCipher),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
+    appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, new IdempotencyService(tenantDb), config.outboxKey),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

@@ -120,6 +120,11 @@ export async function startStack(options: { demoReset?: boolean } = {}) {
     FIELD_ENCRYPTION_KEY: randomBytes(32).toString('hex'),
     PORT: String(E2E.apiPort),
     DEV_SEED_PASSWORD: E2E.password,
+    // Toda la suite inicia sesión desde la misma IP y en pocos minutos: el
+    // límite por IP de producción (30 por minuto, ADR 0023) cortaría las
+    // últimas pruebas con «Demasiados intentos». El límite en sí se prueba en
+    // apps/api/test/sign-in-limits.test.ts; el de cada cuenta no cambia.
+    SIGN_IN_IP_MAX_ATTEMPTS: '1000',
   };
   if (options.demoReset) {
     await finished(

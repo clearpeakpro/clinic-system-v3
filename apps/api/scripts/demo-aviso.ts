@@ -4,7 +4,8 @@ import { DemoUserError, sendDemoNotification } from '../src/demo.ts';
 import { MemoryLogSink } from '../src/logging.ts';
 
 // pnpm demo:aviso <correo> (T-010), solo en desarrollo: envía a esa persona un
-// aviso ficticio «Cita actualizada» por el outbox, como lo hará la fase 2. Lo
+// aviso «Cita actualizada» por el outbox sobre una cita ficticia de su sede
+// (la más cercana a ahora; T-015). Lo
 // entrega el worker (con «pnpm dev» en marcha) y la campana lo muestra al
 // instante.
 

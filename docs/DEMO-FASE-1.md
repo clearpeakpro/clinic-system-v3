@@ -146,13 +146,13 @@ Nadie tiene el MFA activado. Propietarios y Administradores tendrán que activar
   ```
   pnpm demo:aviso invitado.demo@example.test
   ```
-- **Debe ver en la terminal:** «✔ Aviso «Cita actualizada» (NOR1-C-…) enviado…».
+- **Debe ver en la terminal:** «✔ Aviso «Cita actualizada» (NOR1-A-…) enviado…».
 - **Debe ver en la ventana de incógnito, sin tocar nada:** en unos segundos, la campana muestra un **1** rojo.
 - **Haga:** pulse la campana.
-- **Debe ver:** el panel «Notificaciones» con **«Cita actualizada»**, «Cita NOR1-C-… · Ahora mismo» y un punto de «sin leer».
-  Es un aviso de prueba: en la fase 2 los generarán las citas de verdad.
+- **Debe ver:** el panel «Notificaciones» con **«Cita actualizada»**, «Cita NOR1-A-… · 31 oct, 9:00 a. m.» (la fecha y la hora de la cita) y un punto de «sin leer».
+  Es un aviso de prueba sobre la cita ficticia de la sede más cercana a ahora; desde T-015, las citas generan sus propios avisos.
 - **Haga:** pulse el aviso.
-- **Debe ver:** el panel se cierra y el **1** desaparece.
+- **Debe ver:** se abre el detalle de esa cita en «Citas», en su día. Pulse «Cerrar»: el **1** desapareció.
 - **Haga:** abra otra vez la campana y pulse la papelera («Borrar»).
 - **Debe ver:** «Está al día».
 

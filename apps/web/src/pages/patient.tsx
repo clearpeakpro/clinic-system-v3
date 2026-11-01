@@ -1,4 +1,4 @@
-import { ageLabel, ageOn, canSchedule, formatPhone, type PatientAppointments, type PatientProfile } from '@clinic/shared';
+import { ageLabel, ageOn, canSchedule, formatPhone, shortAppointmentCode, type PatientAppointments, type PatientProfile } from '@clinic/shared';
 import { AsyncView, Button, CodeText, DateTimeText, EmptyState, SemanticChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -28,6 +28,8 @@ import {
   VersionConflictDialog,
   type PatientEditScope,
 } from '../components/patients/edit-patient-dialog.tsx';
+import { useAfterAppointmentChange } from '../components/appointments/appointment-detail-dialog.tsx';
+import { AppointmentFormDialog } from '../components/appointments/appointment-form-dialog.tsx';
 import { PatientAppointmentsTab, UpcomingAppointment, type PatientAppointmentsQuery } from '../components/patients/patient-appointments.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { formatDay } from '../lib/catalog.ts';
@@ -42,8 +44,8 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // Contacto y Admisión» con «Actualizar datos». No se construye lo que el
 // sistema no tiene (foto, triaje, alerta médica, saldo y factura, contacto
 // de emergencia, seguro, idioma, farmacia, EHR, contadores de las pestañas)
-// ni «Fusionar con…» (S-PAC-13) ni Documentos. «Nueva cita» se conecta en
-// T-015. Cada apertura se audita en el servidor (patient.read) y no se guarda
+// ni «Fusionar con…» (S-PAC-13) ni Documentos. «Nueva cita» (T-015) abre
+// S-REC-10 con el paciente ya elegido, para la sede activa. Cada apertura se audita en el servidor (patient.read) y no se guarda
 // en caché. La pestaña no va en la URL: al volver, el perfil abre en Resumen.
 // T-014: la pestaña Citas (S-PAC-07) y la «Próxima cita» del Resumen, en solo
 // lectura; sin acceso a Citas (Enfermería, ADR 0027) no se muestran.
@@ -72,6 +74,8 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
     deactivate: permissions.includes('patients.deactivate'),
   };
   const canAppointments = permissions.includes('appointments.access');
+  const canManageAppointments = canAppointments && permissions.includes('appointments.manage');
+  const afterAppointment = useAfterAppointmentChange();
   const tabs = canAppointments ? TABS : TABS.filter((t) => t.key !== 'citas');
   const [tab, setTab] = useState<TabKey>('resumen');
   const appointments: PatientAppointmentsQuery = useInfiniteQuery<PatientAppointments, ApiError>({
@@ -84,7 +88,7 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
     gcTime: 0,
     retry: false,
   });
-  const [dialog, setDialog] = useState<null | 'edit' | 'status' | 'conflict'>(null);
+  const [dialog, setDialog] = useState<null | 'edit' | 'status' | 'conflict' | 'appointment'>(null);
   const patient = useQuery({
     queryKey: ['patient', patientId],
     queryFn: () => api.patient(patientId),
@@ -115,15 +119,10 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
                 <Pencil aria-hidden className="size-5" /> Editar
               </Button>
             ) : null}
-            {canAppointments && canSchedule(patient.data) ? (
-              <span className="flex flex-col items-end">
-                <Button disabled aria-describedby="new-appointment-note">
-                  <CalendarPlus aria-hidden className="size-5" /> Nueva cita
-                </Button>
-                <span id="new-appointment-note" className="text-caption text-on-surface-variant">
-                  Llega con la agenda
-                </span>
-              </span>
+            {canManageAppointments && canSchedule(patient.data) ? (
+              <Button onClick={() => { setDialog('appointment'); }}>
+                <CalendarPlus aria-hidden className="size-5" /> Nueva cita
+              </Button>
             ) : null}
           </div>
         ) : null}
@@ -171,6 +170,20 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
               />
             ) : null}
             {dialog === 'conflict' ? <VersionConflictDialog onRefresh={() => void reload()} /> : null}
+            {dialog === 'appointment' ? (
+              <AppointmentFormDialog
+                mode={{ kind: 'create', date: p.today, patient: { id: p.id, code: p.code, firstName: p.firstName, lastName: p.lastName } }}
+                canCreatePatient={false}
+                onClose={() => { setDialog(null); }}
+                onConflict={() => { setDialog(null); }}
+                onSaved={(saved) => {
+                  setDialog(null);
+                  void afterAppointment();
+                  const message = `Cita ${shortAppointmentCode(saved.code)} creada.`;
+                  snackbar({ message: saved.warnings.includes('provider_overlap') ? `${message} El proveedor ya tiene una cita en ese horario.` : message });
+                }}
+              />
+            ) : null}
           </>
         )}
       </AsyncView>

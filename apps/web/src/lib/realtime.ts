@@ -27,6 +27,14 @@ export interface RealtimeHandlers {
   sessionChanged: () => void;
   /** Cambió la bandeja de notificaciones de la persona. */
   notifications: () => void;
+  /** Evento de pantalla de la sede activa (T-015: `appointment.changed`): solo nombre, ids y estado. */
+  event?: (event: ScreenEvent) => void;
+}
+
+export interface ScreenEvent {
+  name: string;
+  ids: Record<string, string>;
+  status?: string;
 }
 
 /** Lo que se usa del socket (el de socket.io-client o uno de prueba). */
@@ -161,6 +169,9 @@ export class RealtimeClient {
     });
     socket.on('notifications', () => {
       this.#handlers.notifications();
+    });
+    socket.on('event', (payload: ScreenEvent | undefined) => {
+      if (payload && typeof payload.name === 'string') this.#handlers.event?.(payload);
     });
     // Cerrada antes de terminar de conectar sin «connect_error». Se espera una
     // vuelta: al rechazar la conexión, socket.io-client cierra el transporte

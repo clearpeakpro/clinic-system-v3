@@ -137,22 +137,28 @@ const appPanelRoute = createRoute({
 
 interface AgendaSearch {
   fecha?: string;
+  /** T-015: abre el detalle de esa cita (al tocar un aviso de la campana). */
+  cita?: string;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // S-REC-06 Citas. La fecha va en la URL (el historial del navegador funciona);
 // la valida el servidor: sin ella, o si no es válida, es hoy en la sede.
 const appAppointmentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'citas',
-  validateSearch: (search: Record<string, unknown>): AgendaSearch =>
-    typeof search.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.fecha) ? { fecha: search.fecha } : {},
+  validateSearch: (search: Record<string, unknown>): AgendaSearch => ({
+    ...(typeof search.fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.fecha) ? { fecha: search.fecha } : {}),
+    ...(typeof search.cita === 'string' && UUID_RE.test(search.cita) ? { cita: search.cita } : {}),
+  }),
   component: function Appointments() {
     const me = useMe();
     const { sede } = appAppointmentsRoute.useParams();
-    const { fecha } = appAppointmentsRoute.useSearch();
+    const { fecha, cita } = appAppointmentsRoute.useSearch();
     // El backend autoriza siempre; aquí solo se oculta (Recepción y Proveedor, ADR 0027).
     if (me.data && !me.data.permissions.includes('appointments.access')) return <NotFoundPage />;
-    return <AppointmentsPage sede={sede} fecha={fecha} />;
+    return <AppointmentsPage sede={sede} fecha={fecha} cita={cita} />;
   },
 });
 

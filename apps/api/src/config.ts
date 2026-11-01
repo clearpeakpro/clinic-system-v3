@@ -66,6 +66,12 @@ export interface AppConfig {
   realtimeRevalidateSeconds: number;
 }
 
+/**
+ * Tope de los límites por IP en producción (ADR 0023): un valor holgado solo
+ * vale en el entorno de las E2E, donde toda la suite entra desde una IP.
+ */
+export const PRODUCTION_IP_LIMIT_MAX = 100;
+
 /** Margen del servidor sobre el límite de inactividad del cliente (S-GEN-20). */
 export const IDLE_GRACE_SECONDS = 120;
 
@@ -115,7 +121,8 @@ const envSchema = z.object({
 
 /**
  * Lee y valida la configuración. Falla al arrancar si falta un secreto, si la
- * base de datos no se usa como clinic_app o si en producción no hay HTTPS.
+ * base de datos no se usa como clinic_app o si en producción no hay HTTPS o un
+ * límite por IP pasa de PRODUCTION_IP_LIMIT_MAX.
  * Los mensajes nombran la variable, nunca su valor.
  */
 export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
@@ -162,5 +169,17 @@ export function assertConfig(config: AppConfig, production: boolean): void {
   }
   if (production && !config.baseURL.startsWith('https://')) {
     throw new Error('Configuración inválida: BASE_URL debe usar https en producción');
+  }
+  if (production) {
+    const limits: [string, number][] = [
+      ['SIGN_IN_IP_MAX_ATTEMPTS', config.signInIpMaxAttempts],
+      ['TWO_FACTOR_IP_MAX_ATTEMPTS', config.twoFactorIpMaxAttempts],
+    ];
+    const tooHigh = limits.filter(([, value]) => value > PRODUCTION_IP_LIMIT_MAX).map(([name]) => name);
+    if (tooHigh.length > 0) {
+      throw new Error(
+        `Configuración inválida: ${tooHigh.join(' y ')} ${tooHigh.length > 1 ? 'no pueden' : 'no puede'} ser mayor que ${String(PRODUCTION_IP_LIMIT_MAX)} en producción (ADR 0023). Un límite holgado solo se usa en las pruebas E2E.`,
+      );
+    }
   }
 }

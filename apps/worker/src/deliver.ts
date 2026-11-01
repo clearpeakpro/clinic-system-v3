@@ -106,7 +106,13 @@ export async function deliverEvent(deps: DeliverDeps, ref: { organizationId: str
  * los sockets de la persona (sale al confirmarse la transacción).
  */
 async function storeNotification(tx: Tx, organizationId: string, eventId: string, payload: NotificationPayload): Promise<void> {
-  const values = { locationId: payload.locationId, code: payload.code, eventId, createdAt: sql`now()` };
+  const values = {
+    locationId: payload.locationId,
+    code: payload.code,
+    startsAt: payload.startsAt ? new Date(payload.startsAt) : null,
+    eventId,
+    createdAt: sql`now()`,
+  };
   const replaced =
     payload.entityId === null
       ? []

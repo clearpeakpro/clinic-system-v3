@@ -154,8 +154,14 @@ test('guion de la demo de la fase 1 (docs/DEMO-FASE-1.md)', async ({ browser }) 
     await bell.click();
     const panel = incognito.getByRole('dialog', { name: 'Notificaciones' });
     const item = panel.getByRole('button', { name: /Cita actualizada/ });
-    await expect(item).toContainText(/Cita NOR1-C-\d{6} · Ahora mismo/);
+    // T-015: apunta a la cita de la semilla más cercana a ahora, con su fecha y hora.
+    await expect(item).toContainText(/Cita NOR1-A-\d{6} · \d{1,2} [a-z]+, \d{1,2}:\d{2} [ap]\. m\./);
+    const code = /NOR1-A-\d{6}/.exec((await item.textContent()) ?? '')?.[0] ?? '';
     await item.click();
+    // Se abre su detalle en la agenda.
+    const detail = incognito.getByRole('dialog', { name: 'Cita' });
+    await expect(detail).toContainText(code);
+    await detail.getByRole('button', { name: 'Cerrar' }).click();
     await expect(bell).toHaveAccessibleName('Notificaciones');
     await bell.click();
     await panel.getByRole('button', { name: 'Borrar' }).click();

@@ -67,8 +67,8 @@ test('Recepción ve la agenda de hoy de NOR1: horas, tarjetas, filtros, vista Li
   await nav(page).getByRole('link', { name: 'Citas' }).click();
   await expect(page).toHaveURL(/\/app\/NOR1\/citas$/);
   await expect(page.getByRole('heading', { name: 'Citas', level: 1 })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Nueva cita' })).toBeDisabled();
-  await expect(page.getByText('Llega con la agenda')).toBeVisible();
+  // T-015: «Nueva cita» ya está activa (su flujo, en citas-gestion.spec.ts).
+  await expect(page.getByRole('button', { name: 'Nueva cita' }).first()).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Sin cita' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Hoy' })).toHaveCount(0);
 
@@ -124,14 +124,18 @@ test('Recepción ve la agenda de hoy de NOR1: horas, tarjetas, filtros, vista Li
   await expectAccessible(page);
   await page.locator('main').screenshot({ path: 'test-results/agenda-lista.png' });
 
-  // Detalle (S-REC-09) en solo lectura: la cita confirmada de las 10:00, con notas.
+  // Detalle (S-REC-09): la cita confirmada de las 10:00, con notas. Desde T-015,
+  // con las acciones de la matriz para Recepción (ya no se puede confirmar).
   await table.getByRole('row').filter({ hasText: '10:00 – 10:30 a. m.' }).click();
   const detail = page.getByRole('dialog', { name: 'Cita' });
   await expect(detail).toContainText(/NOR1-A-\d{6}/);
   await expect(detail).toContainText('Confirmada');
   await expect(detail).toContainText('Traerá los resultados de su último análisis.');
   await expect(detail).toContainText('10:00 – 10:30 a. m. · 30 min');
-  await expect(detail.getByRole('button', { name: /Confirmar|Reprogramar|Editar|Cancelar cita|Registrar llegada/ })).toHaveCount(0);
+  for (const name of ['Editar', 'Reprogramar', 'Cancelar cita']) await expect(detail.getByRole('button', { name, exact: true })).toBeEnabled();
+  await expect(detail.getByRole('button', { name: 'Confirmar', exact: true })).toHaveCount(0);
+  // Llega en la fase 3.
+  await expect(detail.getByRole('button', { name: 'Registrar llegada' })).toBeDisabled();
   await expectAccessible(page);
   await detail.getByRole('button', { name: 'Cerrar' }).click();
   await page.getByRole('radio', { name: 'Día' }).click();

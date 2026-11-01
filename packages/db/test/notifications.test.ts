@@ -200,5 +200,15 @@ describe('canal de tiempo real', () => {
       name: 'a.changed',
       ids: { a: org },
     });
+    // T-015: el estado nuevo de la cita, solo como constante (nunca texto libre).
+    expect(parseRealtimeMessage(JSON.stringify({ t: 'event', org, loc, name: 'appointment.changed', ids: { appointment: org }, status: 'CANCELLED' }))).toEqual({
+      t: 'event',
+      org,
+      loc,
+      name: 'appointment.changed',
+      ids: { appointment: org },
+      status: 'CANCELLED',
+    });
+    expect(parseRealtimeMessage(JSON.stringify({ t: 'event', org, loc, name: 'a', ids: {}, status: 'Ana López' }))).toBeNull();
   });
 });

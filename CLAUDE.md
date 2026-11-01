@@ -74,3 +74,5 @@ TypeScript en todo. pnpm + Turborepo.
 - Cada pantalla: ficha del manual + captura de Stitch + prueba E2E del flujo del rol.
 - Si una tarea requiere una decisión que no está en `docs/decisions/`, detenerse y preguntar; no inventar reglas de negocio.
 - Mantener `docs/architecture.md` al día si cambia algo estructural.
+- En el equipo local corre lint, typecheck y las pruebas de los paquetes que cambiaste y de los que dependen de ellos (con el filtro de Turborepo). No corras la E2E completa en local salvo que te lo pida, porque el equipo se queda sin memoria; si hace falta, corre solo los archivos E2E afectados.
+- La batería completa y la E2E las corre siempre la CI. Un PR no está terminado hasta que la CI (check y e2e) esté en verde, y si la CI encuentra un error de una tarea anterior, se corrige en el mismo PR.

@@ -1,6 +1,8 @@
 import { APPOINTMENT_STATUSES, type AgendaAppointment, type AppointmentProvider, type AppointmentStatus } from '@clinic/shared';
 import { formatTime } from '@clinic/ui';
 import { useSyncExternalStore } from 'react';
+import { ApiError } from './api.ts';
+import { userActionMessage } from './users.ts';
 
 // Agenda (T-014; S-REC-06 a 08). Todo en la zona horaria de la sede: la hora
 // de cada cita, su agrupación por hora y el día. La vista y el filtro de
@@ -174,4 +176,59 @@ export function providerLabel(provider: AppointmentProvider | null, myMembership
 /** Nombre del tipo de cita; si el tipo está inactivo, su código (S-REC-07). */
 export function typeLabel(type: { code: string; name: string; active: boolean }): string {
   return type.active ? type.name : type.code;
+}
+
+const timeFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Hora local `HH:MM` (24 h) de un instante en la zona de la sede: el valor del campo Hora. */
+export function localClock(value: string, timeZone: string): string {
+  let format = timeFormats.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat('en-US', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    timeFormats.set(timeZone, format);
+  }
+  return format.format(new Date(value));
+}
+
+// --- Gestión de citas (T-015) ----------------------------------------------
+
+/** Clave para Idempotency-Key: una por formulario abierto; reintentar el mismo envío no crea dos citas. */
+export function newIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
+const MESSAGES: Record<string, string> = {
+  appointment_in_past: 'No se pueden agendar citas en días anteriores a hoy.',
+  patient_inactive: 'No se pueden agendar citas a un paciente inactivo.',
+  patient_merged: 'Esta acción no está permitida en el estado actual.',
+  patient_not_found: 'No se encontró el paciente.',
+  appointment_type_inactive: 'Ese tipo de cita ya no está activo. Elija otro.',
+  appointment_type_not_found: 'Ese tipo de cita ya no está activo. Elija otro.',
+  invalid_provider: 'Ese proveedor no está disponible en esta sede. Elija otro.',
+  provider_scope: 'Solo puede gestionar las citas asignadas a usted.',
+  location_inactive: 'La sede está inactiva: no se pueden agendar citas.',
+  appointment_not_editable: 'Esta acción no está permitida en el estado actual.',
+  invalid_appointment_transition: 'Esta acción no está permitida en el estado actual.',
+  no_show_before_start: 'Solo se puede marcar como no presentado desde la hora de la cita.',
+  appointment_not_found: 'No se encontró la cita.',
+  missing_reason: 'Se requiere un motivo.',
+  forbidden: 'No tiene permiso para realizar esta acción.',
+  invalid_request: 'Algunos campos no son válidos. Revíselos.',
+};
+
+/** Mensaje de un error de citas; los demás, el genérico de la aplicación. */
+export function appointmentMessage(error: unknown): string {
+  if (error instanceof ApiError && MESSAGES[error.code]) return MESSAGES[error.code] ?? '';
+  return userActionMessage(error);
+}
+
+/** ¿Es un conflicto de versión (S-REC-16)? */
+export function isVersionConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'version_conflict';
+}
+
+/** Texto del aviso de solapamiento (Stitch, S-REC-10): «{Proveedor} ya tiene una cita que se solapa a las 9:00 a. m.». */
+export function overlapText(providerName: string, conflictStartsAt: string, timeZone: string): string {
+  // La hora ya termina en punto («a. m.»): no se añade otro.
+  return `${providerName || 'El proveedor'} ya tiene una cita que se solapa a las ${formatTime(conflictStartsAt, timeZone)}`;
 }
