@@ -121,7 +121,7 @@ interface DemoAppointment {
   cancelReason?: string;
 }
 
-/** Plantilla de cada sede (20 citas). */
+/** Plantilla de cada sede (21 citas). */
 export const DEMO_AGENDA: readonly DemoAppointment[] = [
   { day: -1, time: '09:00', minutes: 20, type: 'CONSULTA', status: 'ARRIVED', withProvider: true },
   { day: -1, time: '09:40', minutes: 15, type: 'SEGUIMIENTO', status: 'NO_SHOW', withProvider: true },
@@ -143,6 +143,10 @@ export const DEMO_AGENDA: readonly DemoAppointment[] = [
   { day: 2, time: '11:00', minutes: 15, type: 'SEGUIMIENTO', status: 'CONFIRMED', withProvider: true },
   { day: 3, time: '10:00', minutes: 20, type: 'CONSULTA', status: 'SCHEDULED', withProvider: true },
   { day: 3, time: '16:00', minutes: 20, type: 'CONSULTA', status: 'CANCELLED', withProvider: true, cancelReason: 'Reprogramará cuando regrese de viaje.' },
+  // T-016: una cita de ayer que nadie marcó. Así la demo puede marcar «No se
+  // presentó» a cualquier hora (solo se permite cuando ya pasó su hora). Va al
+  // final para no cambiar los ids de las anteriores.
+  { day: -1, time: '16:00', minutes: 20, type: 'CONSULTA', status: 'SCHEDULED', withProvider: true },
 ];
 
 /** Id fijo de la cita `index` de la sede `site` (0 o 1) de una organización. */

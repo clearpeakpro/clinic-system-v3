@@ -67,7 +67,7 @@ describe('pnpm demo:reset', () => {
     await admin.end();
   });
 
-  it('deja las dos organizaciones, sus cuatro sedes, los 12 usuarios ficticios sin MFA y las citas de la semilla', async () => {
+  it('deja las dos organizaciones, sus cuatro sedes, los 13 usuarios ficticios sin MFA y las citas de la semilla', async () => {
     expect(await query('select name from app.organizations order by name')).toEqual([{ name: 'Clínica Demo Norte' }, { name: 'Clínica Demo Sur' }]);
     expect((await query<{ code: string }>('select code from app.locations order by code')).map((r) => r.code)).toEqual(['NOR1', 'NOR2', 'SUR1', 'SUR2']);
     const users = await query<{ email: string; two_factor_enabled: boolean }>('select email, two_factor_enabled from auth."user" order by email');
@@ -75,7 +75,7 @@ describe('pnpm demo:reset', () => {
     expect(users.every((u) => !u.two_factor_enabled)).toBe(true);
     expect(await query('select 1 from auth.two_factor')).toEqual([]);
     expect(await query('select 1 from auth.session')).toEqual([]);
-    // T-014: 20 citas por sede (ayer, hoy y los próximos días).
+    // T-014: 21 citas por sede (ayer, hoy y los próximos días; T-016 añade una de ayer sin marcar).
     const perSite = await query<{ code: string; n: number }>(
       'select l.code, count(*)::int as n from app.appointments a join app.locations l on l.id = a.location_id group by l.code order by l.code',
     );

@@ -11,7 +11,8 @@ import { operatorErrorMessage } from './platform.ts';
 
 // Demo de la fase 1 (T-010), solo en desarrollo:
 //  - resetDemo: deja la base de datos local como recién instalada, con las dos
-//    organizaciones ficticias, sus 12 usuarios (ninguno con MFA) y sus citas.
+//    organizaciones ficticias, sus usuarios (ninguno con MFA), su catálogo,
+//    laboratorios, pacientes y citas (fase 2, T-016).
 //  - sendDemoNotification: un aviso ficticio para ver la campana en vivo.
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);

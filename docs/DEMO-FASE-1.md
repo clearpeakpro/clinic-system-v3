@@ -47,7 +47,7 @@ Ficticia-dev-123
    pnpm demo:reset
    ```
 3. **Debe ver:** un aviso de que se borrará la base de datos local. **Haga:** escriba `BORRAR` y pulse Enter.
-4. **Debe ver:** «✔ Listo. Base de datos de demostración recién creada.» y la lista de 12 usuarios.
+4. **Debe ver:** «✔ Listo. Base de datos de demostración recién creada.» y la lista de 13 usuarios.
 5. **Haga:** arranque la aplicación:
    ```
    pnpm dev

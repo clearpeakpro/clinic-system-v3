@@ -3,9 +3,9 @@ import { loadConfig } from '../src/config.ts';
 import { assertLocalDatabase, assertOperatorPassword, DemoBusyError, resetDemo } from '../src/demo.ts';
 import { DEV_USERS } from '../src/dev-seed.ts';
 
-// pnpm demo:reset (T-010): deja la base de datos LOCAL como recién instalada,
-// con las dos organizaciones ficticias y sus usuarios, ninguno con MFA. Borra
-// todo lo demás. Solo en desarrollo; con «pnpm dev» detenido.
+// pnpm demo:reset (T-010, T-016): deja la base de datos LOCAL como recién
+// instalada, con las dos organizaciones ficticias, sus usuarios (ninguno con
+// MFA), su catálogo, laboratorios, pacientes y citas. Borra todo lo demás. Solo en desarrollo; con «pnpm dev» detenido.
 
 function fail(message: string): never {
   console.error(`\n✖ ${message}\n`);
@@ -46,6 +46,7 @@ if (!process.argv.includes('--si')) {
 Esto BORRA la base de datos local de Clinic System y la deja como recién instalada:
   - «Clínica Demo Norte» (sedes NOR1 y NOR2) y «Clínica Demo Sur» (sedes SUR1 y SUR2);
   - ${String(DEV_USERS.length)} usuarios ficticios, todos con la contraseña de DEV_SEED_PASSWORD y sin MFA;
+  - catálogo con precios generales y por sede, laboratorios con sus costos y 20 pacientes ficticios por clínica;
   - citas ficticias de ayer, hoy y los próximos días en las cuatro sedes.
 Todo lo que haya hecho (invitaciones, sedes nuevas, MFA, auditoría…) se pierde.
 `);
