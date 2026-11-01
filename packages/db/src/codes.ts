@@ -37,3 +37,11 @@ export async function nextCode(tx: Tx, organizationId: string, kind: CodeKind): 
 export async function nextAppointmentCode(tx: Tx, organizationId: string, location: { id: string; code: string }): Promise<string> {
   return `${location.code}-A-${padded(await nextValue(tx, organizationId, `appointment:${location.id}`))}`;
 }
+
+/**
+ * Siguiente código de visita de una sede: `NOR1-V-000123` (T-017; ADR 0019).
+ * Contador propio por sede (`encounter:<id de la sede>`).
+ */
+export async function nextEncounterCode(tx: Tx, organizationId: string, location: { id: string; code: string }): Promise<string> {
+  return `${location.code}-V-${padded(await nextValue(tx, organizationId, `encounter:${location.id}`))}`;
+}

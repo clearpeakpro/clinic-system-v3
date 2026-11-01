@@ -1,0 +1,200 @@
+import { z } from 'zod';
+import type { AppointmentStatus } from './appointments.ts';
+import type { PatientSummary } from './patients.ts';
+import { VISIT_ROUTES, type VisitRoute, type VisitStatus } from './visit.ts';
+
+// Llegada con cita y sin cita (T-017; S-REC-18 a 27). Esquemas de entrada,
+// textos y tipos de respuesta, los mismos en la web y en la API. Los valores
+// son los que exige la base de datos (packages/db, encounters-schema.ts); una
+// prueba lo comprueba.
+//
+// Dinero (CLAUDE.md, regla 4): los importes viajan como texto decimal
+// («25.00») y los convierte a centavos el servidor, con este mismo esquema,
+// sin pasar por números de coma flotante. El coaseguro, en centésimas de
+// punto (20.5 % → 2050).
+
+export const COVERAGE_TYPES = ['self_pay', 'insurance', 'membership'] as const;
+export type CoverageType = (typeof COVERAGE_TYPES)[number];
+
+export const COVERAGE_TYPE_LABELS: Record<CoverageType, string> = {
+  self_pay: 'Pago directo',
+  insurance: 'Seguro',
+  membership: 'Membresía',
+};
+
+/** Coberturas que ofrece la llegada en la parte 3A: «Membresía» llega con T-026b (ADR 0034). */
+export const ARRIVAL_COVERAGE_TYPES = ['self_pay', 'insurance'] as const satisfies readonly CoverageType[];
+
+export const INSURANCE_TERMS = ['copay', 'coinsurance', 'deductible'] as const;
+export type InsuranceTerm = (typeof INSURANCE_TERMS)[number];
+
+export const INSURANCE_TERM_LABELS: Record<InsuranceTerm, string> = {
+  copay: 'Copago',
+  coinsurance: 'Coaseguro',
+  deductible: 'Deducible',
+};
+
+/** Tope de un copago o deducible: 9 999 999.99 USD (el mismo que la base de datos). */
+export const COVERAGE_AMOUNT_MAX_CENTS = 999_999_999;
+
+const MONEY = /^(\d{1,7})(?:\.(\d{1,2}))?$/;
+const PERCENT = /^(\d{1,3})(?:\.(\d{1,2}))?$/;
+
+/** «25», «25.5» o «25.50» → 2550 centavos. Nulo si no es un monto válido (solo dígitos y punto, hasta dos decimales). */
+export function parseMoneyToCents(text: string): number | null {
+  const match = MONEY.exec(text.trim());
+  if (!match) return null;
+  const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+  return cents <= COVERAGE_AMOUNT_MAX_CENTS ? cents : null;
+}
+
+/** «20», «20.5» → 2050 centésimas de punto. Nulo si no está entre 0 y 100 con hasta dos decimales. */
+export function parsePercentToBasisPoints(text: string): number | null {
+  const match = PERCENT.exec(text.trim());
+  if (!match) return null;
+  const bp = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+  return bp <= 10_000 ? bp : null;
+}
+
+/** 2550 → «25.50» (para mostrar; nunca para sumar). */
+export function centsToDecimal(cents: number): string {
+  return `${String(Math.trunc(cents / 100))}.${String(cents % 100).padStart(2, '0')}`;
+}
+
+/** 2050 → «20.5»; 2000 → «20». */
+export function basisPointsToPercent(bp: number): string {
+  const whole = Math.trunc(bp / 100);
+  const rest = bp % 100;
+  if (rest === 0) return String(whole);
+  return `${String(whole)}.${String(rest).padStart(2, '0').replace(/0$/, '')}`;
+}
+
+/** Mensajes de validación del paso «Datos del pagador» (S-REC-25). */
+export const COVERAGE_MESSAGES = {
+  insurerName: 'Ingrese el nombre del seguro.',
+  money: 'Ingrese un monto válido (hasta dos decimales).',
+  percent: 'Ingrese un porcentaje entre 0 y 100.',
+} as const;
+
+const insuranceInput = z
+  .object({
+    type: z.literal('insurance'),
+    insurerName: z.string().trim().min(1, COVERAGE_MESSAGES.insurerName).max(120),
+    memberId: z
+      .string()
+      .trim()
+      .max(60)
+      .nullish()
+      .transform((v) => (v ? v : null)),
+    term: z.enum(INSURANCE_TERMS),
+    /** Texto decimal: «25.00» (copago o deducible) o «20» (coaseguro, en %). */
+    value: z.string().max(20),
+  })
+  .transform((v, ctx) => {
+    if (v.term === 'coinsurance') {
+      const coinsuranceBp = parsePercentToBasisPoints(v.value);
+      if (coinsuranceBp === null) {
+        ctx.addIssue({ code: 'custom', message: COVERAGE_MESSAGES.percent, path: ['value'] });
+        return z.NEVER;
+      }
+      return { type: v.type, insurerName: v.insurerName, memberId: v.memberId, term: v.term, amountCents: null, coinsuranceBp };
+    }
+    const amountCents = parseMoneyToCents(v.value);
+    if (amountCents === null) {
+      ctx.addIssue({ code: 'custom', message: COVERAGE_MESSAGES.money, path: ['value'] });
+      return z.NEVER;
+    }
+    return { type: v.type, insurerName: v.insurerName, memberId: v.memberId, term: v.term, amountCents, coinsuranceBp: null };
+  });
+
+/** Cobertura de la llegada en 3A: Pago directo o Seguro con un solo término. */
+export const arrivalCoverageSchema = z.union([z.object({ type: z.literal('self_pay') }), insuranceInput]);
+export type ArrivalCoverageInput = z.input<typeof arrivalCoverageSchema>;
+export type ArrivalCoverageData = z.output<typeof arrivalCoverageSchema>;
+
+const route = z.enum(VISIT_ROUTES);
+
+/**
+ * «Registrar llegada» (S-REC-18) o «Iniciar visita sin cita» (S-REC-19), con
+ * Idempotency-Key. La ruta elegida se guarda también con cita (ADR 0005).
+ */
+export const arrivalSchema = z.discriminatedUnion('source', [
+  z.object({
+    source: z.literal('appointment'),
+    appointmentId: z.uuid(),
+    expectedVersion: z.number().int().positive(),
+    route,
+    coverage: arrivalCoverageSchema,
+  }),
+  z.object({
+    source: z.literal('walk_in'),
+    patientId: z.uuid(),
+    appointmentTypeId: z.uuid().nullable(),
+    route,
+    coverage: arrivalCoverageSchema,
+  }),
+]);
+export type ArrivalInput = z.input<typeof arrivalSchema>;
+export type ArrivalData = z.output<typeof arrivalSchema>;
+
+/** Sede de la visita (paso «Sede», S-REC-22). */
+export interface ArrivalSite {
+  id: string;
+  code: string;
+  name: string;
+  timezone: string;
+  active: boolean;
+}
+
+/** Paciente del paso «Paciente» (S-REC-21). Su lectura se audita. */
+export interface ArrivalPatient extends PatientSummary {
+  /** Si fue fusionado, el registro principal («Abrir registro principal»). */
+  mergedInto: string | null;
+}
+
+/** Tipo de cita activo, con su ruta sugerida (paso «Ruta», S-REC-23). */
+export interface ArrivalAppointmentType {
+  id: string;
+  name: string;
+  suggestedRoute: VisitRoute | null;
+}
+
+/** Lo que necesita el asistente de llegada para empezar (S-REC-18 o S-REC-19). */
+export interface ArrivalContext {
+  site: ArrivalSite;
+  patient: ArrivalPatient;
+  /** Solo con cita. */
+  appointment: {
+    id: string;
+    code: string;
+    status: AppointmentStatus;
+    version: number;
+    startsAt: string;
+    /** ¿Es de hoy en la sede? Solo las de hoy admiten la llegada. */
+    isToday: boolean;
+    appointmentType: ArrivalAppointmentType | null;
+  } | null;
+  /** Tipos de cita activos (solo sin cita: desplegable «Tipo de cita»). */
+  appointmentTypes: ArrivalAppointmentType[];
+}
+
+/** Respuesta de la llegada (S-REC-27): sin datos del seguro. */
+export interface ArrivalResult {
+  encounter: { id: string; code: string; status: VisitStatus; route: VisitRoute; version: number };
+  coverageType: CoverageType;
+  appointment: { id: string; status: AppointmentStatus; version: number } | null;
+}
+
+/** Visita mínima (`/visitas/<id>` hasta T-018): código, estado y ruta. */
+export interface EncounterSummary {
+  id: string;
+  code: string;
+  status: VisitStatus;
+  route: VisitRoute;
+  version: number;
+}
+
+/** Ruta inicial del paso «Ruta»: la sugerida por el tipo, o «Estándar». */
+export function suggestedRoute(type: { suggestedRoute: VisitRoute | null } | null | undefined): VisitRoute {
+  return type?.suggestedRoute ?? 'STANDARD';
+}

@@ -20,6 +20,8 @@ import { CatalogService } from './catalog.ts';
 import { LabProviderService } from './lab-providers.ts';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
+import { systemClock, type Clock } from './clock.ts';
+import { EncounterService } from './encounters.ts';
 import { IdempotencyService } from './idempotency.ts';
 import { PatientService } from './patients.ts';
 import { ProfileService } from './profile.ts';
@@ -30,9 +32,11 @@ import { MembershipService } from './users.ts';
 export interface AppDeps {
   config: AppConfig;
   logs: LogSink;
+  /** Reloj de la API (fase 3); las pruebas lo fijan. */
+  clock?: Clock;
 }
 
-export async function createApp({ config, logs }: AppDeps) {
+export async function createApp({ config, logs, clock = systemClock }: AppDeps) {
   assertConfig(config, config.secureCookies);
   const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 10 });
   const tenantDb = createTenantDb(pool);
@@ -41,6 +45,7 @@ export async function createApp({ config, logs }: AppDeps) {
   const resolver = new PrincipalResolver(auth, pool, tenantDb, config);
   const plain = drizzle({ client: pool });
   const fieldCipher = createLocalFieldCipher(config.fieldEncryptionKey);
+  const idempotency = new IdempotencyService(tenantDb);
 
   const services = {
     contexts: new ContextService(pool, tenantDb),
@@ -53,7 +58,8 @@ export async function createApp({ config, logs }: AppDeps) {
     labProviders: new LabProviderService(tenantDb, audit),
     patients: new PatientService(tenantDb, audit, fieldCipher),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
-    appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, new IdempotencyService(tenantDb), config.outboxKey),
+    appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, idempotency, config.outboxKey),
+    encounters: new EncounterService(tenantDb, audit, fieldCipher, idempotency, clock),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

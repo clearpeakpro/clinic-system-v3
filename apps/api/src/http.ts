@@ -2,6 +2,8 @@ import {
   acceptInvitationSchema,
   appointmentOverlapSchema,
   appointmentVersionSchema,
+  arrivalSchema,
+  type ArrivalInput,
   cancelAppointmentSchema,
   createAppointmentSchema,
   type CreateAppointmentInput,
@@ -64,6 +66,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
+import { EncounterService } from './encounters.ts';
 import { IdempotencyKey } from './idempotency.ts';
 import { AuditService } from './audit.ts';
 import { CatalogService } from './catalog.ts';
@@ -775,6 +778,58 @@ export class CatalogController {
   }
 }
 
+/**
+ * Llegada (T-017; S-REC-18 a 27). El asistente y el registro exigen
+ * appointments.check_in (Recepción) y patients.access; la máquina de estados
+ * vuelve a comprobar el rol dueño del paso. Idempotency-Key obligatorio.
+ */
+@Controller('arrivals')
+export class ArrivalsController {
+  readonly #encounters: EncounterService;
+  constructor(@Inject(EncounterService) encounters: EncounterService) {
+    this.#encounters = encounters;
+  }
+
+  /** S-REC-18: la cita, su paciente y la sede. */
+  @Get('appointments/:id')
+  @RequirePermission('patients.access', 'appointments.check_in')
+  appointment(@Req() request: FastifyRequest, @Param('id') appointmentId: string) {
+    return this.#encounters.appointmentContext(principalOf(request), id(appointmentId), metaOf(request));
+  }
+
+  /** S-REC-19: el paciente, la sede y los tipos de cita activos. */
+  @Get('patients/:id')
+  @RequirePermission('patients.access', 'appointments.check_in')
+  walkIn(@Req() request: FastifyRequest, @Param('id') patientId: string) {
+    return this.#encounters.walkInContext(principalOf(request), id(patientId), metaOf(request));
+  }
+}
+
+/** Visitas (T-017: abrir; T-018: la pantalla completa). */
+@Controller('encounters')
+export class EncountersController {
+  readonly #encounters: EncounterService;
+  constructor(@Inject(EncounterService) encounters: EncounterService) {
+    this.#encounters = encounters;
+  }
+
+  /** «Registrar llegada» / «Iniciar visita sin cita» (S-REC-26), con Idempotency-Key. */
+  @Post()
+  @RequirePermission('patients.access', 'appointments.check_in')
+  arrive(@Req() request: FastifyRequest, @Body() body: unknown, @IdempotencyKey() key: string) {
+    // El hash de la clave se calcula con el cuerpo tal como llegó; el servicio lo valida.
+    parse(arrivalSchema, body);
+    return this.#encounters.arrive(principalOf(request), body as ArrivalInput, key, metaOf(request));
+  }
+
+  /** Código, estado y ruta (la pantalla de la visita llega en T-018). */
+  @Get(':id')
+  @RequirePermission('patients.access')
+  get(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
+    return this.#encounters.summary(principalOf(request), id(encounterId), metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -787,6 +842,7 @@ export interface ApiProviders {
   patients: PatientService;
   appointments: AppointmentService;
   appointmentCommands: AppointmentCommands;
+  encounters: EncounterService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -808,6 +864,8 @@ export function createApiModule(providers: ApiProviders) {
       PatientsController,
       AppointmentsController,
       PatientAppointmentsController,
+      ArrivalsController,
+      EncountersController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -821,6 +879,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: PatientService, useValue: providers.patients },
       { provide: AppointmentService, useValue: providers.appointments },
       { provide: AppointmentCommands, useValue: providers.appointmentCommands },
+      { provide: EncounterService, useValue: providers.encounters },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

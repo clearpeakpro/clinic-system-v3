@@ -1,12 +1,13 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Check, ChevronDown, LogOut, Menu, Moon, Sun, UserRound, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Button, cn, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Sheet, SheetClose, Spinner } from '@clinic/ui';
+import { Button, cn, DiscardChangesDialog, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Sheet, SheetClose, Spinner } from '@clinic/ui';
 import { api, type Me } from '../lib/api.ts';
 import { initials, rolesText } from '../lib/format.ts';
 import { landingPath, menuFor, pathFor, type NavItem } from '../lib/nav.ts';
 import { flatten, keys, queryClient, realtime, useLocations, useMe, type FlatLocation } from '../lib/session.ts';
 import { applyTheme, prefs, type ThemePreference } from '../lib/storage.ts';
+import { unsavedChanges } from '../lib/unsaved.ts';
 import { NotFoundPage } from '../pages/not-found.tsx';
 import { Brand, BrandLogo } from './brand.tsx';
 import { IdleGuard } from './idle-guard.tsx';
@@ -132,6 +133,7 @@ const capsule = 'flex h-12 min-w-0 items-center gap-space-sm rounded-md bg-surfa
 /** S-GEN-13: solo texto con 0–1 sedes; menú con 2 o más. Siempre aterriza en el inicio de la nueva sede. */
 function LocationSelector({ locations, active }: { locations: FlatLocation[]; active: FlatLocation }) {
   const navigate = useNavigate();
+  const [pending, setPending] = useState<FlatLocation | null>(null);
   if (locations.length < 2) {
     return (
       <div className={capsule} data-testid="location-current">
@@ -142,6 +144,15 @@ function LocationSelector({ locations, active }: { locations: FlatLocation[]; ac
 
   const choose = async (location: FlatLocation) => {
     if (location.id === active.id) return;
+    // S-REC-17: con cambios sin guardar (p. ej. el asistente de llegada), primero se confirma.
+    if (unsavedChanges.isDirty()) {
+      setPending(location);
+      return;
+    }
+    await switchTo(location);
+  };
+  const switchTo = async (location: FlatLocation) => {
+    unsavedChanges.set(false);
     await api.selectContext(location.organizationId, location.id);
     prefs.setLastLocationId(location.id);
     const fresh = await queryClient.query({ queryKey: keys.me, queryFn: api.me, staleTime: 0 });
@@ -150,28 +161,39 @@ function LocationSelector({ locations, active }: { locations: FlatLocation[]; ac
 
   const multiOrg = new Set(locations.map((l) => l.organizationId)).size > 1;
   return (
-    <DropdownMenu>
-      <DropdownTrigger
-        data-testid="location-selector"
-        className={cn(capsule, 'hover:bg-surface-container')}
-        aria-label={`Sede activa: ${active.name}. Cambiar de sede`}
-      >
-        <LocationLabel location={active} />
-        <ChevronDown aria-hidden className="size-5 shrink-0 text-outline" />
-      </DropdownTrigger>
-      <DropdownContent align="start">
-        {locations.map((l) => (
-          <DropdownItem key={l.id} onSelect={() => void choose(l)}>
-            <span className="rounded-sm bg-surface-container-highest px-space-xs font-mono text-code-sm text-primary">{l.code}</span>
-            <span className="flex-1">
-              {l.name}
-              {multiOrg ? <span className="block text-caption text-on-surface-variant">{l.organizationName}</span> : null}
-            </span>
-            {l.id === active.id ? <Check aria-label="Actual" className="size-4 text-primary" /> : null}
-          </DropdownItem>
-        ))}
-      </DropdownContent>
-    </DropdownMenu>
+    <>
+      <DiscardChangesDialog
+        open={pending !== null}
+        onOpenChange={(open) => { if (!open) setPending(null); }}
+        onDiscard={() => {
+          const target = pending;
+          setPending(null);
+          if (target) void switchTo(target);
+        }}
+      />
+      <DropdownMenu>
+        <DropdownTrigger
+          data-testid="location-selector"
+          className={cn(capsule, 'hover:bg-surface-container')}
+          aria-label={`Sede activa: ${active.name}. Cambiar de sede`}
+        >
+          <LocationLabel location={active} />
+          <ChevronDown aria-hidden className="size-5 shrink-0 text-outline" />
+        </DropdownTrigger>
+        <DropdownContent align="start">
+          {locations.map((l) => (
+            <DropdownItem key={l.id} onSelect={() => void choose(l)}>
+              <span className="rounded-sm bg-surface-container-highest px-space-xs font-mono text-code-sm text-primary">{l.code}</span>
+              <span className="flex-1">
+                {l.name}
+                {multiOrg ? <span className="block text-caption text-on-surface-variant">{l.organizationName}</span> : null}
+              </span>
+              {l.id === active.id ? <Check aria-label="Actual" className="size-4 text-primary" /> : null}
+            </DropdownItem>
+          ))}
+        </DropdownContent>
+      </DropdownMenu>
+    </>
   );
 }
 

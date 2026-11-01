@@ -1,6 +1,12 @@
-// Catálogo de estados y rutas de la visita (manual, «Estados de la visita»).
-// Solo nombres y etiquetas: las transiciones llegan con la máquina de estados
-// de su tarea. Los colores e iconos viven en packages/ui.
+import type { Role } from './permissions.ts';
+
+// Estados, rutas y máquina de estados de la visita (manual, «Estados de la
+// visita», docs/manual/README.md; T-017). La misma para la web y la API:
+// ningún endpoint cambia encounters.status sin pasar por aquí, y cada
+// transición deja su fila en encounter_events (CLAUDE.md, regla 3). Los
+// valores son los mismos que exige la base de datos (packages/db,
+// encounters-schema.ts); una prueba lo comprueba. Los colores e iconos de
+// cada estado viven en packages/ui.
 
 export const VISIT_STATUSES = [
   'CHECKED_IN',
@@ -32,6 +38,14 @@ export const VISIT_STATUS_LABELS: Record<VisitStatus, string> = {
   CANCELLED: 'Cancelada',
 };
 
+/** Completada, Se retiró y Cancelada: la visita está cerrada. */
+export const CLOSED_VISIT_STATUSES: readonly VisitStatus[] = ['COMPLETED', 'LEFT_EARLY', 'CANCELLED'];
+
+/** Los ocho estados anteriores a «Completada» («Cualquier estado abierto»). */
+export function isOpenVisitStatus(status: VisitStatus): boolean {
+  return !CLOSED_VISIT_STATUSES.includes(status);
+}
+
 /** Rutas de la visita: Estándar o directas a procedimiento (ADR 0005). */
 export const VISIT_ROUTES = ['STANDARD', 'INJECTION_ONLY', 'LAB_ONLY', 'PROCEDURE_ONLY'] as const;
 
@@ -43,3 +57,126 @@ export const VISIT_ROUTE_LABELS: Record<VisitRoute, string> = {
   LAB_ONLY: 'Solo laboratorio',
   PROCEDURE_ONLY: 'Solo procedimiento',
 };
+
+/** Ayuda de cada ruta en el paso «Ruta» (S-REC-23): define a qué cola va el paciente. */
+export const VISIT_ROUTE_HELP: Record<VisitRoute, string> = {
+  STANDARD: 'Admisión de enfermería y luego proveedor.',
+  INJECTION_ONLY: 'Directo a la cola de procedimientos para una inyección.',
+  LAB_ONLY: 'Toma de laboratorio sin consulta con el proveedor.',
+  PROCEDURE_ONLY: 'Directo a la cola de procedimientos.',
+};
+
+/** Las rutas directas van de «Registrado» a «Procedimiento pendiente», sin enfermería ni proveedor. */
+export function isDirectRoute(route: VisitRoute): boolean {
+  return route !== 'STANDARD';
+}
+
+// --- Máquina de estados -----------------------------------------------------
+
+export const VISIT_ACTIONS = [
+  'check_in',
+  'send_to_nurse',
+  'send_to_procedure',
+  'start_nursing',
+  'send_to_provider',
+  'start_consult',
+  'ready_for_checkout',
+  'start_checkout',
+  'complete',
+  'close_left_early',
+  'close_cancelled',
+] as const;
+
+export type VisitAction = (typeof VISIT_ACTIONS)[number];
+
+/** Roles clínicos que pueden dar un paso. Propietario y Administrador, solo con uno de ellos (ADR 0027). */
+type ClinicalRole = Extract<Role, 'recepcion' | 'enfermeria' | 'proveedor'>;
+
+export interface VisitTransition {
+  action: VisitAction;
+  /** Nulo: la apertura de la visita. */
+  from: VisitStatus | null;
+  to: VisitStatus;
+  /** Rol dueño del paso. */
+  roles: readonly ClinicalRole[];
+  /** Solo en esta clase de ruta. */
+  route?: 'standard' | 'direct';
+  /** Se bloquea con órdenes pendientes o en curso (S-CLI-08, S-CAJ-06). */
+  blockedByOpenOrders?: boolean;
+  /** Motivo obligatorio (máx. 500). */
+  requiresReason?: boolean;
+}
+
+const OPEN_STATUSES = VISIT_STATUSES.filter(isOpenVisitStatus);
+
+/** La tabla del manual («Estados de la visita»), fila por fila. */
+export const VISIT_TRANSITIONS: readonly VisitTransition[] = [
+  { action: 'check_in', from: null, to: 'CHECKED_IN', roles: ['recepcion'] },
+  { action: 'send_to_nurse', from: 'CHECKED_IN', to: 'WAITING_FOR_NURSE', roles: ['recepcion'], route: 'standard' },
+  { action: 'send_to_procedure', from: 'CHECKED_IN', to: 'PROCEDURE_PENDING', roles: ['recepcion'], route: 'direct' },
+  { action: 'start_nursing', from: 'WAITING_FOR_NURSE', to: 'WITH_NURSE', roles: ['enfermeria'] },
+  { action: 'send_to_provider', from: 'WITH_NURSE', to: 'WAITING_FOR_PROVIDER', roles: ['enfermeria'] },
+  { action: 'start_consult', from: 'WAITING_FOR_PROVIDER', to: 'WITH_PROVIDER', roles: ['proveedor'] },
+  { action: 'send_to_procedure', from: 'WITH_PROVIDER', to: 'PROCEDURE_PENDING', roles: ['proveedor'] },
+  { action: 'ready_for_checkout', from: 'WITH_PROVIDER', to: 'READY_FOR_CHECKOUT', roles: ['proveedor'], blockedByOpenOrders: true },
+  { action: 'ready_for_checkout', from: 'PROCEDURE_PENDING', to: 'READY_FOR_CHECKOUT', roles: ['enfermeria', 'proveedor'], blockedByOpenOrders: true },
+  { action: 'start_checkout', from: 'READY_FOR_CHECKOUT', to: 'CHECKOUT', roles: ['recepcion'], blockedByOpenOrders: true },
+  { action: 'complete', from: 'CHECKOUT', to: 'COMPLETED', roles: ['recepcion'] },
+  ...OPEN_STATUSES.flatMap((from): VisitTransition[] => [
+    { action: 'close_left_early', from, to: 'LEFT_EARLY', roles: ['recepcion'], requiresReason: true },
+    { action: 'close_cancelled', from, to: 'CANCELLED', roles: ['recepcion'], requiresReason: true },
+  ]),
+];
+
+export interface VisitTransitionContext {
+  route: VisitRoute;
+  /** Roles de quien actúa en la sede de la visita. */
+  roles: readonly Role[];
+  /** ¿Hay órdenes pendientes o en curso? (Desde T-025; antes, siempre false.) */
+  hasOpenOrders?: boolean;
+}
+
+export type VisitTransitionResult =
+  | { ok: true; to: VisitStatus; transition: VisitTransition }
+  /**
+   * - `invalid_transition`: la acción no existe desde ese estado o no vale para la ruta
+   *   («Esta transición no está permitida en el estado actual.»);
+   * - `forbidden`: el paso es de otro rol;
+   * - `open_orders`: bloqueado por órdenes abiertas.
+   */
+  | { ok: false; reason: 'invalid_transition' | 'forbidden' | 'open_orders' };
+
+const routeMatches = (transition: VisitTransition, route: VisitRoute) =>
+  transition.route === undefined || (transition.route === 'direct') === isDirectRoute(route);
+
+/** ¿Puede hacerse `action` desde `from` con esta ruta, estos roles y estas órdenes? Pura: sin hora ni base de datos. */
+export function visitTransition(from: VisitStatus | null, action: VisitAction, ctx: VisitTransitionContext): VisitTransitionResult {
+  const transition = VISIT_TRANSITIONS.find((t) => t.from === from && t.action === action && routeMatches(t, ctx.route));
+  if (!transition) return { ok: false, reason: 'invalid_transition' };
+  if (!transition.roles.some((role) => ctx.roles.includes(role))) return { ok: false, reason: 'forbidden' };
+  if (transition.blockedByOpenOrders && ctx.hasOpenOrders) return { ok: false, reason: 'open_orders' };
+  return { ok: true, to: transition.to, transition };
+}
+
+/**
+ * Acciones de la barra (S-CLI-07, T-018) para el estado, la ruta y los roles.
+ * Las bloqueadas por órdenes abiertas se incluyen: la barra las muestra
+ * deshabilitadas con su explicación (S-CLI-08).
+ */
+export function visitActions(status: VisitStatus, ctx: Omit<VisitTransitionContext, 'hasOpenOrders'>): VisitAction[] {
+  const actions: VisitAction[] = [];
+  for (const action of VISIT_ACTIONS) {
+    const result = visitTransition(status, action, { ...ctx, hasOpenOrders: false });
+    if (result.ok && !actions.includes(action)) actions.push(action);
+  }
+  return actions;
+}
+
+/**
+ * Destinos de «Forzar estado…» (S-CLI-10, T-018): cualquier otro estado que no
+ * sea un cierre (Se retiró o Cancelada se cierran con «Cerrar visita…»).
+ * Desde una visita cerrada, reabre. Quién puede forzar lo decide el ADR 0033.
+ */
+export function forceTargets(from: VisitStatus): VisitStatus[] {
+  return VISIT_STATUSES.filter((status) => status !== from && status !== 'LEFT_EARLY' && status !== 'CANCELLED');
+}

@@ -11,7 +11,7 @@ import {
 } from '@clinic/shared';
 import { AppointmentStatusChip, AsyncView, Banner, Button, cn, CodeText, ConfirmDialog, DateTimeText, Dialog, Field, Spinner, useSnackbar } from '@clinic/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   BriefcaseMedical,
   CalendarCheck,
@@ -50,8 +50,8 @@ import { AppointmentFormDialog, durationError, OverlapBanner, useOverlap } from 
 // 560 px; en el teléfono, hoja inferior. Los botones salen de la matriz
 // estado × rol compartida (@clinic/shared, appointmentActions), la misma que
 // aplica el servidor: Programada → Editar, Reprogramar, Confirmar, Cancelar,
-// No presentado (desde la hora de inicio) y Registrar llegada (deshabilitado:
-// llega en la fase 3); Confirmada, igual sin Confirmar; finales, ninguna. El
+// No presentado (desde la hora de inicio) y Registrar llegada (solo hoy y con
+// appointments.check_in; abre S-REC-18, T-017); Confirmada, igual sin Confirmar; finales, ninguna. El
 // Proveedor, solo en sus citas. El detalle sigue abierto tras cada acción y se
 // actualiza; también cuando otra persona cambia la cita (evento en vivo). Las
 // notas y el motivo llegan descifrados del servidor, que audita cada lectura.
@@ -86,6 +86,7 @@ export function AppointmentDetailDialog({
   onClose: () => void;
 }) {
   const me = useMe();
+  const navigate = useNavigate();
   const snackbar = useSnackbar();
   const afterChange = useAfterAppointmentChange();
   const [open, setOpen] = useState<Open>(null);
@@ -154,7 +155,9 @@ export function AppointmentDetailDialog({
               onClose={onClose}
               onAction={(action) => {
                 if (action === 'confirm') void confirm(detail.data);
-                else if (action !== 'check_in') setOpen(action);
+                // S-REC-09 → S-REC-18: «Registrar llegada» cierra el detalle y abre el asistente.
+                else if (action === 'check_in') void navigate({ to: '/app/$sede/llegada/$cita', params: { sede, cita: detail.data.id } });
+                else setOpen(action);
               }}
             />
           ) : (
@@ -302,7 +305,7 @@ export function AppointmentDetailDialog({
  * Botonera de S-REC-09, a la derecha y en varias líneas si hace falta:
  * «Cancelar cita» (texto rojo), «Marcar no presentado», «Editar» y
  * «Reprogramar» (contorno), «Confirmar» (tonal) y «Registrar llegada»
- * (relleno, deshabilitado hasta la fase 3).
+ * (relleno, abre el asistente de llegada, T-017).
  */
 function Actions({
   actions,
@@ -347,14 +350,9 @@ function Actions({
         </Button>
       ) : null}
       {has('check_in') ? (
-        <span className="flex flex-col items-stretch tab:items-end">
-          <Button disabled aria-describedby="check-in-note">
-            <LogIn aria-hidden className="size-5" /> Registrar llegada
-          </Button>
-          <span id="check-in-note" className="text-center text-caption text-on-surface-variant tab:text-right">
-            Llega en la fase 3
-          </span>
-        </span>
+        <Button disabled={busy} onClick={() => { onAction('check_in'); }}>
+          <LogIn aria-hidden className="size-5" /> Registrar llegada
+        </Button>
       ) : null}
     </div>
   );
