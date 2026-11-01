@@ -22,8 +22,13 @@ export function Field({ label, hint, error, icon, trailing, hideLabel = false, c
   return (
     <div className="flex flex-col gap-space-xs">
       <div className={cn('flex items-baseline justify-between', hideLabel && 'sr-only')}>
-        <label htmlFor={inputId} className="text-body-md-medium text-on-surface">
+        <label htmlFor={inputId} className="flex items-center gap-1 text-body-md-medium text-on-surface">
           {label}
+          {props.required ? (
+            <span aria-hidden className="font-bold text-error">
+              *
+            </span>
+          ) : null}
         </label>
         {hint ? <span className="text-caption text-on-surface-variant">{hint}</span> : null}
       </div>

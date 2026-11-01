@@ -76,13 +76,15 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
 }
 
 /** Desplegable nativo (filtros de S-ADM-02; en el teléfono, el filtro de estado). */
-export function SelectField({ label, hideLabel = false, icon, className, id, children, ...props }: SelectFieldProps) {
+export function SelectField({ label, hideLabel = false, icon, className, id, children, required, ...props }: SelectFieldProps) {
   const autoId = useId();
   const fieldId = id ?? autoId;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <span className={cn(hideLabel && 'sr-only')}>
-        <Label htmlFor={fieldId}>{label}</Label>
+        <Label htmlFor={fieldId} required={required}>
+          {label}
+        </Label>
       </span>
       <div className="relative flex items-center">
         {icon ? (
@@ -92,6 +94,8 @@ export function SelectField({ label, hideLabel = false, icon, className, id, chi
         ) : null}
         <select
           id={fieldId}
+          required={required}
+          aria-required={required}
           className={cn(filled, 'min-h-touch w-full appearance-none truncate py-0 pr-10', icon ? 'pl-11' : 'pl-3.5', className)}
           {...props}
         >
