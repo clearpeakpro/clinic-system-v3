@@ -120,7 +120,8 @@ test('Recepción agenda para la proveedora de NOR1; ella ve el aviso y la cita s
   await expect(detail.getByRole('button', { name: 'Registrar llegada' })).toHaveCount(0);
   await detail.getByRole('button', { name: 'Confirmar' }).click();
   await expect(proveedora.getByText('Cita confirmada.', { exact: true })).toBeVisible();
-  await expect(detail.getByText('Confirmada', { exact: true })).toBeVisible();
+  await expect(detail).toContainText('Estado: Confirmada');
+  await expect(detail.getByRole('button', { name: 'Confirmar', exact: true })).toHaveCount(0);
   await detail.getByRole('button', { name: 'Cerrar' }).click();
   // Recepción lo ve sin recargar.
   await expect(cards(recepcion).filter({ hasText: '10:00 – 10:20 a. m.' })).toContainText('Confirmada', { timeout: 15_000 });
