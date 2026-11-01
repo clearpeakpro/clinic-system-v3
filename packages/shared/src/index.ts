@@ -7,3 +7,4 @@ export * from './catalog.ts';
 export * from './labs.ts';
 export * from './patients.ts';
 export * from './appointments.ts';
+export * from './encounters.ts';

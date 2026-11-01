@@ -69,7 +69,8 @@ test('Recepción ve la agenda de hoy de NOR1: horas, tarjetas, filtros, vista Li
   await expect(page.getByRole('heading', { name: 'Citas', level: 1 })).toBeVisible();
   // T-015: «Nueva cita» ya está activa (su flujo, en citas-gestion.spec.ts).
   await expect(page.getByRole('button', { name: 'Nueva cita' }).first()).toBeEnabled();
-  await expect(page.getByRole('button', { name: 'Sin cita' })).toHaveCount(0);
+  // T-017: «Sin cita» abre S-REC-19 (su flujo, en llegada.spec.ts).
+  await expect(page.getByRole('button', { name: 'Sin cita' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Hoy' })).toHaveCount(0);
 
   // Hoy: 9 citas, agrupadas por hora local; solo NOR1.
@@ -134,8 +135,8 @@ test('Recepción ve la agenda de hoy de NOR1: horas, tarjetas, filtros, vista Li
   await expect(detail).toContainText('10:00 – 10:30 a. m. · 30 min');
   for (const name of ['Editar', 'Reprogramar', 'Cancelar cita']) await expect(detail.getByRole('button', { name, exact: true })).toBeEnabled();
   await expect(detail.getByRole('button', { name: 'Confirmar', exact: true })).toHaveCount(0);
-  // Llega en la fase 3.
-  await expect(detail.getByRole('button', { name: 'Registrar llegada' })).toBeDisabled();
+  // Desde T-017, habilitado en las citas de hoy (el flujo se prueba en llegada.spec.ts).
+  await expect(detail.getByRole('button', { name: 'Registrar llegada' })).toBeEnabled();
   await expectAccessible(page);
   await detail.getByRole('button', { name: 'Cerrar' }).click();
   await page.getByRole('radio', { name: 'Día' }).click();
@@ -254,6 +255,7 @@ test('perfil del paciente: «Próxima cita» y pestaña Citas, que abre la agend
   await expectAccessible(page);
   await page.locator('main').screenshot({ path: 'test-results/perfil-citas.png' });
   await table.getByRole('row').nth(1).click();
-  await expect(page).toHaveURL(new RegExp(`/app/NOR1/citas\\?fecha=${plusDays(today(), 2)}$`));
-  await expect(cards(page).filter({ hasText: 'Valentina Castillo Ríos' })).toHaveCount(1);
+  // Desde T-017 abre además el detalle de la cita (de ahí, «Registrar llegada»).
+  await expect(page).toHaveURL(new RegExp(`/app/NOR1/citas\\?fecha=${plusDays(today(), 2)}&cita=[0-9a-f-]+$`));
+  await expect(page.getByRole('dialog', { name: 'Cita' })).toContainText('Valentina Castillo Ríos');
 });

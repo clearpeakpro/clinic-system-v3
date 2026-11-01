@@ -289,12 +289,12 @@ Ficticia-dev-123
 - **Haga:** pulse el aviso.
 - **Debe ver:** se abre «Citas» en el día de hoy, con el detalle de la cita de **Héctor Medina Salas**, **Programada**. Pulse «Cerrar».
 
-### Paso 13. Confirmar, y «Registrar llegada» todavía no
+### Paso 13. Confirmar la cita
 
 **Ventana:** normal (Recepción).
 
 - **Haga:** pulse «Citas» en el menú y pulse la tarjeta de Héctor Medina Salas.
-- **Debe ver:** el detalle de la cita y el botón **«Registrar llegada» deshabilitado**, con el texto **«Llega en la fase 3»**.
+- **Debe ver:** el detalle de la cita y el botón **«Registrar llegada»** (habilitado desde la fase 3, T-017; no lo pulse en esta demo).
 - **Haga:** pulse «Confirmar».
 - **Debe ver:** «Cita confirmada.» y el estado **Confirmada** (azul, con su icono).
 - **Debe ver en la ventana de incógnito (Diana), sin tocar nada:** la tarjeta de Héctor también dice **Confirmada**, y la campana suma un aviso, «Cita actualizada».

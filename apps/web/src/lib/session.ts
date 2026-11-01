@@ -36,25 +36,32 @@ export const EVENT_BATCH_MS = 500;
 /**
  * Eventos de pantalla de la sede activa (el servidor solo envía los de esa
  * sede). `appointment.changed` (T-015): se relee la agenda de todos los días,
- * el detalle de esa cita, «N citas hoy» del Panel y las citas del perfil. Los
+ * el detalle de esa cita (y su registro de llegada, T-017), «N citas hoy» del
+ * Panel y las citas del perfil. `encounter.changed` (T-017): esa visita. Los
  * mensajes solo traen ids y estado: los datos se vuelven a pedir por HTTP.
  */
 export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) => void, delay = EVENT_BATCH_MS) {
-  let pending: Set<string> | null = null;
+  let pending: { appointments: Set<string>; encounters: Set<string> } | null = null;
   return (event: ScreenEvent) => {
-    if (event.name !== 'appointment.changed') return;
+    if (event.name !== 'appointment.changed' && event.name !== 'encounter.changed') return;
     const first = pending === null;
-    pending ??= new Set();
-    const id = event.ids.appointment;
-    if (id) pending.add(id);
+    pending ??= { appointments: new Set(), encounters: new Set() };
+    if (event.name === 'appointment.changed' && event.ids.appointment) pending.appointments.add(event.ids.appointment);
+    if (event.name === 'encounter.changed' && event.ids.encounter) pending.encounters.add(event.ids.encounter);
     if (!first) return;
     setTimeout(() => {
-      const ids = pending ?? new Set<string>();
+      const ids = pending ?? { appointments: new Set<string>(), encounters: new Set<string>() };
       pending = null;
-      invalidate(['agenda']);
-      invalidate(['today-count']);
-      invalidate(['patient-appointments']);
-      for (const appointmentId of ids) invalidate(['appointment', appointmentId]);
+      if (ids.appointments.size > 0) {
+        invalidate(['agenda']);
+        invalidate(['today-count']);
+        invalidate(['patient-appointments']);
+      }
+      for (const appointmentId of ids.appointments) {
+        invalidate(['appointment', appointmentId]);
+        invalidate(['arrival', 'appointment', appointmentId]);
+      }
+      for (const encounterId of ids.encounters) invalidate(['encounter', encounterId]);
     }, delay);
   };
 }

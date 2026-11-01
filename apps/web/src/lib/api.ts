@@ -1,5 +1,9 @@
 import type {
   AgendaDay,
+  ArrivalContext,
+  ArrivalInput,
+  ArrivalResult,
+  EncounterSummary,
   AppointmentDetail,
   AppointmentFormOptions,
   AppointmentOverlap,
@@ -307,6 +311,11 @@ export const api = {
   cancelAppointment: (id: string, reason: string, expectedVersion: number) =>
     request<AppointmentSaved>('POST', `/api/appointments/${id}/cancel`, { reason, expectedVersion }),
   markNoShow: (id: string, expectedVersion: number) => request<AppointmentSaved>('POST', `/api/appointments/${id}/no-show`, { expectedVersion }),
+  // Llegada (T-017; S-REC-18 a 27) y visita mínima (hasta T-018).
+  arrivalForAppointment: (appointmentId: string) => request<ArrivalContext>('GET', `/api/arrivals/appointments/${appointmentId}`),
+  arrivalForPatient: (patientId: string) => request<ArrivalContext>('GET', `/api/arrivals/patients/${patientId}`),
+  arrive: (input: ArrivalInput, idempotencyKey: string) => request<ArrivalResult>('POST', '/api/encounters', input, { 'idempotency-key': idempotencyKey }),
+  encounter: (id: string) => request<EncounterSummary>('GET', `/api/encounters/${id}`),
   todayAppointmentCount: () => request<{ count: number; today: string }>('GET', '/api/appointments/today-count'),
   patientAppointments: (patientId: string, offset: number) =>
     request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),

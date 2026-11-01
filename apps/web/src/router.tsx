@@ -1,4 +1,5 @@
-import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRoute, createRoute, createRouter, lazyRouteComponent, Navigate, Outlet, redirect } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { Frame } from './components/frame.tsx';
 import { IdleGuard } from './components/idle-guard.tsx';
 import { useMe } from './lib/session.ts';
@@ -7,8 +8,10 @@ import { AdminCatalogPage, catalogTabOf } from './pages/admin-catalog.tsx';
 import { AdminLocationsPage } from './pages/admin-locations.tsx';
 import { AdminUsersPage } from './pages/admin-users.tsx';
 import { AppointmentsPage } from './pages/appointments.tsx';
+import { AppointmentArrivalPage, WalkInArrivalPage } from './pages/arrival.tsx';
 import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
+import { EncounterPage } from './pages/encounter.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
 import { PanelPage } from './pages/panel.tsx';
@@ -25,6 +28,8 @@ import { SelectLocationPage } from './pages/select-location.tsx';
 // T-006b: /app/<SEDE>/perfil (S-GEN-21). T-007: /admin/sedes (S-ADM-10).
 // T-012: /app/<SEDE>/pacientes y /app/<SEDE>/pacientes/<id> (S-PAC-01 y 05).
 // T-014: /app/<SEDE>/citas?fecha=AAAA-MM-DD (S-REC-06 a 09) y el subtítulo del Panel.
+// T-017: /app/<SEDE>/llegada/<cita> (S-REC-18), /app/<SEDE>/llegada/sin-cita?paciente=<id>
+// (S-REC-19) y /app/<SEDE>/visitas/<id> (mínima hasta T-018).
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -162,6 +167,58 @@ const appAppointmentsRoute = createRoute({
   },
 });
 
+// S-REC-18 y 19: solo con appointments.check_in; a los demás, la guarda los lleva al Panel (manual).
+function ArrivalGuard({ sede, children }: { sede: string; children: ReactNode }) {
+  const me = useMe();
+  if (me.data && !me.data.permissions.includes('appointments.check_in')) return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+  return children;
+}
+
+interface WalkInSearch {
+  paciente?: string;
+}
+
+const appWalkInRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'llegada/sin-cita',
+  validateSearch: (search: Record<string, unknown>): WalkInSearch =>
+    typeof search.paciente === 'string' && UUID_RE.test(search.paciente) ? { paciente: search.paciente } : {},
+  component: function WalkIn() {
+    const { sede } = appWalkInRoute.useParams();
+    const { paciente } = appWalkInRoute.useSearch();
+    return (
+      <ArrivalGuard sede={sede}>
+        <WalkInArrivalPage key={paciente ?? 'sin-paciente'} sede={sede} patientId={paciente} />
+      </ArrivalGuard>
+    );
+  },
+});
+
+const appArrivalRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'llegada/$cita',
+  component: function Arrival() {
+    const { sede, cita } = appArrivalRoute.useParams();
+    if (!UUID_RE.test(cita)) return <NotFoundPage />;
+    return (
+      <ArrivalGuard sede={sede}>
+        <AppointmentArrivalPage key={cita} sede={sede} appointmentId={cita} />
+      </ArrivalGuard>
+    );
+  },
+});
+
+const appEncounterRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'visitas/$id',
+  component: function Encounter() {
+    const me = useMe();
+    const { sede, id } = appEncounterRoute.useParams();
+    if ((me.data && !me.data.permissions.includes('patients.access')) || !UUID_RE.test(id)) return <NotFoundPage />;
+    return <EncounterPage key={id} sede={sede} encounterId={id} />;
+  },
+});
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -249,7 +306,18 @@ const routeTree = rootRoute.addChildren([
   invitationRoute,
   resetRoute,
   selectRoute,
-  appRoute.addChildren([appIndexRoute, appProfileRoute, appPatientsRoute, appPatientRoute, appPanelRoute, appAppointmentsRoute, appDestinationRoute]),
+  appRoute.addChildren([
+    appIndexRoute,
+    appProfileRoute,
+    appPatientsRoute,
+    appPatientRoute,
+    appPanelRoute,
+    appAppointmentsRoute,
+    appWalkInRoute,
+    appArrivalRoute,
+    appEncounterRoute,
+    appDestinationRoute,
+  ]),
   adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminCatalogIndexRoute, adminCatalogRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);

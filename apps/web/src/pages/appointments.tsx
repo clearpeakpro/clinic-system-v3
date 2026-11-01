@@ -26,7 +26,7 @@ import {
 } from '@clinic/ui';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Clock, LayoutList, Rows3, Stethoscope } from 'lucide-react';
+import { CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Clock, Footprints, LayoutList, Rows3, Stethoscope } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { AppointmentCard } from '../components/appointments/appointment-card.tsx';
 import { AppointmentDetailDialog, useAfterAppointmentChange } from '../components/appointments/appointment-detail-dialog.tsx';
@@ -57,8 +57,8 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // barra con «<», la fecha, «>», «Hoy», el conmutador Día / Lista y el
 // proveedor; los chips de estado con su número («Todos» con el total); las
 // secciones por hora con «N citas» y las tarjetas. «Nueva cita» (T-015)
-// abre S-REC-10 con el día mostrado (o hoy, si es anterior); «Sin cita» no
-// aparece hasta la fase 3. La fecha va en la URL (?fecha=AAAA-MM-DD); sin
+// abre S-REC-10 con el día mostrado (o hoy, si es anterior); «Sin cita»
+// (T-017, appointments.check_in) abre S-REC-19. La fecha va en la URL (?fecha=AAAA-MM-DD); sin
 // ella, o si no es válida, el servidor devuelve hoy en la sede. ?cita=<id>
 // abre el detalle (avisos de la campana). Todo en la zona horaria de la sede.
 // La agenda se actualiza sola cuando otra persona cambia una cita (evento en
@@ -87,6 +87,7 @@ export function AppointmentsPage({ sede, fecha, cita }: { sede: string; fecha: s
   const afterChange = useAfterAppointmentChange();
   const canManage = me.data?.permissions.includes('appointments.manage') ?? false;
   const canCreatePatient = me.data?.permissions.includes('patients.create') ?? false;
+  const canCheckIn = me.data?.permissions.includes('appointments.check_in') ?? false;
   const [creating, setCreating] = useState(false);
   const active = useActiveLocation();
   const navigate = useNavigate();
@@ -163,7 +164,14 @@ export function AppointmentsPage({ sede, fecha, cita }: { sede: string; fecha: s
           </h1>
           <p className="text-body-lg text-on-surface-variant">{shown ? longDay(shown) : ' '}</p>
         </div>
-        {canManage ? <span className="hidden tab:inline-flex">{newButton}</span> : null}
+        <div className="flex flex-wrap gap-space-sm">
+          {canCheckIn ? (
+            <Button variant="tonal" onClick={() => void navigate({ to: '/app/$sede/llegada/sin-cita', params: { sede }, search: {} })}>
+              <Footprints aria-hidden className="size-5" /> Sin cita
+            </Button>
+          ) : null}
+          {canManage ? <span className="hidden tab:inline-flex">{newButton}</span> : null}
+        </div>
       </header>
 
       <div className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">

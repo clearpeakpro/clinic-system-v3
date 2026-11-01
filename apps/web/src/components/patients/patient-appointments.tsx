@@ -13,7 +13,8 @@ import { AGENDA_STRIPE } from '../catalog/catalog-dialog.tsx';
 //  - S-PAC-07 Pestaña Citas: «Abrir citas» y la tabla con «Fecha», «Hora»,
 //    «Código», «Sede», «Tipo», «Proveedor» y «Estado», de la más reciente a la
 //    más antigua, con «Cargar más» (50 por página). Una fila abre la agenda de
-//    la sede de la cita en su fecha. Solo las de las sedes donde quien mira
+//    la sede de la cita en su fecha, con su detalle (desde ahí, «Registrar
+//    llegada», T-017). Solo las de las sedes donde quien mira
 //    tiene Citas.
 //  - «Próxima cita» del Resumen (Stitch S-PAC-05): estado, la fecha
 //    destacada, «Mañana · 9:30 a. m.», el tipo, el proveedor y la sede (Stitch
@@ -25,7 +26,7 @@ export type PatientAppointmentsQuery = UseInfiniteQueryResult<InfiniteData<Patie
 export function PatientAppointmentsTab({ query, sede, timeZone }: { query: PatientAppointmentsQuery; sede: string; timeZone: string }) {
   const navigate = useNavigate();
   const openAgenda = (row: PatientAppointmentRow) => {
-    void navigate({ to: '/app/$sede/citas', params: { sede: row.location.code }, search: { fecha: localDay(row.startsAt, timeZone) } });
+    void navigate({ to: '/app/$sede/citas', params: { sede: row.location.code }, search: { fecha: localDay(row.startsAt, timeZone), cita: row.id } });
   };
   const pages = query.data?.pages ?? [];
   const rows = [...new Map(pages.flatMap((p) => p.appointments).map((a) => [a.id, a])).values()];

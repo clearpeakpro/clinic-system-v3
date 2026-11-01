@@ -328,13 +328,12 @@ test('guion de la demo de la fase 2 (docs/DEMO-FASE-2.md)', async ({ browser }) 
     await detail(incognito).getByRole('button', { name: 'Cerrar' }).click();
   });
 
-  await test.step('Paso 13: confirmar; «Registrar llegada» deshabilitado hasta la fase 3', async () => {
+  await test.step('Paso 13: confirmar; «Registrar llegada» ya habilitado (T-017)', async () => {
     const before = await unread(incognito);
     await nav(normal).getByRole('link', { name: 'Citas' }).click();
     await cards(normal).filter({ hasText: patient }).click();
     const check = detail(normal).getByRole('button', { name: 'Registrar llegada' });
-    await expect(check).toBeDisabled();
-    await expect(detail(normal)).toContainText('Llega en la fase 3');
+    await expect(check).toBeEnabled();
     await detail(normal).getByRole('button', { name: 'Confirmar' }).click();
     await expect(normal.getByText('Cita confirmada.', { exact: true })).toBeVisible();
     await expect(detail(normal)).toContainText('Estado: Confirmada');

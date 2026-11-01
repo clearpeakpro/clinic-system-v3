@@ -6,6 +6,7 @@ import { generate } from 'otplib';
 import pg from 'pg';
 import { inject } from 'vitest';
 import { createApp, type ClinicApp } from '../src/app.ts';
+import type { Clock } from '../src/clock.ts';
 import { DEFAULTS, type AppConfig } from '../src/config.ts';
 import { MemoryLogSink } from '../src/logging.ts';
 import { createOrganization } from '../src/platform.ts';
@@ -18,7 +19,7 @@ export interface TestApp extends ClinicApp {
   config: AppConfig;
 }
 
-export async function startApp(overrides: Partial<AppConfig> = {}): Promise<TestApp> {
+export async function startApp(overrides: Partial<AppConfig> = {}, deps: { clock?: Clock } = {}): Promise<TestApp> {
   const config: AppConfig = {
     databaseUrl: inject('appUrl'),
     baseURL: 'http://localhost:3000',
@@ -33,7 +34,7 @@ export async function startApp(overrides: Partial<AppConfig> = {}): Promise<Test
     ...overrides,
   };
   const logs = new MemoryLogSink();
-  const app = await createApp({ config, logs });
+  const app = await createApp({ config, logs, ...deps });
   return { ...app, logs, config };
 }
 
