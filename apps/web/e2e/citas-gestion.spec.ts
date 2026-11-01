@@ -89,8 +89,10 @@ test('Recepción agenda para la proveedora de NOR1; ella ve el aviso y la cita s
   await expect(form).not.toContainText('HIPAA');
   await expect(form).not.toContainText('Expediente validado');
   await expectAccessible(recepcion);
+  // La fecha volvió al día mostrado: sin cambios todavía. Con un tipo elegido,
+  // al salir pide descartar (S-REC-17).
+  await form.getByLabel('Tipo de cita').selectOption({ label: 'Consulta general' });
   await form.getByRole('button', { name: 'Cancelar' }).click();
-  // Cambió la fecha: pide descartar (S-REC-17).
   const discard = recepcion.getByRole('dialog', { name: '¿Descartar cambios sin guardar?' });
   await discard.getByRole('button', { name: 'Descartar' }).click();
   await expect(form).toHaveCount(0);
