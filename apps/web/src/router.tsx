@@ -15,6 +15,7 @@ import { EncounterPage, type EncounterSection } from './pages/encounter.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
 import { NursingQueuePage } from './pages/nursing-queue.tsx';
+import { ProviderQueuePage } from './pages/provider-queue.tsx';
 import { PanelPage } from './pages/panel.tsx';
 import { PatientPage } from './pages/patient.tsx';
 import { PatientsPage } from './pages/patients.tsx';
@@ -241,6 +242,21 @@ const appNursingQueueRoute = createRoute({
   },
 });
 
+// S-CLI-02 Cola de proveedor (T-023): el rol Proveedor (provider_queue.access).
+const appProviderQueueRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'cola-proveedor',
+  component: function ProviderQueue() {
+    const me = useMe();
+    const { sede } = appProviderQueueRoute.useParams();
+    // Sin acceso, en silencio al Panel (manual, S-CLI-02).
+    if (me.data && !(me.data.permissions.includes('provider_queue.access') && me.data.permissions.includes('patients.access'))) {
+      return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+    }
+    return <ProviderQueuePage sede={sede} />;
+  },
+});
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -335,6 +351,7 @@ const routeTree = rootRoute.addChildren([
     appPatientRoute,
     appPanelRoute,
     appNursingQueueRoute,
+    appProviderQueueRoute,
     appAppointmentsRoute,
     appWalkInRoute,
     appArrivalRoute,

@@ -37,3 +37,24 @@ export function AllergyBanner({ notice }: { notice: AllergyNotice }) {
     </div>
   );
 }
+
+/**
+ * Versión compacta para las tarjetas de la Cola de proveedor (T-023, decisión
+ * del 2026-11-02): los mismos tres casos, en una línea; el texto largo se
+ * corta con «…» y completo queda en el título.
+ */
+export function AllergyChip({ notice }: { notice: AllergyNotice }) {
+  const { icon: Icon, className } = STYLE[notice.status];
+  const text = notice.status === 'recorded' ? `${ALLERGY_STATUS_LABELS.recorded}: ${notice.text ?? ''}` : ALLERGY_STATUS_LABELS[notice.status];
+  return (
+    <span
+      data-testid="allergy-chip"
+      data-status={notice.status}
+      title={text}
+      className={cn('inline-flex max-w-full min-w-0 items-center gap-space-xs rounded-full border px-space-sm py-0.5 text-body-md-medium', className)}
+    >
+      <Icon aria-hidden className="size-4 shrink-0" />
+      <span className="truncate">{text}</span>
+    </span>
+  );
+}

@@ -182,8 +182,13 @@ describe('T-018 pantalla de la visita', () => {
         if (action === 'send_to_provider') {
           expect((await client.put(`/api/encounters/${id}/vitals`, { changes: { weightLb: 150 }, expectedVersion: 0 })).statusCode).toBe(200);
         }
+        // «Iniciar consulta» también tiene el suyo: se autoasigna si la visita no tiene proveedor (T-023).
         const response =
-          action === 'send_to_provider' ? await client.post(`/api/encounters/${id}/send-to-provider`, { expectedVersion: version }) : await step(client, id, action, version);
+          action === 'send_to_provider'
+            ? await client.post(`/api/encounters/${id}/send-to-provider`, { expectedVersion: version })
+            : action === 'start_consult'
+              ? await client.post(`/api/encounters/${id}/start-consult`, { expectedVersion: version })
+              : await step(client, id, action, version);
         expect(response.statusCode, `${action}: ${response.body}`).toBe(200);
         version += 1;
         if (action === 'send_to_provider') expect(response.json()).toMatchObject({ encounterStatus: to, encounterVersion: version });

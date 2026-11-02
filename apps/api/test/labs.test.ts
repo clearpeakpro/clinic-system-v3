@@ -221,9 +221,13 @@ describe('T-011b laboratorios y costos', () => {
     expect((await save(code, [{ labProviderId: providerId(catalog, 'Quest Diagnostics'), amountCents: MARKER_CENTS + 1, effectiveFrom: catalog.generalToday }])).statusCode).toBe(204);
     expect(test(await list(), code)?.labs?.[0]?.current?.amountCents).toBe(MARKER_CENTS + 1);
     await listener.query('select 1'); // recibe los avisos pendientes
-    for (const text of [app.logs.text(), events.join('\n')]) {
-      expect(text).not.toContain(String(MARKER_CENTS));
-      expect(text).not.toContain(String(MARKER_CENTS + 1));
+    // Sin la hora y el tiempo de respuesta de Fastify: son números ajenos que
+    // podían contener los dígitos del costo por casualidad (fallo intermitente
+    // en la CI). El costo se busca como número completo, no como subcadena.
+    const noise = /"(time|responseTime|pid)":[0-9.]+/g;
+    for (const text of [app.logs.text().replace(noise, ''), events.join('\n')]) {
+      expect(text).not.toMatch(new RegExp(`(?<![0-9.])${String(MARKER_CENTS)}(?![0-9])`));
+      expect(text).not.toMatch(new RegExp(`(?<![0-9.])${String(MARKER_CENTS + 1)}(?![0-9])`));
     }
   });
 

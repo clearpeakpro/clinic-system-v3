@@ -21,6 +21,7 @@ import {
   assignProviderSchema,
   closeAction,
   closeEncounterSchema,
+  consultStart,
   encounterAbilities,
   encounterTransitionSchema,
   FORCE_ACTION,
@@ -29,6 +30,7 @@ import {
   PATIENT_ENCOUNTERS_PAGE_SIZE,
   permissionsFor,
   reopens,
+  startConsultSchema,
   updateCoverageSchema,
   visitForce,
   visitTransition,
@@ -465,6 +467,7 @@ export class EncounterService {
         canManage: actor.permissions.has('visits.manage'),
         canForce: this.#canForce(actor),
         isMine: row.providerMembershipId !== null && row.providerMembershipId === me,
+        assignedToOther: row.providerMembershipId !== null && row.providerMembershipId !== me,
       }),
     };
   }
@@ -478,6 +481,35 @@ export class EncounterService {
       const result = visitTransition(current.status, input.action, { route: current.route, roles: actor.roles, hasOpenOrders: false });
       if (!result.ok) throw this.#transitionError(result.reason);
       await this.move(tx, actor, current, me, now, meta, { action: input.action, to: result.to, forced: false, reason: null, audit: 'encounter.transitioned' });
+    });
+  }
+
+  /**
+   * «Iniciar consulta» (T-023; S-CLI-02 y S-CLI-07), desde la cola y desde la
+   * barra, en una sola transacción: sin proveedor, quien la inicia (rol
+   * Proveedor, dueño del paso) se la asigna; la de otro proveedor se rechaza
+   * con 409 `assigned_to_other`. Un solo aumento de versión: si dos
+   * proveedores la toman a la vez, el segundo recibe 409 `version_conflict`.
+   * Nadie se avisa a sí mismo: la autoasignación no genera aviso.
+   */
+  async startConsult(actor: Principal, encounterId: string, raw: unknown, meta: RequestMeta): Promise<EncounterSaved> {
+    const input = startConsultSchema.parse(raw);
+    return this.change(actor, encounterId, async (tx, current, me, now) => {
+      this.#requireVersion(current, input.expectedVersion);
+      if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
+      const result = visitTransition(current.status, 'start_consult', { route: current.route, roles: actor.roles, hasOpenOrders: false });
+      if (!result.ok) throw this.#transitionError(result.reason);
+      const start = consultStart(current.providerMembershipId, me);
+      if (start === 'assigned_to_other') throw new HttpError(409, 'assigned_to_other');
+      if (start === 'assign_self') {
+        await tx.update(encounters).set({ providerMembershipId: me }).where(eq(encounters.id, current.id));
+        await this.#audit.inTx(tx, current.organizationId, {
+          action: 'encounter.provider_assigned',
+          ...this.#auditBase(actor, current, meta),
+          metadata: { code: current.code, version: current.version + 1, self: true, reassigned: false, onConsultStart: true },
+        });
+      }
+      await this.move(tx, actor, current, me, now, meta, { action: 'start_consult', to: result.to, forced: false, reason: null, audit: 'encounter.transitioned' });
     });
   }
 

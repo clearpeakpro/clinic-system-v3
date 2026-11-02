@@ -246,6 +246,19 @@ export function nursingSendSteps(status: VisitStatus, route: VisitRoute): VisitA
   return null;
 }
 
+/**
+ * «Iniciar consulta» (T-023; S-CLI-02 y S-CLI-07), desde la cola y desde la
+ * barra: sin proveedor, quien la inicia se la autoasigna en la misma
+ * transacción; si es suya, solo se inicia; si es de otro proveedor, se
+ * rechaza (decisión del 2026-11-02). Para tomarla, antes «Asignarme».
+ */
+export type ConsultStart = 'assign_self' | 'start' | 'assigned_to_other';
+
+export function consultStart(providerMembershipId: string | null, me: string): ConsultStart {
+  if (providerMembershipId === null) return 'assign_self';
+  return providerMembershipId === me ? 'start' : 'assigned_to_other';
+}
+
 /** Lo que puede hacer una persona en la pantalla de la visita (S-CLI-04 a 12). Lo calcula la API; la web solo lo muestra. */
 export interface EncounterAbilities {
   /** Acciones regulares de la barra (S-CLI-07), sin los cierres ni «Enviar al proveedor» (está en la sección Enfermería, ADR 0003). */
@@ -275,11 +288,13 @@ export function encounterAbilities(input: {
   canManage: boolean;
   canForce: boolean;
   isMine: boolean;
+  /** La visita tiene otro proveedor asignado: «Iniciar consulta» no se ofrece (T-023). */
+  assignedToOther?: boolean;
 }): EncounterAbilities {
   const open = isOpenVisitStatus(input.status);
   const all = visitActions(input.status, { route: input.route, roles: input.roles });
   return {
-    actions: all.filter((a) => !isCloseAction(a) && a !== 'send_to_provider'),
+    actions: all.filter((a) => !isCloseAction(a) && a !== 'send_to_provider' && !(a === 'start_consult' && input.assignedToOther === true)),
     close: all.some(isCloseAction),
     forceTargets: input.canForce ? forceTargets(input.status, input.route) : [],
     assignProvider: open && input.canManage,
