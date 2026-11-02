@@ -11,7 +11,7 @@ import {
   user as userTable,
   type FieldCipher,
 } from '@clinic/db';
-import type { AppointmentStatus, Role } from '@clinic/shared';
+import { systemClock, type AppointmentStatus, type Clock, type Role } from '@clinic/shared';
 import { eq, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { ClinicApp } from './app.ts';
@@ -149,14 +149,39 @@ export const DEMO_AGENDA: readonly DemoAppointment[] = [
   { day: -1, time: '16:00', minutes: 20, type: 'CONSULTA', status: 'SCHEDULED', withProvider: true },
 ];
 
+/**
+ * T-024: sedes con visitas en la semilla (dev-encounters.ts): la primera de
+ * cada organización. NOR2 y SUR2 no tienen Recepción ni Enfermería en la
+ * semilla, así que no hay quien abra sus visitas.
+ */
+export const DEMO_VISIT_SITES: readonly { org: Org; site: 0 | 1 }[] = [
+  { org: DEMO.norte, site: 0 },
+  { org: DEMO.sur, site: 0 },
+];
+
+export function hasDemoVisits(org: Org, site: number): boolean {
+  return DEMO_VISIT_SITES.some((s) => s.org.id === org.id && s.site === site);
+}
+
+/**
+ * Citas «Llegó» de hoy (índices de DEMO_AGENDA). En las sedes con visitas se
+ * siembran Confirmadas y la semilla de visitas registra su llegada con el
+ * servicio: así cada una tiene su visita real. En las demás quedan «Llegó».
+ */
+export const TODAY_ARRIVED = DEMO_AGENDA.flatMap((a, index) => (a.day === 0 && a.status === 'ARRIVED' ? [index] : []));
+
 /** Id fijo de la cita `index` de la sede `site` (0 o 1) de una organización. */
 export function demoAppointmentId(org: Org, site: 0 | 1, index: number): string {
   const prefix = org.id === DEMO.norte.id ? '3' : '4';
   return `019a2000-0000-7000-8000-00000000${prefix}${String(site)}${String(index).padStart(2, '0')}`;
 }
 
-/** Crea (si no existen) las citas ficticias de las cuatro sedes. Idempotente. Necesita los usuarios. */
-export async function seedDevAppointments(app: Pick<ClinicApp, 'pool'>, fieldKey: string): Promise<void> {
+/**
+ * Crea (si no existen) las citas ficticias de las cuatro sedes. Idempotente.
+ * Necesita los usuarios. «Hoy» es el día de la sede según el reloj (T-024).
+ */
+export async function seedDevAppointments(app: Pick<ClinicApp, 'pool'>, fieldKey: string, clock: Clock = systemClock): Promise<void> {
+  const now = clock.now().toISOString();
   const plain = drizzle({ client: app.pool });
   const tenantDb = createTenantDb(app.pool);
   const cipher: FieldCipher = createLocalFieldCipher(fieldKey);
@@ -169,7 +194,7 @@ export async function seedDevAppointments(app: Pick<ClinicApp, 'pool'>, fieldKey
       const members = await tx.select({ id: memberships.id, userId: memberships.userId }).from(memberships);
       for (const [siteIndex, site] of org.locations.entries()) {
         const [row] = await tx
-          .select({ timezone: locations.timezone, today: sql<string>`((now() at time zone ${locations.timezone})::date)::text` })
+          .select({ timezone: locations.timezone, today: sql<string>`((${now}::timestamptz at time zone ${locations.timezone})::date)::text` })
           .from(locations)
           .where(eq(locations.id, site.id));
         if (!row) continue;
@@ -193,7 +218,7 @@ export async function seedDevAppointments(app: Pick<ClinicApp, 'pool'>, fieldKey
             code: await nextAppointmentCode(tx, org.id, site),
             startsAt: sql`((${row.today}::date + ${a.day}::int) + ${a.time}::time) at time zone ${row.timezone}`,
             durationMinutes: a.minutes,
-            status: a.status,
+            status: a.status === 'ARRIVED' && a.day === 0 && hasDemoVisits(org, siteIndex) ? 'CONFIRMED' : a.status,
             notesEnc: a.notes ? await cipher.encrypt(a.notes, context('notes')) : null,
             cancelReasonEnc: a.cancelReason ? await cipher.encrypt(a.cancelReason, context('cancel_reason')) : null,
           });

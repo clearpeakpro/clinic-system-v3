@@ -4,8 +4,11 @@ import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { DEFAULTS, type AppConfig } from '../src/config.ts';
 import { assertLocalDatabase, assertOperatorPassword, DemoBusyError, DemoUserError, resetDemo, sendDemoNotification } from '../src/demo.ts';
+import { waitLevel, type VisitStatus } from '@clinic/shared';
+import { FixedClock, type Clock } from '../src/clock.ts';
+import { DEMO_TABLET_NAME, DEMO_VISITS } from '../src/dev-encounters.ts';
 import { operatorErrorMessage } from '../src/platform.ts';
-import { DEMO_AGENDA, DEV_USERS } from '../src/dev-seed.ts';
+import { DEMO_AGENDA, DEV_USERS, TODAY_ARRIVED } from '../src/dev-seed.ts';
 import { createStaff, NORTE, startApp, type TestApp } from './support.ts';
 
 // T-010: pnpm demo:reset y pnpm demo:aviso. demo:reset se prueba en una base
@@ -41,7 +44,7 @@ describe('pnpm demo:reset', () => {
     fieldEncryptionKey: randomBytes(32).toString('hex'),
   };
   const operatorUrl = withDatabase(superuser, DATABASE, 'clinic_operator', operatorPassword);
-  const reset = (overrides: { operatorUrl?: string } = {}) =>
+  const reset = (overrides: { operatorUrl?: string; clock?: Clock } = {}) =>
     resetDemo({
       superuserUrl,
       migratorPassword: randomBytes(16).toString('hex'),
@@ -120,6 +123,111 @@ describe('pnpm demo:reset', () => {
     expect(() => {
       assertOperatorPassword(operatorUrl, operatorPassword);
     }).not.toThrow();
+  });
+
+  // T-024: visitas de la demo 3A, sembradas con los servicios y el reloj fijado.
+  /** Jueves 5 nov 2026, 10:00 a. m. en Chicago. */
+  const MORNING = '2026-11-05T16:00:00Z';
+
+  async function visitsAt(site: string) {
+    return query<{ name: string; status: VisitStatus; since: Date; source: string; appointment_status: string | null; events: number; last_to: string }>(
+      `select p.first_name || ' ' || p.last_name as name, e.status, e.source, a.status as appointment_status,
+              (select ev.to_status from app.encounter_events ev where ev.encounter_id = e.id order by ev.occurred_at desc, ev.encounter_version desc limit 1) as last_to,
+              (select max(ev.occurred_at) from app.encounter_events ev where ev.encounter_id = e.id) as since,
+              (select count(*)::int from app.encounter_events ev where ev.encounter_id = e.id) as events
+         from app.encounters e
+         join app.locations l on l.id = e.location_id
+         join app.patients p on p.id = e.patient_id
+         left join app.appointments a on a.id = e.appointment_id
+        where l.code = $1 order by e.arrived_at`,
+      [site],
+    );
+  }
+
+  it('T-024: visitas abiertas en NOR1 y SUR1 en cada estado de 3A, con «Alerta» y «Crítico» a la hora del reinicio', async () => {
+    await db.end();
+    await reset({ clock: new FixedClock(MORNING) });
+    db = new pg.Pool({ connectionString: superuserUrl, max: 1 });
+    const now = new Date(MORNING).getTime();
+    const thresholds = { alertMinutes: 5, criticalMinutes: 10 };
+
+    const nor1 = await visitsAt('NOR1');
+    expect(nor1.map((v) => [v.name, v.status])).toEqual([
+      ['Sofía Navarro Morales', 'READY_FOR_CHECKOUT'],
+      ['Valentina Castillo Ríos', 'WITH_PROVIDER'],
+      ['Raúl Ortiz Fuentes', 'WAITING_FOR_PROVIDER'],
+      ['Ángel Domínguez Vega', 'WITH_NURSE'],
+      ['Óscar Delgado Núñez', 'PROCEDURE_PENDING'],
+      ['Gabriela Jiménez Soto', 'CHECKED_IN'],
+      ['Tomás Gutiérrez León', 'WAITING_FOR_NURSE'],
+    ]);
+    const level = (name: string) => {
+      const v = nor1.find((r) => r.name === name);
+      return v ? waitLevel({ status: v.status, statusSince: v.since.toISOString() }, now, thresholds) : null;
+    };
+    expect(level('Gabriela Jiménez Soto')).toBe('critical');
+    expect(level('Tomás Gutiérrez León')).toBe('alert');
+    expect(level('Raúl Ortiz Fuentes')).toBe('critical');
+    // Cada paso pasó por la máquina de estados: un evento por versión.
+    for (const v of nor1) {
+      expect(v.last_to).toBe(v.status);
+      expect(v.events).toBeGreaterThanOrEqual(1);
+    }
+    // Llegada, a enfermería, inicio de la enfermería, al proveedor, consulta y «Listo para caja».
+    expect(nor1.find((v) => v.name === 'Sofía Navarro Morales')?.events).toBe(6);
+    expect((await visitsAt('SUR1')).map((v) => v.status)).toEqual(['WAITING_FOR_PROVIDER', 'WITH_NURSE', 'WAITING_FOR_NURSE', 'CHECKED_IN']);
+    expect(await visitsAt('NOR2')).toEqual([]);
+    expect(await visitsAt('SUR2')).toEqual([]);
+
+    // Las citas «Llegó» de hoy de NOR1 y SUR1 tienen su visita; en NOR2 y SUR2 siguen sin ella.
+    for (const site of ['NOR1', 'SUR1']) {
+      const withAppointment = (await visitsAt(site)).filter((v) => v.source === 'appointment');
+      expect(withAppointment).toHaveLength(TODAY_ARRIVED.length);
+      expect(withAppointment.every((v) => v.appointment_status === 'ARRIVED')).toBe(true);
+    }
+    const arrivedToday = await query<{ code: string; n: number }>(
+      `select l.code, count(*)::int as n from app.appointments a join app.locations l on l.id = a.location_id
+        where a.status = 'ARRIVED' and a.starts_at >= $1::timestamptz - interval '10 hours' and a.starts_at < $1::timestamptz + interval '14 hours'
+        group by l.code order by l.code`,
+      [MORNING],
+    );
+    expect(arrivedToday).toEqual(['NOR1', 'NOR2', 'SUR1', 'SUR2'].map((code) => ({ code, n: TODAY_ARRIVED.length })));
+
+    // Alergias en sus tres estados (ADR 0040): registradas, sin alergias conocidas y sin registrar.
+    const allergies = await query<{ name: string; status: string }>(
+      `select distinct on (h.patient_id) p.first_name || ' ' || p.last_name as name, h.allergy_status as status
+         from app.patient_histories h join app.patients p on p.id = h.patient_id
+        order by h.patient_id, h.version desc`,
+    );
+    expect(allergies.find((a) => a.name === 'Valentina Castillo Ríos')?.status).toBe('recorded');
+    expect(allergies.find((a) => a.name === 'Raúl Ortiz Fuentes')?.status).toBe('none_known');
+    expect(allergies.find((a) => a.name === 'Ángel Domínguez Vega')).toBeUndefined();
+
+    // Una tableta vinculada en NOR1 y en SUR1.
+    const tablets = await query<{ code: string; name: string; status: string }>(
+      `select l.code, k.name, k.status from app.kiosk_devices k join app.locations l on l.id = k.location_id order by l.code`,
+    );
+    expect(tablets).toEqual([
+      { code: 'NOR1', name: DEMO_TABLET_NAME, status: 'active' },
+      { code: 'SUR1', name: DEMO_TABLET_NAME, status: 'active' },
+    ]);
+    // La auditoría de los pasos existe y no lleva valores clínicos.
+    const audit = await query<{ metadata: string }>(`select metadata::text from app.audit_log where action like 'encounter.%' or action like 'patient.history%'`);
+    expect(audit.length).toBeGreaterThan(0);
+    expect(audit.some((a) => a.metadata.includes('Penicilina'))).toBe(false);
+    expect(DEMO_VISITS.flatMap((s) => s.visits)).toHaveLength(11);
+  });
+
+  it('T-024: poco después de medianoche, las visitas con cita de hoy se siembran igual', async () => {
+    await db.end();
+    // Viernes 6 nov 2026, 12:05 a. m. en Chicago.
+    await reset({ clock: new FixedClock('2026-11-06T06:05:00Z') });
+    db = new pg.Pool({ connectionString: superuserUrl, max: 1 });
+    const nor1 = await visitsAt('NOR1');
+    expect(nor1).toHaveLength(7);
+    const first = nor1.find((v) => v.name === 'Sofía Navarro Morales');
+    expect(first?.status).toBe('READY_FOR_CHECKOUT');
+    expect(first?.since.getTime()).toBeGreaterThanOrEqual(new Date('2026-11-06T06:00:00Z').getTime());
   });
 
   it('se niega si hay conexiones abiertas (pnpm dev en marcha) y no borra nada', async () => {

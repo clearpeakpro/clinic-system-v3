@@ -140,7 +140,7 @@ Detalle en el ADR 0023.
 
 ## Demo de la fase 1 (T-010)
 
-- **`pnpm demo:reset`** (`scripts/demo-reset.ts`, `src/demo.ts`): borra y vuelve a crear la base de datos local (solo `127.0.0.1`) con roles, migraciones, las dos organizaciones, los 13 usuarios de `src/dev-seed.ts` (ninguno con MFA ni sesiones), el catálogo, los laboratorios, los pacientes y las citas ficticias (T-014, T-016).
+- **`pnpm demo:reset`** (`scripts/demo-reset.ts`, `src/demo.ts`): borra y vuelve a crear la base de datos local (solo `127.0.0.1`) con roles, migraciones, las dos organizaciones, los 13 usuarios de `src/dev-seed.ts` (ninguno con MFA ni sesiones), el catálogo, los laboratorios, los pacientes y las citas ficticias (T-014, T-016), y las visitas abiertas y las tabletas vinculadas de NOR1 y SUR1 (`src/dev-encounters.ts`, T-024). Las visitas se siembran con los servicios reales y el reloj inyectable, paso a paso, como el usuario ficticio de cada paso: a la hora del reinicio hay esperas con «Alerta» y «Crítico». `resetDemo` acepta un `clock` para las pruebas.
   - Pide escribir `BORRAR`; con `--si` no pregunta (lo usa la E2E del guion).
   - Se niega si hay conexiones abiertas (`pnpm dev` en marcha).
 - **`pnpm demo:aviso <correo>`** (`scripts/demo-aviso.ts`): escribe en el outbox un aviso ficticio «Cita actualizada» para esa persona. Lo entrega el worker.
