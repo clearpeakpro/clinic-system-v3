@@ -196,11 +196,11 @@ test('el Propietario sin rol clínico (sin panel.view) no ve el Panel (ADR 0027)
     'pnpm',
     [
       'exec', 'tsx', 'scripts/org-create.ts',
-      '--organizacion', arg('Clínica Demo Este (ficticia)'),
-      '--propietario-correo', 'propietario.este@example.test',
-      '--propietario-nombre', arg('Propietario Este (ficticio)'),
-      '--sede-codigo', 'EST1',
-      '--sede-nombre', arg('Este Centro'),
+      '--organizacion', arg('Clínica Demo Centro (ficticia)'),
+      '--propietario-correo', 'propietario.centro@example.test',
+      '--propietario-nombre', arg('Propietario Centro (ficticio)'),
+      '--sede-codigo', 'CEN1',
+      '--sede-nombre', arg('Centro Principal'),
       '--zona-horaria', 'America/Chicago',
     ],
     {
@@ -212,9 +212,9 @@ test('el Propietario sin rol clínico (sin panel.view) no ve el Panel (ADR 0027)
   const link = /https?:\/\/\S+\/invitacion\/\S+/.exec(created.stdout)?.[0];
   if (!link) throw new Error('org:create no mostró el enlace');
   await page.goto(new URL(link).pathname);
-  await page.getByLabel('Nombre para mostrar').fill('Propietario Este (ficticio)');
-  await page.getByLabel('Contraseña', { exact: true }).fill('una frase larga del propietario este');
-  await page.getByLabel('Confirmar contraseña').fill('una frase larga del propietario este');
+  await page.getByLabel('Nombre para mostrar').fill('Propietario Centro (ficticio)');
+  await page.getByLabel('Contraseña', { exact: true }).fill('una frase larga del propietario centro');
+  await page.getByLabel('Confirmar contraseña').fill('una frase larga del propietario centro');
   await page.getByRole('button', { name: 'Aceptar invitación' }).click();
   await expect(page.getByRole('heading', { name: 'Configurar la verificación en dos pasos' })).toBeVisible();
   await expect(page.getByTestId('totp-secret')).toHaveText(/\w{4}/);
@@ -226,6 +226,6 @@ test('el Propietario sin rol clínico (sin panel.view) no ve el Panel (ADR 0027)
   await expect(page).toHaveURL(/\/admin\/usuarios$/);
   const nav = page.getByRole('navigation', { name: 'Navegación principal' }).first();
   await expect(nav.getByRole('link', { name: 'Panel' })).toHaveCount(0);
-  await page.goto('/app/EST1/panel');
+  await page.goto('/app/CEN1/panel');
   await expect(page.getByRole('heading', { name: 'Página no encontrada' })).toBeVisible();
 });

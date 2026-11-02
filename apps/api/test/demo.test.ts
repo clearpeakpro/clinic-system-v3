@@ -152,7 +152,8 @@ describe('pnpm demo:aviso', () => {
     const staff = await createStaff(app, 'demo-aviso', [{ org: NORTE, location: 0, role: 'proveedor' }]);
     const { code } = await sendDemoNotification(app, app.config.outboxKey, staff.email);
     // La cita de la sede más cercana a ahora (T-015) o, sin citas, un código inventado.
-    expect(code).toMatch(/^NOR1-[AC]-\d{6}$/);
+    // El contador admite más de 6 cifras (otras pruebas crean citas `NOR1-A-8xxxxxx`).
+    expect(code).toMatch(/^NOR1-[AC]-\d{6,}$/);
     const { rows } = await app.pool.query<{ id: string; payload: string }>(
       'select id, payload from app.outbox where kind = $1 order by created_at desc limit 1',
       [NOTIFICATION_EVENT],
