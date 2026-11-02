@@ -172,11 +172,113 @@ export function visitActions(status: VisitStatus, ctx: Omit<VisitTransitionConte
   return actions;
 }
 
-/**
- * Destinos de «Forzar estado…» (S-CLI-10, T-018): cualquier otro estado que no
- * sea un cierre (Se retiró o Cancelada se cierran con «Cerrar visita…»).
- * Desde una visita cerrada, reabre. Quién puede forzar lo decide el ADR 0033.
- */
-export function forceTargets(from: VisitStatus): VisitStatus[] {
-  return VISIT_STATUSES.filter((status) => status !== from && status !== 'LEFT_EARLY' && status !== 'CANCELLED');
+/** Cierres: se hacen con «Cerrar visita…» (S-CLI-09), nunca con una transición normal ni forzando. */
+export const CLOSE_ACTIONS = ['close_left_early', 'close_cancelled'] as const satisfies readonly VisitAction[];
+export type CloseAction = (typeof CLOSE_ACTIONS)[number];
+
+/** Resultado de «Cerrar visita» (S-CLI-09): «Se retiró antes» o «Cancelada». */
+export const CLOSE_OUTCOMES = ['LEFT_EARLY', 'CANCELLED'] as const satisfies readonly VisitStatus[];
+export type CloseOutcome = (typeof CLOSE_OUTCOMES)[number];
+
+export const CLOSE_OUTCOME_LABELS: Record<CloseOutcome, string> = {
+  LEFT_EARLY: 'Se retiró antes',
+  CANCELLED: 'Cancelada',
+};
+
+export function closeAction(outcome: CloseOutcome): CloseAction {
+  return outcome === 'LEFT_EARLY' ? 'close_left_early' : 'close_cancelled';
 }
+
+export function isCloseAction(action: VisitAction): action is CloseAction {
+  return (CLOSE_ACTIONS as readonly VisitAction[]).includes(action);
+}
+
+/** Acción del historial (`encounter_events.action`) de un cambio forzado (S-CLI-10). */
+export const FORCE_ACTION = 'force';
+
+/** Lo que guarda el historial: un paso de la máquina o un cambio forzado. */
+export type EncounterEventAction = VisitAction | typeof FORCE_ACTION;
+
+/**
+ * Destinos de «Forzar estado…» (S-CLI-10, T-018; decisión del 2026-11-01:
+ * se sigue el manual). Todos los estados menos:
+ *  - el actual;
+ *  - «Se retiró» y «Cancelada» (se cierran con «Cerrar visita…»);
+ *  - los destinos a los que ya lleva una acción regular desde ese estado y con
+ *    esa ruta, sea del rol que sea.
+ * Desde una visita cerrada no hay acciones regulares: forzar la reabre.
+ * Quién puede forzar lo decide el ADR 0033 (visits.force_state).
+ */
+export function forceTargets(from: VisitStatus, route: VisitRoute): VisitStatus[] {
+  const regular = new Set(
+    VISIT_TRANSITIONS.filter((t) => t.from === from && !isCloseAction(t.action) && routeMatches(t, route)).map((t) => t.to),
+  );
+  return VISIT_STATUSES.filter((status) => status !== from && status !== 'LEFT_EARLY' && status !== 'CANCELLED' && !regular.has(status));
+}
+
+/** ¿Se puede forzar de `from` a `to` con esta ruta? Solo el destino: el permiso lo comprueba la API. */
+export function visitForce(from: VisitStatus, to: VisitStatus, route: VisitRoute): { ok: true; to: VisitStatus } | { ok: false; reason: 'invalid_transition' } {
+  return forceTargets(from, route).includes(to) ? { ok: true, to } : { ok: false, reason: 'invalid_transition' };
+}
+
+/** ¿Forzar a `to` desde `from` reabre una visita cerrada? */
+export function reopens(from: VisitStatus, to: VisitStatus): boolean {
+  return !isOpenVisitStatus(from) && isOpenVisitStatus(to);
+}
+
+/** Lo que puede hacer una persona en la pantalla de la visita (S-CLI-04 a 12). Lo calcula la API; la web solo lo muestra. */
+export interface EncounterAbilities {
+  /** Acciones regulares de la barra (S-CLI-07), sin los cierres. */
+  actions: VisitAction[];
+  /** «Cerrar visita…» (S-CLI-09). */
+  close: boolean;
+  /** Destinos de «Forzar estado…» (S-CLI-10); vacío si no puede forzar. */
+  forceTargets: VisitStatus[];
+  /** «Asignar proveedor» / «Cambiar proveedor» (S-CLI-05/06). */
+  assignProvider: boolean;
+  /** «Asignarme»: tiene el rol Proveedor y la visita no es suya. */
+  assignSelf: boolean;
+  /** Lápiz «Editar cobertura» (S-CLI-11/12). */
+  editCoverage: boolean;
+}
+
+/**
+ * Capacidades según estado × ruta × roles × permisos (S-CLI-07). La API
+ * vuelve a comprobar cada operación.
+ *  - `canManage`: visits.manage (Recepción): asignar proveedor y editar la cobertura.
+ *  - `canForce`: visits.force_state junto con patients.access (ADR 0033).
+ */
+export function encounterAbilities(input: {
+  status: VisitStatus;
+  route: VisitRoute;
+  roles: readonly Role[];
+  canManage: boolean;
+  canForce: boolean;
+  isMine: boolean;
+}): EncounterAbilities {
+  const open = isOpenVisitStatus(input.status);
+  const all = visitActions(input.status, { route: input.route, roles: input.roles });
+  return {
+    actions: all.filter((a) => !isCloseAction(a)),
+    close: all.some(isCloseAction),
+    forceTargets: input.canForce ? forceTargets(input.status, input.route) : [],
+    assignProvider: open && input.canManage,
+    assignSelf: open && input.roles.includes('proveedor') && !input.isMine,
+    editCoverage: open && input.canManage,
+  };
+}
+
+/** Texto de cada acción regular en la barra (S-CLI-07). */
+export const VISIT_ACTION_LABELS: Record<VisitAction, string> = {
+  check_in: 'Registrar llegada',
+  send_to_nurse: 'Enviar a enfermería',
+  send_to_procedure: 'Enviar a procedimiento',
+  start_nursing: 'Iniciar enfermería',
+  send_to_provider: 'Enviar al proveedor',
+  start_consult: 'Iniciar consulta',
+  ready_for_checkout: 'Listo para caja',
+  start_checkout: 'Iniciar pago',
+  complete: 'Completar visita',
+  close_left_early: 'Se retiró antes',
+  close_cancelled: 'Cancelada',
+};

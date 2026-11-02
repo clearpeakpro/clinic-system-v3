@@ -65,8 +65,8 @@ describe('regla escalonada de roles', () => {
 describe('permisos', () => {
   it('Propietario y Administrador solo tienen permisos administrativos (ninguno clínico)', () => {
     for (const role of ['propietario', 'administrador'] as Role[]) {
-      // Fecha de nacimiento e inactivar (ADR 0009) solo sirven junto a
-      // patients.access, que exige un rol clínico (ADR 0027).
+      // Fecha de nacimiento, inactivar (ADR 0009) y forzar el estado de una
+      // visita (ADR 0033) solo sirven junto a patients.access, que exige un rol clínico (ADR 0027).
       expect([...permissionsFor([role])].sort(), role).toEqual([
         'admin.access',
         'catalog.manage',
@@ -75,6 +75,7 @@ describe('permisos', () => {
         'members.manage',
         'patients.deactivate',
         'patients.edit_birth_date',
+        'visits.force_state',
       ]);
       expect(permissionsFor([role]).has('patients.access'), role).toBe(false);
     }
@@ -87,7 +88,7 @@ describe('permisos', () => {
 
   it('destinos del menú según el manual', () => {
     expect([...permissionsFor(['recepcion'])].sort()).toEqual(
-      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location'],
+      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
     );
     expect([...permissionsFor(['enfermeria'])].sort()).toEqual(
       ['nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access'],

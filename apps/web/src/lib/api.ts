@@ -3,7 +3,15 @@ import type {
   ArrivalContext,
   ArrivalInput,
   ArrivalResult,
-  EncounterSummary,
+  AssignProviderInput,
+  CloseEncounterInput,
+  EncounterDetail,
+  EncounterProvider,
+  EncounterSaved,
+  EncounterTransitionInput,
+  ForceEncounterInput,
+  PatientEncounters,
+  UpdateCoverageInput,
   AppointmentDetail,
   AppointmentFormOptions,
   AppointmentOverlap,
@@ -190,7 +198,7 @@ export interface NotificationItem {
   when: string | null;
   /** Avisos de citas: día de la cita en su sede (`AAAA-MM-DD`). */
   day: string | null;
-  /** Avisos de citas: ¿tiene acceso a Citas en esa sede? */
+  /** ¿Puede abrir lo que avisa? Citas: acceso a Citas en esa sede; visitas (T-018): acceso a la visita. */
   canOpen: boolean;
   locationId: string | null;
   entityType: string | null;
@@ -311,11 +319,19 @@ export const api = {
   cancelAppointment: (id: string, reason: string, expectedVersion: number) =>
     request<AppointmentSaved>('POST', `/api/appointments/${id}/cancel`, { reason, expectedVersion }),
   markNoShow: (id: string, expectedVersion: number) => request<AppointmentSaved>('POST', `/api/appointments/${id}/no-show`, { expectedVersion }),
-  // Llegada (T-017; S-REC-18 a 27) y visita mínima (hasta T-018).
+  // Llegada (T-017; S-REC-18 a 27) y pantalla de la visita (T-018; S-CLI-04 a 12, S-PAC-08).
   arrivalForAppointment: (appointmentId: string) => request<ArrivalContext>('GET', `/api/arrivals/appointments/${appointmentId}`),
   arrivalForPatient: (patientId: string) => request<ArrivalContext>('GET', `/api/arrivals/patients/${patientId}`),
   arrive: (input: ArrivalInput, idempotencyKey: string) => request<ArrivalResult>('POST', '/api/encounters', input, { 'idempotency-key': idempotencyKey }),
-  encounter: (id: string) => request<EncounterSummary>('GET', `/api/encounters/${id}`),
+  encounter: (id: string) => request<EncounterDetail>('GET', `/api/encounters/${id}`),
+  encounterTransition: (id: string, input: EncounterTransitionInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/transition`, input),
+  closeEncounter: (id: string, input: CloseEncounterInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/close`, input),
+  forceEncounter: (id: string, input: ForceEncounterInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/force`, input),
+  assignProvider: (id: string, input: AssignProviderInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/provider`, input),
+  updateCoverage: (id: string, input: UpdateCoverageInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/coverage`, input),
+  encounterProviders: () => request<EncounterProvider[]>('GET', '/api/encounters/providers'),
+  patientEncounters: (patientId: string, offset: number) =>
+    request<PatientEncounters>('GET', `/api/patients/${patientId}/encounters?offset=${String(offset)}`),
   todayAppointmentCount: () => request<{ count: number; today: string }>('GET', '/api/appointments/today-count'),
   patientAppointments: (patientId: string, offset: number) =>
     request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),

@@ -11,7 +11,7 @@ import { AppointmentsPage } from './pages/appointments.tsx';
 import { AppointmentArrivalPage, WalkInArrivalPage } from './pages/arrival.tsx';
 import { BootPage } from './pages/boot.tsx';
 import { DestinationPage } from './pages/destination.tsx';
-import { EncounterPage } from './pages/encounter.tsx';
+import { EncounterPage, type EncounterSection } from './pages/encounter.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
 import { PanelPage } from './pages/panel.tsx';
@@ -29,7 +29,7 @@ import { SelectLocationPage } from './pages/select-location.tsx';
 // T-012: /app/<SEDE>/pacientes y /app/<SEDE>/pacientes/<id> (S-PAC-01 y 05).
 // T-014: /app/<SEDE>/citas?fecha=AAAA-MM-DD (S-REC-06 a 09) y el subtítulo del Panel.
 // T-017: /app/<SEDE>/llegada/<cita> (S-REC-18), /app/<SEDE>/llegada/sin-cita?paciente=<id>
-// (S-REC-19) y /app/<SEDE>/visitas/<id> (mínima hasta T-018).
+// (S-REC-19) y /app/<SEDE>/visitas/<id> (S-CLI-04 completa desde T-018).
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage });
 
@@ -208,14 +208,20 @@ const appArrivalRoute = createRoute({
   },
 });
 
+const ENCOUNTER_SECTIONS: readonly EncounterSection[] = ['nursing', 'orders', 'billing'];
+
+// T-018: S-CLI-04 con ?section=nursing|orders|billing (los desconocidos se ignoran).
 const appEncounterRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'visitas/$id',
+  validateSearch: (search: Record<string, unknown>): { section?: EncounterSection } =>
+    ENCOUNTER_SECTIONS.includes(search.section as EncounterSection) ? { section: search.section as EncounterSection } : {},
   component: function Encounter() {
     const me = useMe();
     const { sede, id } = appEncounterRoute.useParams();
+    const { section } = appEncounterRoute.useSearch();
     if ((me.data && !me.data.permissions.includes('patients.access')) || !UUID_RE.test(id)) return <NotFoundPage />;
-    return <EncounterPage key={id} sede={sede} encounterId={id} />;
+    return <EncounterPage key={id} sede={sede} encounterId={id} section={section} />;
   },
 });
 

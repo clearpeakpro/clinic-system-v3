@@ -59,7 +59,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     patients: new PatientService(tenantDb, audit, fieldCipher),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
     appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, idempotency, config.outboxKey),
-    encounters: new EncounterService(tenantDb, audit, fieldCipher, idempotency, clock),
+    encounters: new EncounterService(pool, tenantDb, audit, fieldCipher, idempotency, clock, config.outboxKey),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;
