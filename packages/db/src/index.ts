@@ -7,6 +7,7 @@ export * from './catalog-schema.ts';
 export * from './patients-schema.ts';
 export * from './appointments-schema.ts';
 export * from './encounters-schema.ts';
+export * from './nursing-schema.ts';
 export { createTenantDb, type Db, type TenantDb, type Tx } from './with-tenant.ts';
 export { bootstrap, type BootstrapOptions } from './bootstrap.ts';
 export { migrate } from './migrate.ts';

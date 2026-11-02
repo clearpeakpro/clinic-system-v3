@@ -39,6 +39,11 @@ const MESSAGES: Record<string, string> = {
   forbidden: 'No tiene permiso para realizar esta acción.',
   no_active_context: 'No está autorizado para esta sede.',
   invalid_request: 'Algunos campos no son válidos. Revíselos.',
+  // Enfermería (T-022; textos del manual, S-CLI-14 a 16).
+  nursing_locked: 'Los datos de enfermería están bloqueados para esta visita.',
+  vitals_required: 'Registre peso o presión arterial antes de enviar al proveedor.',
+  not_with_nurse: 'La enfermería solo puede completarse mientras el paciente está con enfermería.',
+  invalid_vitals: 'Un valor está fuera del rango aceptado.',
 };
 
 /** Mensaje en «usted» de un error al actuar sobre la visita. */

@@ -65,7 +65,12 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       }
       // T-018: también la pestaña Visitas y «Última visita» del perfil (S-PAC-08).
       if (ids.encounters.size > 0) invalidate(['patient-encounters']);
-      for (const encounterId of ids.encounters) invalidate(['encounter', encounterId]);
+      // T-022: la cola de enfermería y la sección Enfermería de esa visita.
+      if (ids.encounters.size > 0) invalidate(['nursing-queue']);
+      for (const encounterId of ids.encounters) {
+        invalidate(['encounter', encounterId]);
+        invalidate(['nursing', encounterId]);
+      }
     }, delay);
   };
 }

@@ -3,7 +3,7 @@
 - **Estado:** Aceptada
 - **Fecha:** 2026-11-01
 - **Decide:** el dueño del producto, al planificar T-019.
-- **Relacionadas:** [T-019](../tasks/FASE-3.md#t-019--panel-en-vivo) (Panel en vivo, S-REC-01 a 05).
+- **Relacionadas:** [T-019](../tasks/FASE-3.md#t-019--panel-en-vivo) (Panel en vivo, S-REC-01 a 05) y [T-022](../tasks/FASE-3.md#t-022--enfermería) (Cola de enfermería, S-CLI-01).
 
 ## Contexto
 
@@ -31,3 +31,9 @@ El diseño de Stitch del Panel (`design/stitch/recepcion/S-REC-01_panel`) marca 
   - la fila crítica lleva además un fondo rojo suave, como en Stitch;
   - las tarjetas «En espera» y «Esperando proveedor» muestran la marca más grave de sus visitas;
   - el nivel se recalcula cada 15 s con la hora del servidor estimada, sin pedir datos.
+
+## Ampliación: Cola de enfermería (decidido el 2026-11-01, T-022)
+
+- **Dónde:** también en la Cola de enfermería (S-CLI-01), pero **solo en «Esperando enfermería»**. «Con enfermería» y «Procedimiento pendiente» no llevan marca.
+- **Cómo:** con los mismos minutos de la organización y contando desde el estado actual, con la hora del servidor; la misma insignia (icono, texto y color) que en el Panel.
+- **Implementación:** `GET /api/nursing/queue` devuelve `waitThresholds` y el `waitLevel` de cada fila (`apps/api/src/nursing.ts`); la web lo recalcula cada 15 s (`apps/web/src/pages/nursing-queue.tsx`). Prueba con reloj fijado justo antes y después de 5 y de 10 minutos en `apps/api/test/nursing.test.ts`.

@@ -7,19 +7,25 @@ import { actorText } from '../../lib/encounters.ts';
 // más antiguo (por versión). Icono de entrada, flecha o escudo si fue
 // forzado; «{anterior} → [nuevo]» y el chip «Forzado»; «{fecha hora} · por
 // {quién} · v{versión}»; el motivo en cursiva. Horas en la zona de la sede.
+// T-022: «Enviar al proveedor» con motivo es la excepción del ADR 0033 (sin
+// peso ni presión): escudo y chip «Excepción».
+
+/** ¿Es la excepción de «Enviar al proveedor» (ADR 0033)? */
+export const isNursingException = (e: Pick<EncounterTimelineEntry, 'action' | 'reason'>) => e.action === 'send_to_provider' && e.reason !== null;
 
 export function EncounterTimeline({ entries, timeZone }: { entries: EncounterTimelineEntry[]; timeZone: string }) {
   if (entries.length === 0) return <EmptyState icon={History} title="Aún no hay historial." />;
   return (
     <ol aria-label="Historial de estados" className="flex flex-col gap-space-sm">
       {entries.map((e) => {
-        const Icon = e.forced ? ShieldAlert : e.fromStatus === null ? DoorOpen : ArrowRight;
+        const exception = isNursingException(e);
+        const Icon = e.forced || exception ? ShieldAlert : e.fromStatus === null ? DoorOpen : ArrowRight;
         return (
           <li key={e.id} className="flex gap-space-md rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">
             <span
               aria-hidden
               className={
-                e.forced
+                e.forced || exception
                   ? 'flex size-10 shrink-0 items-center justify-center rounded-full bg-status-waiting-container text-status-waiting'
                   : 'flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-container text-primary dark:bg-surface-container-high'
               }
@@ -36,6 +42,7 @@ export function EncounterTimeline({ entries, timeZone }: { entries: EncounterTim
                   </>
                 )}
                 {e.forced ? <SemanticChip tone="warning" label="Forzado" /> : null}
+                {exception ? <SemanticChip tone="warning" label="Excepción" /> : null}
               </p>
               <p className="text-body-md text-on-surface-variant">
                 <DateTimeText value={e.occurredAt} timeZone={timeZone} /> {`· por ${actorText(e.actor)} · v${String(e.version)}`}

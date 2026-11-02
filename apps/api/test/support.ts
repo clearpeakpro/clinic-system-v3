@@ -62,7 +62,7 @@ export class Client {
     return [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
   }
 
-  async request(method: 'GET' | 'POST', url: string, body?: unknown, headers: Record<string, string> = {}) {
+  async request(method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown, headers: Record<string, string> = {}) {
     const response = await this.#app.fastify.inject({
       method,
       url,
@@ -89,6 +89,10 @@ export class Client {
 
   post(url: string, body: unknown = {}, headers?: Record<string, string>) {
     return this.request('POST', url, body, headers);
+  }
+
+  put(url: string, body: unknown = {}, headers?: Record<string, string>) {
+    return this.request('PUT', url, body, headers);
   }
 }
 

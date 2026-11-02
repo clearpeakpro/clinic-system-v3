@@ -22,6 +22,7 @@ import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { systemClock, type Clock } from './clock.ts';
 import { EncounterService } from './encounters.ts';
+import { NursingService } from './nursing.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyService } from './idempotency.ts';
 import { PatientService } from './patients.ts';
@@ -48,6 +49,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
   const fieldCipher = createLocalFieldCipher(config.fieldEncryptionKey);
   const idempotency = new IdempotencyService(tenantDb);
 
+  const encounters = new EncounterService(pool, tenantDb, audit, fieldCipher, idempotency, clock, config.outboxKey);
   const services = {
     contexts: new ContextService(pool, tenantDb),
     invitations: new InvitationService(tenantDb, auth, audit, config),
@@ -60,8 +62,9 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     patients: new PatientService(tenantDb, audit, fieldCipher),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
     appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, idempotency, config.outboxKey),
-    encounters: new EncounterService(pool, tenantDb, audit, fieldCipher, idempotency, clock, config.outboxKey),
+    encounters,
     panel: new PanelService(pool, tenantDb, audit, clock),
+    nursing: new NursingService(pool, tenantDb, audit, fieldCipher, clock, encounters),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

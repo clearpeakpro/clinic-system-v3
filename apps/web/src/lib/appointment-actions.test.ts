@@ -54,12 +54,14 @@ describe('agenda en vivo', () => {
       ['appointment', ID_A],
       ['arrival', 'appointment', ID_A],
       ['patient-encounters'],
+      ['nursing-queue'],
       ['encounter', ID_B],
+      ['nursing', ID_B],
     ]);
     invalidate.mockClear();
     onEvent({ name: 'encounter.changed', ids: { encounter: ID_B } });
     vi.advanceTimersByTime(500);
-    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['panel'], ['patient-encounters'], ['encounter', ID_B]]);
+    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['panel'], ['patient-encounters'], ['nursing-queue'], ['encounter', ID_B], ['nursing', ID_B]]);
   });
 
   it('otros eventos no releen la agenda', () => {

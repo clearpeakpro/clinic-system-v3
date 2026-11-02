@@ -6,6 +6,7 @@ import {
   forceTargets,
   isCloseAction,
   isDirectRoute,
+  nursingSendSteps,
   reopens,
   visitForce,
   isOpenVisitStatus,
@@ -193,5 +194,27 @@ describe('máquina de estados de la visita', () => {
     const closed = encounterAbilities({ ...base, status: 'CANCELLED', roles: ['recepcion', 'administrador'], canManage: true, canForce: true });
     expect(closed).toMatchObject({ actions: [], close: false, assignProvider: false, assignSelf: false, editCoverage: false });
     expect(closed.forceTargets).toContain('CHECKED_IN');
+  });
+
+  it('«Enviar al proveedor» no está en la barra: es el botón de la sección Enfermería (ADR 0003, T-022)', () => {
+    expect(encounterAbilities({ status: 'WITH_NURSE', route: 'STANDARD', roles: ['enfermeria'], canManage: false, canForce: false, isMine: false }).actions).toEqual([]);
+    expect(visitActions('WITH_NURSE', { route: 'STANDARD', roles: ['enfermeria'] })).toEqual(['send_to_provider']);
+  });
+});
+
+describe('«Enviar al proveedor» (T-022)', () => {
+  it('desde «Esperando enfermería», dos pasos; desde «Con enfermería», uno; solo en la ruta Estándar', () => {
+    expect(nursingSendSteps('WAITING_FOR_NURSE', 'STANDARD')).toEqual(['start_nursing', 'send_to_provider']);
+    expect(nursingSendSteps('WITH_NURSE', 'STANDARD')).toEqual(['send_to_provider']);
+    expect(nursingSendSteps('CHECKED_IN', 'STANDARD')).toBeNull();
+    expect(nursingSendSteps('WAITING_FOR_PROVIDER', 'STANDARD')).toBeNull();
+    expect(nursingSendSteps('WITH_NURSE', 'INJECTION_ONLY')).toBeNull();
+  });
+
+  it('la excepción (ADR 0033) no necesita el rol dueño, pero el paso tiene que existir', () => {
+    const roles: Role[] = ['recepcion', 'administrador'];
+    expect(visitTransition('WITH_NURSE', 'send_to_provider', { route: 'STANDARD', roles })).toEqual({ ok: false, reason: 'forbidden' });
+    expect(visitTransition('WITH_NURSE', 'send_to_provider', { route: 'STANDARD', roles, asOwner: true })).toMatchObject({ ok: true, to: 'WAITING_FOR_PROVIDER' });
+    expect(visitTransition('CHECKED_IN', 'send_to_provider', { route: 'STANDARD', roles, asOwner: true })).toEqual({ ok: false, reason: 'invalid_transition' });
   });
 });

@@ -10,6 +10,8 @@ import { CoverageCard, CoverageDialog } from '../components/encounters/coverage-
 import { EncounterHeader } from '../components/encounters/encounter-header.tsx';
 import { EncounterTimeline } from '../components/encounters/encounter-timeline.tsx';
 import { SectionCard } from '../components/encounters/section-card.tsx';
+import { AllergyBanner } from '../components/nursing/allergy-banner.tsx';
+import { NursingSection } from '../components/nursing/nursing-section.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { encounterMessage, isVersionConflict, movedText, VERSION_CONFLICT_TEXT } from '../lib/encounters.ts';
 import { useActiveLocation } from '../lib/session.ts';
@@ -21,9 +23,9 @@ import { useActiveLocation } from '../lib/session.ts';
 // tarjetas con icono: a la izquierda Enfermería y Órdenes, a la derecha
 // Cobertura y Facturación. En el teléfono, en el orden del manual: Cobertura,
 // Enfermería, Órdenes y Facturación. No se construye lo que llega en otras
-// tareas (Enfermería T-022, Órdenes T-025, Facturación T-027) ni lo que el
-// sistema no tiene (alergias en el encabezado hasta T-022, enfermera
-// responsable, folio).
+// tareas (Órdenes T-025, Facturación T-027) ni lo que el sistema no tiene
+// (enfermera responsable, folio). Desde T-022: la sección Enfermería y el
+// aviso de alergias arriba del encabezado (ADR 0040; Recepción no lo ve).
 //  - Los cuatro roles clínicos la abren (patients.access); la API calcula qué
 //    puede hacer cada uno y revalida cada operación.
 //  - Toda acción lleva la versión leída: ante un 409 se avisa y se relee.
@@ -165,6 +167,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
         {(d) => (
           <>
             <div className="flex flex-col gap-space-lg rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 tab:p-space-lg dark:bg-surface-container-low">
+              {d.allergies ? <AllergyBanner notice={d.allergies} /> : null}
               <EncounterHeader
                 encounter={d}
                 busy={busy === 'provider'}
@@ -181,7 +184,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
                   </div>
                   <div className="desk:col-span-2 desk:col-start-1 desk:row-start-1">
                     <SectionCard id="nursing" icon={<HeartPulse className="size-6" />} title="Enfermería" subtitle="Signos vitales y valoración">
-                      <EmptyState icon={HeartPulse} title="Aún no hay datos de enfermería." description="Los signos vitales y la valoración llegan con la tarea de Enfermería (T-022)." />
+                      <NursingSection encounter={d} sede={sede} />
                     </SectionCard>
                   </div>
                   <div className="desk:col-span-2 desk:col-start-1 desk:row-start-2">

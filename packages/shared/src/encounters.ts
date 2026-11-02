@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AppointmentStatus } from './appointments.ts';
+import type { AllergyNotice } from './nursing.ts';
 import type { PatientSummary } from './patients.ts';
 import { expectedVersionSchema, reasonSchema } from './schemas.ts';
 import {
@@ -197,12 +198,15 @@ export interface ArrivalResult {
 
 // --- Pantalla de la visita (T-018; S-CLI-04 a 12, S-CLI-24, S-PAC-08) -------
 
-/** Pasos regulares que se piden por `POST /encounters/:id/transition`: ni la apertura ni los cierres. */
+/**
+ * Pasos regulares que se piden por `POST /encounters/:id/transition`: ni la
+ * apertura ni los cierres, ni «Enviar al proveedor», que exige peso o presión
+ * y va por `POST /encounters/:id/send-to-provider` (ADR 0003, T-022).
+ */
 export const REGULAR_VISIT_ACTIONS = [
   'send_to_nurse',
   'send_to_procedure',
   'start_nursing',
-  'send_to_provider',
   'start_consult',
   'ready_for_checkout',
   'start_checkout',
@@ -294,6 +298,8 @@ export interface EncounterDetail {
   /** Membresía de quien abre la visita (para «Usted»). */
   myMembershipId: string;
   coverage: EncounterCoverage | null;
+  /** Aviso de alergias del encabezado (ADR 0040, T-022). Nulo para quien no ve datos clínicos (Recepción). */
+  allergies: AllergyNotice | null;
   timeline: EncounterTimelineEntry[];
   abilities: EncounterAbilities;
 }
