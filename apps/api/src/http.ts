@@ -72,6 +72,7 @@ import { z } from 'zod';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { EncounterService } from './encounters.ts';
+import { PanelService } from './panel.ts';
 import { IdempotencyKey } from './idempotency.ts';
 import { AuditService } from './audit.ts';
 import { CatalogService } from './catalog.ts';
@@ -653,8 +654,7 @@ export class PatientsController {
  * Citas (T-014 y T-015; S-REC-06 a 17). La agenda y el detalle son de la sede
  * activa y exigen appointments.access (Recepción o Proveedor, ADR 0027). Los
  * cambios exigen además appointments.manage; el alcance del Proveedor (solo
- * sus citas) lo comprueba el servicio. El total de hoy del Panel no lleva
- * PHI: lo ve quien ve el Panel.
+ * sus citas) lo comprueba el servicio. «N citas hoy» va en el Panel (T-019).
  */
 @Controller('appointments')
 export class AppointmentsController {
@@ -732,12 +732,6 @@ export class AppointmentsController {
   @RequirePermission('appointments.access')
   day(@Req() request: FastifyRequest, @Query('date') date: unknown) {
     return this.#appointments.day(principalOf(request), typeof date === 'string' ? date : undefined, metaOf(request));
-  }
-
-  @Get('today-count')
-  @RequirePermission('panel.view')
-  todayCount(@Req() request: FastifyRequest) {
-    return this.#appointments.todayCount(principalOf(request));
   }
 
   @Get(':id')
@@ -898,6 +892,24 @@ export class PatientEncountersController {
   }
 }
 
+/**
+ * S-REC-01 Panel en vivo (T-019): la foto de la sede activa. Exige panel.view
+ * y, porque lleva nombres de pacientes, patients.access (ADR 0027).
+ */
+@Controller('panel')
+export class PanelController {
+  readonly #panel: PanelService;
+  constructor(@Inject(PanelService) panel: PanelService) {
+    this.#panel = panel;
+  }
+
+  @Get()
+  @RequirePermission('panel.view', 'patients.access')
+  snapshot(@Req() request: FastifyRequest) {
+    return this.#panel.snapshot(principalOf(request), metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -911,6 +923,7 @@ export interface ApiProviders {
   appointments: AppointmentService;
   appointmentCommands: AppointmentCommands;
   encounters: EncounterService;
+  panel: PanelService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -935,6 +948,7 @@ export function createApiModule(providers: ApiProviders) {
       ArrivalsController,
       EncountersController,
       PatientEncountersController,
+      PanelController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -949,6 +963,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: AppointmentService, useValue: providers.appointments },
       { provide: AppointmentCommands, useValue: providers.appointmentCommands },
       { provide: EncounterService, useValue: providers.encounters },
+      { provide: PanelService, useValue: providers.panel },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

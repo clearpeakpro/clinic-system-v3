@@ -23,7 +23,7 @@ import {
   type PatientAppointmentRow,
   type PatientAppointments,
 } from '@clinic/shared';
-import { and, asc, desc, eq, gte, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import type { AuditService } from './audit.ts';
@@ -197,21 +197,6 @@ export class AppointmentService {
       createdAt: found.createdAt.toISOString(),
       version: found.version,
     };
-  }
-
-  /** Subtítulo del Panel: citas de hoy en la sede menos Canceladas y No se presentó (S-REC-01). Sin PHI. */
-  async todayCount(actor: Principal): Promise<{ count: number; today: string }> {
-    const ctx = requireContext(actor);
-    return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
-      const site = await this.#site(tx, ctx.locationId);
-      const [row] = await tx
-        .select({ n: sql<number>`count(*)::int` })
-        .from(appointments)
-        .where(
-          and(eq(appointments.locationId, ctx.locationId), dayRange(site.today, site.timezone), notInArray(appointments.status, ['CANCELLED', 'NO_SHOW'])),
-        );
-      return { count: row?.n ?? 0, today: site.today };
-    });
   }
 
   /**

@@ -128,7 +128,7 @@ const appPatientRoute = createRoute({
   },
 });
 
-// S-REC-01 Panel: por ahora el título y «{sede} · N citas hoy» (T-014).
+// S-REC-01 Panel en vivo (T-019): tarjetas, filtros, lista e indicador de conexión.
 const appPanelRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'panel',

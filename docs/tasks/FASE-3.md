@@ -61,7 +61,7 @@ Las de `CLAUDE.md` y las de la fase 2, más estas:
 | --- | --- | --- | --- | --- |
 | T-017 — Llegada con cita y sin cita | 3A | 4 días | fase 2 | [0034](../decisions/0034-membresias-fase-3.md) |
 | T-018 — Pantalla de la visita y su circuito | 3A | 4 días | T-017 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
-| T-019 — Panel en vivo | 3A | 2–3 días | T-018 | — |
+| T-019 — Panel en vivo | 3A | 2–3 días | T-018 | [0039](../decisions/0039-alertas-espera-panel.md) |
 | T-022 — Enfermería | 3A | 4 días | T-018 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md), [0036](../decisions/0036-valoracion-paciente-visita.md) |
 | T-023 — Proveedor | 3A | 2–3 días | T-022 | — |
 | T-020 — Kiosco: tableta y formulario | 3A | 3–4 días | T-017 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
@@ -156,7 +156,9 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 
 ## T-019 — Panel en vivo
 
-**Decisiones:** ninguna.
+**Decisiones (resueltas el 2026-11-01):**
+- La lista trae las abiertas de cualquier día y las completadas hoy según su hora de cierre en la zona de la sede, para que coincidan la tarjeta y el chip «Completados hoy» (pregunta abierta 3 del capítulo de Recepción).
+- «Alerta» a los 5 min y «Crítico» a los 10 min en un estado de espera, por organización ([ADR 0039](../decisions/0039-alertas-espera-panel.md)).
 
 **Objetivo:** cada rol ve en el Panel quién está en la clínica, en qué estación y desde cuándo, en vivo.
 
@@ -598,8 +600,9 @@ En tu computadora, con varias ventanas abiertas como si fueran distintos puestos
 | P-20 | Valoración: qué es del paciente y qué de la visita | Alergias, antecedentes, cirugías, estilo de vida e historia reproductiva, del paciente; síntomas y notas, de la visita | [0036](../decisions/0036-valoracion-paciente-visita.md) | T-022 |
 | P-21 | Formato e idioma del recibo | Rollo de 80 mm desde el navegador, sin PDF; español e inglés | [0037](../decisions/0037-recibo-80mm-es-en.md) | T-029 |
 | P-22 | Reporte diario antes del piloto | Solo la pestaña «Diario» de la sede, en 3B | [0038](../decisions/0038-reporte-diario-antes-piloto.md) | T-031 |
+| — | Alertas de espera del Panel (al planificar T-019) | «Alerta» a los 5 min y «Crítico» a los 10 min en Registrado, Esperando enfermería y Esperando proveedor, desde el estado actual; minutos por organización | [0039](../decisions/0039-alertas-espera-panel.md) | T-019 |
 
-**Decisiones pendientes:** ninguna bloquea la fase 3. Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, que son de las fases 4 a 6 ([`PENDIENTES.md`](../decisions/PENDIENTES.md)). T-026b abrirá las suyas en su paso 0 (alta de la membresía del paciente).
+**Decisiones pendientes:** ninguna bloquea la fase 3. Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, que son de las fases 4 a 6, y P-23 (pantalla para los minutos del ADR 0039), sin fecha ([`PENDIENTES.md`](../decisions/PENDIENTES.md)). T-026b abrirá las suyas en su paso 0 (alta de la membresía del paciente).
 
 ## Fuera de la fase 3
 

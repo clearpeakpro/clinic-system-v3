@@ -11,6 +11,7 @@ Cuando una se resuelva, crear su ADR y quitarla de esta lista.
 | P-09 | Región de AWS y dominio | us-east-1 o us-east-2; subdominio de clearpeak.pro u otro | Fase 4 |
 | P-10 | Precios de CloudWatch en el presupuesto B | Confirmar en la calculadora de AWS (estimados en $1.03/mes) | Fase 4 |
 | P-13 | Anclaje de la cadena de auditoría | Guardar cada día el hash de la cabeza de cada cadena en S3 con Object Lock (modo gobernanza), como pide el [ADR 0018](0018-auditoria.md). Hasta entonces queda en la propia auditoría (`audit.chain_verified`). Requiere el entorno B. | Fase 4 |
+| P-23 | Pantalla para cambiar los minutos de «Alerta» y «Crítico» del Panel | Hoy son 5 y 10 minutos por organización, sin pantalla ([ADR 0039](0039-alertas-espera-panel.md)). El Administrador podrá cambiarlos más adelante, con auditoría; falta decidir dónde (Administración › Configuración) y los límites. | Cuando el Administrador lo pida |
 | P-12 | Operador: cuentas globales | El operador debe poder desactivar una cuenta global y resolver los `409 account_shared` (nombre, MFA o contraseña de una cuenta con membresías activas en varias organizaciones). Comandos del operador, como `org:create` ([ADR 0024](0024-operador-plataforma.md)). | Piloto (fase 4) |
 
 ## Resueltas

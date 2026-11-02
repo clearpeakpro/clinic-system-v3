@@ -20,12 +20,28 @@ const id = () => uuid('id').primaryKey().$defaultFn(() => uuidv7());
 const createdAt = () =>
   timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`);
 
-export const organizations = appSchema.table('organizations', {
-  id: id(),
-  name: text('name').notNull(),
-  status: text('status').notNull().default('active'),
-  createdAt: createdAt(),
-});
+export const organizations = appSchema.table(
+  'organizations',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    status: text('status').notNull().default('active'),
+    /**
+     * Configuración de la organización (ADR 0039, T-019): a partir de cuántos
+     * minutos en un estado de espera la visita se marca «Alerta» y «Crítico»
+     * en el Panel. Por ahora sin pantalla para cambiarlos (PENDIENTES.md, P-23).
+     */
+    waitAlertMinutes: integer('wait_alert_minutes').notNull().default(5),
+    waitCriticalMinutes: integer('wait_critical_minutes').notNull().default(10),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      'organizations_wait_minutes_check',
+      sql`${t.waitAlertMinutes} >= 1 and ${t.waitCriticalMinutes} > ${t.waitAlertMinutes} and ${t.waitCriticalMinutes} <= 1440`,
+    ),
+  ],
+);
 
 export const locations = appSchema.table(
   'locations',
