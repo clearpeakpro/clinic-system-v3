@@ -61,6 +61,7 @@ import { v7 as uuidv7 } from 'uuid';
 import type { AuditService } from './audit.ts';
 import type { Clock } from './clock.ts';
 import type { IdempotencyService } from './idempotency.ts';
+import { allergyNotice, latestHistory } from './nursing.ts';
 import { rolesAt, type Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
 
@@ -90,8 +91,8 @@ const coverageContext = (organizationId: string, recordId: string, column: 'insu
 /** Motivo de un cambio del historial (cerrar o forzar), cifrado con su fila. */
 const reasonContext = (organizationId: string, recordId: string) => ({ organizationId, table: 'encounter_events', column: 'reason', recordId });
 
-/** La visita bloqueada para un cambio. */
-interface Current {
+/** La visita bloqueada para un cambio (también la usa enfermería, T-022). */
+export interface LockedEncounter {
   id: string;
   organizationId: string;
   locationId: string;
@@ -404,10 +405,12 @@ export class EncounterService {
       const memberIds = [...events.map((e) => e.actorMembershipId), row.providerMembershipId].filter((id): id is string => id !== null);
       const members = memberIds.length > 0 ? await tx.select({ id: memberships.id, userId: memberships.userId }).from(memberships).where(inArray(memberships.id, [...new Set(memberIds)])) : [];
       const me = await this.#myMembership(tx, actor.userId);
+      // Aviso de alergias (ADR 0040, T-022): solo para quien ve datos clínicos; Recepción no.
+      const allergies = actor.permissions.has('nursing.view') ? allergyNotice(await latestHistory(tx, this.#cipher, ctx.organizationId, row.patientId)) : null;
       await this.#auditRead(tx, actor, 'encounter', row.id, meta);
-      return { row, coverage, events, members, me };
+      return { row, coverage, events, members, me, allergies };
     });
-    const { row, coverage, events, members, me } = data;
+    const { row, coverage, events, members, me, allergies } = data;
     const names = await this.#names(members.map((m) => m.userId));
     const nameOf = (membershipId: string | null) => {
       const member = members.find((m) => m.id === membershipId);
@@ -453,6 +456,7 @@ export class EncounterService {
       provider: row.providerMembershipId ? { membershipId: row.providerMembershipId, name: nameOf(row.providerMembershipId) ?? '' } : null,
       myMembershipId: me,
       coverage: coverage ? await this.#coverageView(ctx.organizationId, coverage) : null,
+      allergies,
       timeline,
       abilities: encounterAbilities({
         status,
@@ -468,25 +472,25 @@ export class EncounterService {
   /** S-CLI-07: un paso regular de la máquina de estados (ni la apertura ni los cierres). */
   async transition(actor: Principal, encounterId: string, raw: unknown, meta: RequestMeta): Promise<EncounterSaved> {
     const input = encounterTransitionSchema.parse(raw);
-    return this.#change(actor, encounterId, async (tx, current, me, now) => {
+    return this.change(actor, encounterId, async (tx, current, me, now) => {
       this.#requireVersion(current, input.expectedVersion);
       if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
       const result = visitTransition(current.status, input.action, { route: current.route, roles: actor.roles, hasOpenOrders: false });
       if (!result.ok) throw this.#transitionError(result.reason);
-      await this.#move(tx, actor, current, me, now, meta, { action: input.action, to: result.to, forced: false, reason: null, audit: 'encounter.transitioned' });
+      await this.move(tx, actor, current, me, now, meta, { action: input.action, to: result.to, forced: false, reason: null, audit: 'encounter.transitioned' });
     });
   }
 
   /** S-CLI-09 «Cerrar visita»: «Se retiró antes» o «Cancelada», con motivo obligatorio (paso de Recepción). */
   async close(actor: Principal, encounterId: string, raw: unknown, meta: RequestMeta): Promise<EncounterSaved> {
     const input = closeEncounterSchema.parse(raw);
-    return this.#change(actor, encounterId, async (tx, current, me, now) => {
+    return this.change(actor, encounterId, async (tx, current, me, now) => {
       this.#requireVersion(current, input.expectedVersion);
       if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
       const action = closeAction(input.outcome);
       const result = visitTransition(current.status, action, { route: current.route, roles: actor.roles });
       if (!result.ok) throw this.#transitionError(result.reason);
-      await this.#move(tx, actor, current, me, now, meta, { action, to: result.to, forced: false, reason: input.reason, audit: 'encounter.closed' });
+      await this.move(tx, actor, current, me, now, meta, { action, to: result.to, forced: false, reason: input.reason, audit: 'encounter.closed' });
     });
   }
 
@@ -498,7 +502,7 @@ export class EncounterService {
   async force(actor: Principal, encounterId: string, raw: unknown, meta: RequestMeta): Promise<EncounterSaved> {
     const input = forceEncounterSchema.parse(raw);
     if (!this.#canForce(actor)) throw new HttpError(403, 'forbidden');
-    return this.#change(actor, encounterId, async (tx, current, me, now) => {
+    return this.change(actor, encounterId, async (tx, current, me, now) => {
       this.#requireVersion(current, input.expectedVersion);
       const result = visitForce(current.status, input.status, current.route);
       if (!result.ok) throw new HttpError(409, 'invalid_transition');
@@ -516,7 +520,7 @@ export class EncounterService {
           );
         if (other) throw new HttpError(409, 'encounter_already_open', { encounterId: other.id });
       }
-      await this.#move(tx, actor, current, me, now, meta, { action: FORCE_ACTION, to: result.to, forced: true, reason: input.reason, audit: 'encounter.forced' });
+      await this.move(tx, actor, current, me, now, meta, { action: FORCE_ACTION, to: result.to, forced: true, reason: input.reason, audit: 'encounter.forced' });
     });
   }
 
@@ -528,7 +532,7 @@ export class EncounterService {
    */
   async assignProvider(actor: Principal, encounterId: string, raw: unknown, meta: RequestMeta): Promise<EncounterSaved> {
     const input = assignProviderSchema.parse(raw);
-    return this.#change(actor, encounterId, async (tx, current, me, now) => {
+    return this.change(actor, encounterId, async (tx, current, me, now) => {
       const self = input.providerMembershipId === me;
       if (!actor.permissions.has('visits.manage') && !(self && actor.roles.includes('proveedor'))) throw new HttpError(403, 'assign_not_allowed');
       if (current.providerMembershipId === input.providerMembershipId) return;
@@ -565,7 +569,7 @@ export class EncounterService {
           code: current.code,
         });
       }
-      await this.#changed(tx, current, current.status);
+      await this.changed(tx, current, current.status);
     });
   }
 
@@ -593,7 +597,7 @@ export class EncounterService {
    */
   async updateCoverage(actor: Principal, encounterId: string, raw: unknown, meta: RequestMeta): Promise<EncounterSaved> {
     const input = updateCoverageSchema.parse(raw);
-    return this.#change(actor, encounterId, async (tx, current) => {
+    return this.change(actor, encounterId, async (tx, current) => {
       if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
       const [row] = await tx.select().from(coverages).where(eq(coverages.encounterId, current.id)).for('update');
       if (!row) throw new HttpError(404, 'coverage_not_found');
@@ -630,7 +634,7 @@ export class EncounterService {
         // Solo los nombres de los campos, nunca los valores (ADR 0018).
         metadata: { code: current.code, fields: fields.join(','), coverage: after.type, version },
       });
-      await this.#changed(tx, current, current.status);
+      await this.changed(tx, current, current.status);
     });
   }
 
@@ -706,7 +710,7 @@ export class EncounterService {
    * se bloquea (FOR UPDATE) y la respuesta lleva su estado y su versión
    * (sin datos del paciente). 404 si es de otra sede o no existe.
    */
-  async #change(actor: Principal, encounterId: string, work: (tx: Tx, current: Current, me: string, now: Date) => Promise<void>): Promise<EncounterSaved> {
+  async change(actor: Principal, encounterId: string, work: (tx: Tx, current: LockedEncounter, me: string, now: Date) => Promise<void>): Promise<EncounterSaved> {
     const ctx = requireContext(actor);
     try {
       return await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
@@ -727,7 +731,7 @@ export class EncounterService {
           .where(and(eq(encounters.id, encounterId), eq(encounters.locationId, ctx.locationId)))
           .for('update');
         if (!row) throw new HttpError(404, 'encounter_not_found');
-        const current: Current = { ...row, status: row.status as VisitStatus, route: row.route as VisitRoute };
+        const current: LockedEncounter = { ...row, status: row.status as VisitStatus, route: row.route as VisitRoute };
         const me = await this.#myMembership(tx, actor.userId);
         await work(tx, current, me, this.#clock.now());
         const [saved] = await tx.select({ status: encounters.status, version: encounters.version }).from(encounters).where(eq(encounters.id, current.id));
@@ -740,7 +744,7 @@ export class EncounterService {
     }
   }
 
-  #requireVersion(current: Current, expectedVersion: number): void {
+  #requireVersion(current: LockedEncounter, expectedVersion: number): void {
     if (current.version !== expectedVersion) throw new HttpError(409, 'version_conflict');
   }
 
@@ -759,10 +763,10 @@ export class EncounterService {
    * su fila del historial (con el motivo cifrado), la auditoría y el evento
    * en vivo, todo en la transacción del cambio.
    */
-  async #move(
+  async move(
     tx: Tx,
     actor: Principal,
-    current: Current,
+    current: LockedEncounter,
     me: string,
     now: Date,
     meta: RequestMeta,
@@ -801,11 +805,11 @@ export class EncounterService {
         ...(step.forced ? { forced: true, reopened: reopens(current.status, step.to) } : {}),
       },
     });
-    await this.#changed(tx, current, step.to);
+    await this.changed(tx, current, step.to);
   }
 
-  /** Evento en vivo de la sede: solo el id y el estado. */
-  async #changed(tx: Tx, current: Current, status: VisitStatus): Promise<void> {
+  /** Evento en vivo de la sede: solo el id y el estado (también tras guardar datos de enfermería, T-022). */
+  async changed(tx: Tx, current: LockedEncounter, status: VisitStatus): Promise<void> {
     await notifyRealtime(tx, {
       t: 'event',
       org: current.organizationId,
@@ -816,7 +820,7 @@ export class EncounterService {
     });
   }
 
-  #auditBase(actor: Principal, current: Current, meta: RequestMeta) {
+  #auditBase(actor: Principal, current: LockedEncounter, meta: RequestMeta) {
     return { actorType: 'user' as const, actorId: actor.userId, locationId: current.locationId, entityType: 'encounter', entityId: current.id, ...meta };
   }
 

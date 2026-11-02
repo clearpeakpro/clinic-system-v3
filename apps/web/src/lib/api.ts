@@ -12,6 +12,12 @@ import type {
   ForceEncounterInput,
   PatientEncounters,
   PanelSnapshot,
+  NursingQueue,
+  NursingSaved,
+  NursingSection,
+  SaveAssessmentInput,
+  SaveVitalsInput,
+  SendToProviderInput,
   UpdateCoverageInput,
   AppointmentDetail,
   AppointmentFormOptions,
@@ -60,7 +66,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
+async function request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
   const response = await fetch(path, {
     method,
     credentials: 'same-origin',
@@ -334,6 +340,12 @@ export const api = {
   patientEncounters: (patientId: string, offset: number) =>
     request<PatientEncounters>('GET', `/api/patients/${patientId}/encounters?offset=${String(offset)}`),
   panel: () => request<PanelSnapshot>('GET', '/api/panel'),
+  // Enfermería (T-022).
+  nursingQueue: () => request<NursingQueue>('GET', '/api/nursing/queue'),
+  nursingSection: (encounterId: string) => request<NursingSection>('GET', `/api/encounters/${encounterId}/nursing`),
+  saveVitals: (encounterId: string, input: SaveVitalsInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/vitals`, input),
+  saveAssessment: (encounterId: string, input: SaveAssessmentInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/assessment`, input),
+  sendToProvider: (encounterId: string, input: SendToProviderInput) => request<NursingSaved>('POST', `/api/encounters/${encounterId}/send-to-provider`, input),
   patientAppointments: (patientId: string, offset: number) =>
     request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),
   // Excepción del ADR 0027: el Propietario se asigna roles clínicos.

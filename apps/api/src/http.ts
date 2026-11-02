@@ -9,6 +9,9 @@ import {
   encounterTransitionSchema,
   forceEncounterSchema,
   updateCoverageSchema,
+  saveAssessmentSchema,
+  saveVitalsSchema,
+  sendToProviderSchema,
   cancelAppointmentSchema,
   createAppointmentSchema,
   type CreateAppointmentInput,
@@ -57,6 +60,7 @@ import {
   Module,
   Param,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -72,6 +76,7 @@ import { z } from 'zod';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { EncounterService } from './encounters.ts';
+import { NursingService } from './nursing.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyKey } from './idempotency.ts';
 import { AuditService } from './audit.ts';
@@ -910,6 +915,55 @@ export class PanelController {
   }
 }
 
+/**
+ * Enfermería (T-022; S-CLI-01, S-CLI-13 a 16). Todo exige patients.access (un
+ * rol clínico en la sede, ADR 0027). La cola, además nursing_queue.access;
+ * signos vitales, nursing.vitals; valoración, nursing.assessment. «Enviar al
+ * proveedor» lo decide la máquina de estados (regular) o nursing.send_exception
+ * (excepción, ADR 0033): lo comprueba el servicio.
+ */
+@Controller()
+export class NursingController {
+  readonly #nursing: NursingService;
+  constructor(@Inject(NursingService) nursing: NursingService) {
+    this.#nursing = nursing;
+  }
+
+  @Get('nursing/queue')
+  @RequirePermission('nursing_queue.access', 'patients.access')
+  queue(@Req() request: FastifyRequest) {
+    return this.#nursing.queue(principalOf(request), metaOf(request));
+  }
+
+  @Get('encounters/:id/nursing')
+  @RequirePermission('patients.access')
+  section(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
+    return this.#nursing.section(principalOf(request), id(encounterId), metaOf(request));
+  }
+
+  @Put('encounters/:id/vitals')
+  @RequirePermission('patients.access', 'nursing.vitals')
+  vitals(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    parse(saveVitalsSchema, body);
+    return this.#nursing.saveVitals(principalOf(request), id(encounterId), body, metaOf(request));
+  }
+
+  @Put('encounters/:id/assessment')
+  @RequirePermission('patients.access', 'nursing.assessment')
+  assessment(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    parse(saveAssessmentSchema, body);
+    return this.#nursing.saveAssessment(principalOf(request), id(encounterId), body, metaOf(request));
+  }
+
+  @Post('encounters/:id/send-to-provider')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  send(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    parse(sendToProviderSchema, body);
+    return this.#nursing.sendToProvider(principalOf(request), id(encounterId), body, metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -924,6 +978,7 @@ export interface ApiProviders {
   appointmentCommands: AppointmentCommands;
   encounters: EncounterService;
   panel: PanelService;
+  nursing: NursingService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -949,6 +1004,7 @@ export function createApiModule(providers: ApiProviders) {
       EncountersController,
       PatientEncountersController,
       PanelController,
+      NursingController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -964,6 +1020,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: AppointmentCommands, useValue: providers.appointmentCommands },
       { provide: EncounterService, useValue: providers.encounters },
       { provide: PanelService, useValue: providers.panel },
+      { provide: NursingService, useValue: providers.nursing },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

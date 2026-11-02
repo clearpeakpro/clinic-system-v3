@@ -392,6 +392,7 @@ describe('Administración › Usuarios', () => {
       'locations.manage',
       'members.invite',
       'members.manage',
+      'nursing.send_exception',
       'patients.deactivate',
       'patients.edit_birth_date',
       'visits.force_state',

@@ -14,6 +14,7 @@ import { DestinationPage } from './pages/destination.tsx';
 import { EncounterPage, type EncounterSection } from './pages/encounter.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
+import { NursingQueuePage } from './pages/nursing-queue.tsx';
 import { PanelPage } from './pages/panel.tsx';
 import { PatientPage } from './pages/patient.tsx';
 import { PatientsPage } from './pages/patients.tsx';
@@ -225,6 +226,21 @@ const appEncounterRoute = createRoute({
   },
 });
 
+// S-CLI-01 Cola de enfermería (T-022): Enfermería y Proveedor (nursing_queue.access).
+const appNursingQueueRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'cola-enfermeria',
+  component: function NursingQueue() {
+    const me = useMe();
+    const { sede } = appNursingQueueRoute.useParams();
+    // Sin acceso, en silencio al Panel (manual, S-CLI-01).
+    if (me.data && !(me.data.permissions.includes('nursing_queue.access') && me.data.permissions.includes('patients.access'))) {
+      return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+    }
+    return <NursingQueuePage sede={sede} />;
+  },
+});
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -318,6 +334,7 @@ const routeTree = rootRoute.addChildren([
     appPatientsRoute,
     appPatientRoute,
     appPanelRoute,
+    appNursingQueueRoute,
     appAppointmentsRoute,
     appWalkInRoute,
     appArrivalRoute,

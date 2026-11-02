@@ -218,6 +218,20 @@
       "when": 1793589092493,
       "tag": "0030_organizations_wait_minutes",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793593864951,
+      "tag": "0031_nursing",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793593879574,
+      "tag": "0032_nursing_rls",
+      "breakpoints": true
     }
   ]
 }

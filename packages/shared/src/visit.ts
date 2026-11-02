@@ -134,6 +134,13 @@ export interface VisitTransitionContext {
   roles: readonly Role[];
   /** ¿Hay órdenes pendientes o en curso? (Desde T-025; antes, siempre false.) */
   hasOpenOrders?: boolean;
+  /**
+   * Excepción administrativa (ADR 0033): quien actúa no necesita el rol dueño
+   * del paso (p. ej. «Enviar con excepción…» del Propietario o el
+   * Administrador con un rol clínico). El paso sigue teniendo que existir
+   * desde ese estado y con esa ruta. El permiso lo comprueba la API.
+   */
+  asOwner?: boolean;
 }
 
 export type VisitTransitionResult =
@@ -153,7 +160,7 @@ const routeMatches = (transition: VisitTransition, route: VisitRoute) =>
 export function visitTransition(from: VisitStatus | null, action: VisitAction, ctx: VisitTransitionContext): VisitTransitionResult {
   const transition = VISIT_TRANSITIONS.find((t) => t.from === from && t.action === action && routeMatches(t, ctx.route));
   if (!transition) return { ok: false, reason: 'invalid_transition' };
-  if (!transition.roles.some((role) => ctx.roles.includes(role))) return { ok: false, reason: 'forbidden' };
+  if (!ctx.asOwner && !transition.roles.some((role) => ctx.roles.includes(role))) return { ok: false, reason: 'forbidden' };
   if (transition.blockedByOpenOrders && ctx.hasOpenOrders) return { ok: false, reason: 'open_orders' };
   return { ok: true, to: transition.to, transition };
 }
@@ -226,9 +233,22 @@ export function reopens(from: VisitStatus, to: VisitStatus): boolean {
   return !isOpenVisitStatus(from) && isOpenVisitStatus(to);
 }
 
+/**
+ * «Enviar al proveedor» (ADR 0003, T-022): un solo botón, en la sección
+ * Enfermería. Desde «Esperando enfermería» son dos pasos de la máquina
+ * (iniciar enfermería y enviar), cada uno con su fila del historial; desde
+ * «Con enfermería», uno. Solo en la ruta Estándar. Nulo: no se puede.
+ */
+export function nursingSendSteps(status: VisitStatus, route: VisitRoute): VisitAction[] | null {
+  if (isDirectRoute(route)) return null;
+  if (status === 'WAITING_FOR_NURSE') return ['start_nursing', 'send_to_provider'];
+  if (status === 'WITH_NURSE') return ['send_to_provider'];
+  return null;
+}
+
 /** Lo que puede hacer una persona en la pantalla de la visita (S-CLI-04 a 12). Lo calcula la API; la web solo lo muestra. */
 export interface EncounterAbilities {
-  /** Acciones regulares de la barra (S-CLI-07), sin los cierres. */
+  /** Acciones regulares de la barra (S-CLI-07), sin los cierres ni «Enviar al proveedor» (está en la sección Enfermería, ADR 0003). */
   actions: VisitAction[];
   /** «Cerrar visita…» (S-CLI-09). */
   close: boolean;
@@ -259,7 +279,7 @@ export function encounterAbilities(input: {
   const open = isOpenVisitStatus(input.status);
   const all = visitActions(input.status, { route: input.route, roles: input.roles });
   return {
-    actions: all.filter((a) => !isCloseAction(a)),
+    actions: all.filter((a) => !isCloseAction(a) && a !== 'send_to_provider'),
     close: all.some(isCloseAction),
     forceTargets: input.canForce ? forceTargets(input.status, input.route) : [],
     assignProvider: open && input.canManage,

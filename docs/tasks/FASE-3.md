@@ -62,7 +62,7 @@ Las de `CLAUDE.md` y las de la fase 2, más estas:
 | T-017 — Llegada con cita y sin cita | 3A | 4 días | fase 2 | [0034](../decisions/0034-membresias-fase-3.md) |
 | T-018 — Pantalla de la visita y su circuito | 3A | 4 días | T-017 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
 | T-019 — Panel en vivo | 3A | 2–3 días | T-018 | [0039](../decisions/0039-alertas-espera-panel.md) |
-| T-022 — Enfermería | 3A | 4 días | T-018 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md), [0036](../decisions/0036-valoracion-paciente-visita.md) |
+| T-022 — Enfermería | 3A | 4 días | T-018 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md), [0036](../decisions/0036-valoracion-paciente-visita.md), [0040](../decisions/0040-alergias-sin-alergias-conocidas.md) |
 | T-023 — Proveedor | 3A | 2–3 días | T-022 | — |
 | T-020 — Kiosco: tableta y formulario | 3A | 3–4 días | T-017 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
 | T-021 — Llegadas del kiosco en Recepción | 3A | 3 días | T-019, T-020 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
@@ -186,6 +186,7 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 **Decisiones (resueltas el 2026-11-01):**
 - P-20 ([ADR 0036](../decisions/0036-valoracion-paciente-visita.md)): Alergias, Antecedentes personales, Antecedentes familiares, Cirugías, Estilo de vida e Historia reproductiva son **del paciente**, versionados y con aviso en cada visita. Síntomas / motivo de consulta y Notas de enfermería son **de la visita**. Edita Enfermería; el Proveedor solo lee.
 - P-17 ([ADR 0033](../decisions/0033-acciones-administrativas-flujo-clinico.md)): la excepción de «Enviar al proveedor» sin signos vitales la autorizan el Propietario o el Administrador con rol clínico en la sede, con motivo.
+- Al planificar (2026-11-01): la excepción es un solo paso («Enviar con excepción…» con motivo); Recepción no ve el aviso de alergias; «Alerta» y «Crítico» también en la Cola de enfermería, solo en «Esperando enfermería» ([ADR 0039](../decisions/0039-alertas-espera-panel.md)); «Sin alergias conocidas» como estado explícito ([ADR 0040](../decisions/0040-alergias-sin-alergias-conocidas.md)).
 
 **Objetivo:** Enfermería toma al paciente de su cola, registra signos vitales y valoración, y lo envía al proveedor.
 
@@ -600,7 +601,8 @@ En tu computadora, con varias ventanas abiertas como si fueran distintos puestos
 | P-20 | Valoración: qué es del paciente y qué de la visita | Alergias, antecedentes, cirugías, estilo de vida e historia reproductiva, del paciente; síntomas y notas, de la visita | [0036](../decisions/0036-valoracion-paciente-visita.md) | T-022 |
 | P-21 | Formato e idioma del recibo | Rollo de 80 mm desde el navegador, sin PDF; español e inglés | [0037](../decisions/0037-recibo-80mm-es-en.md) | T-029 |
 | P-22 | Reporte diario antes del piloto | Solo la pestaña «Diario» de la sede, en 3B | [0038](../decisions/0038-reporte-diario-antes-piloto.md) | T-031 |
-| — | Alertas de espera del Panel (al planificar T-019) | «Alerta» a los 5 min y «Crítico» a los 10 min en Registrado, Esperando enfermería y Esperando proveedor, desde el estado actual; minutos por organización | [0039](../decisions/0039-alertas-espera-panel.md) | T-019 |
+| — | Alergias (al planificar T-022) | «Sin alergias conocidas» es un estado explícito, distinto de «no registradas»; el encabezado muestra los tres casos | [0040](../decisions/0040-alergias-sin-alergias-conocidas.md) | T-022 |
+| — | Alertas de espera del Panel (al planificar T-019) | «Alerta» a los 5 min y «Crítico» a los 10 min en Registrado, Esperando enfermería y Esperando proveedor, desde el estado actual; minutos por organización; también en la Cola de enfermería (T-022) | [0039](../decisions/0039-alertas-espera-panel.md) | T-019, T-022 |
 
 **Decisiones pendientes:** ninguna bloquea la fase 3. Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, que son de las fases 4 a 6, y P-23 (pantalla para los minutos del ADR 0039), sin fecha ([`PENDIENTES.md`](../decisions/PENDIENTES.md)). T-026b abrirá las suyas en su paso 0 (alta de la membresía del paciente).
 

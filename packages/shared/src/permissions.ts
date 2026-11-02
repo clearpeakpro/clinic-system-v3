@@ -45,6 +45,16 @@ export const PERMISSIONS = [
   // «Forzar estado…» y reabrir (S-CLI-10, ADR 0033): Propietario y
   // Administrador, solo junto a patients.access (un rol clínico en la sede).
   'visits.force_state',
+  // Enfermería (T-022; S-CLI-13 a 16). Ver los valores clínicos: Enfermería y
+  // Proveedor (Recepción solo ve la vista limitada, con fechas). Signos
+  // vitales: Enfermería y Proveedor (manual). Valoración e historia del
+  // paciente: solo Enfermería; el Proveedor la lee (ADR 0036).
+  'nursing.view',
+  'nursing.vitals',
+  'nursing.assessment',
+  // Excepción de «Enviar al proveedor» sin peso ni presión (ADR 0003 y 0033):
+  // Propietario y Administrador, solo junto a patients.access.
+  'nursing.send_exception',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -76,6 +86,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'patients.edit_birth_date',
     'patients.deactivate',
     'visits.force_state',
+    'nursing.send_exception',
   ],
   administrador: [
     'members.invite',
@@ -86,6 +97,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'patients.edit_birth_date',
     'patients.deactivate',
     'visits.force_state',
+    'nursing.send_exception',
   ],
   recepcion: [
     'panel.view',
@@ -99,13 +111,15 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'checkout.access',
     'reports.location',
   ],
-  enfermeria: ['panel.view', 'patients.access', 'nursing_queue.access', 'orders_queue.access'],
+  enfermeria: ['panel.view', 'patients.access', 'nursing.view', 'nursing.vitals', 'nursing.assessment', 'nursing_queue.access', 'orders_queue.access'],
   proveedor: [
     'panel.view',
     'patients.access',
     'patients.edit_phone',
     'appointments.access',
     'appointments.manage',
+    'nursing.view',
+    'nursing.vitals',
     'nursing_queue.access',
     'provider_queue.access',
     'orders_queue.access',

@@ -178,10 +178,16 @@ describe('T-018 pantalla de la visita', () => {
     try {
       for (const [client, action, to] of steps) {
         clock.set(new Date(new Date(NOW).getTime() + version * 60_000));
-        const response = await step(client, id, action, version);
+        // «Enviar al proveedor» exige peso o presión guardados y tiene su propio endpoint (ADR 0003, T-022).
+        if (action === 'send_to_provider') {
+          expect((await client.put(`/api/encounters/${id}/vitals`, { changes: { weightLb: 150 }, expectedVersion: 0 })).statusCode).toBe(200);
+        }
+        const response =
+          action === 'send_to_provider' ? await client.post(`/api/encounters/${id}/send-to-provider`, { expectedVersion: version }) : await step(client, id, action, version);
         expect(response.statusCode, `${action}: ${response.body}`).toBe(200);
         version += 1;
-        expect(response.json<EncounterSaved>()).toEqual({ id, status: to, version });
+        if (action === 'send_to_provider') expect(response.json()).toMatchObject({ encounterStatus: to, encounterVersion: version });
+        else expect(response.json<EncounterSaved>()).toEqual({ id, status: to, version });
       }
     } finally {
       clock.set(NOW);

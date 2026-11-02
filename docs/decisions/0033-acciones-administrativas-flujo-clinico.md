@@ -31,3 +31,12 @@ El manual reserva al Administrador varias acciones del flujo clínico y de Caja:
 - **Motivo obligatorio** (máx. 500), cifrado en `encounter_events` y en la auditoría `encounter.forced` (`forced`, `reopened`). En el historial (S-CLI-24) la entrada lleva el chip «Forzado» y el motivo.
 - **Pruebas:** `apps/api/test/encounter-screen.test.ts` (Administrador sin rol clínico, Recepción, Enfermería y Proveedor: 403; destinos regulares y cierres: 409; reabrir y su bloqueo) y `apps/web/e2e/visita.spec.ts` (el Propietario de una organización nueva se asigna Recepción y fuerza con motivo).
 - **Pendiente en sus tareas:** la excepción de «Enviar al proveedor» (T-022), la creación de órdenes (T-025) y anular cargos y pagos (T-028).
+
+## Cómo quedó implementada la excepción de «Enviar al proveedor» (T-022, 2026-11-01)
+
+- **Un solo paso** (decisión del 2026-11-01): el Propietario o el Administrador con un rol clínico en la sede pulsa «Enviar con excepción…», escribe el motivo y la visita pasa a «Esperando proveedor». No hay solicitud ni aprobación.
+- **Permiso:** `nursing.send_exception`, del Propietario y el Administrador; `POST /api/encounters/:id/send-to-provider` con `reason` exige además `patients.access`. Sin él, o sin el permiso (Enfermería incluida), 403.
+- **Máquina de estados:** los pasos siguen siendo los de `visit.ts` (desde «Esperando enfermería», iniciar y enviar; desde «Con enfermería», enviar; solo ruta Estándar). La excepción solo salta el rol dueño del paso (`asOwner`) y el requisito de peso o presión.
+- **Registro:** el motivo va cifrado en la fila `send_to_provider` del historial (chip «Excepción» en S-CLI-24) y en la auditoría `encounter.nursing_exception`.
+- **En la web:** solo se ofrece cuando no hay peso ni presión guardados, desde el botón de la sección Enfermería o desde el diálogo «Sin signos vitales».
+- **Pruebas:** `apps/api/test/nursing.test.ts`.
