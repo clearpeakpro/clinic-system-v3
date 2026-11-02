@@ -116,3 +116,58 @@ export interface KioskSession {
 export interface KioskCheckinReceipt {
   received: true;
 }
+
+// --- Recepción (T-021; S-REC-28) ---------------------------------------------
+
+/** El motivo, en la bandeja y en la visita (español, para el personal). Con icono, texto y color en la web. */
+export const KIOSK_REASON_LABELS: Record<KioskReason, string> = {
+  sick: 'Me siento enfermo',
+  results: 'Vengo por resultados',
+  injection: 'Vengo por una inyección',
+  other: 'Otro motivo',
+};
+
+/** Un registro pendiente en la bandeja «Llegadas del kiosco». */
+export interface KioskArrival {
+  id: string;
+  createdAt: string;
+  firstName: string;
+  lastName: string;
+  birthDate: string;
+  phone: string;
+  firstVisit: boolean;
+  reason: KioskReason;
+  symptoms: string;
+}
+
+export interface KioskArrivals {
+  serverNow: string;
+  timeZone: string;
+  /** Día de la sede (aaaa-mm-dd), para la edad. */
+  today: string;
+  /** Lo más antiguo primero: se atiende por orden de llegada. */
+  rows: KioskArrival[];
+}
+
+/** Una coincidencia para «Ya soy paciente»: qué datos coinciden y su cita de hoy en la sede, si la tiene. */
+export interface KioskMatch {
+  patient: { id: string; code: string; firstName: string; lastName: string; birthDate: string; phone: string | null; status: 'active' | 'inactive' };
+  matches: { name: boolean; birthDate: boolean; phone: boolean };
+}
+
+/** El registro para el paso previo del asistente, con sus coincidencias. */
+export interface KioskArrivalDetail {
+  arrival: KioskArrival;
+  /** Mejores primero: más datos coincidentes. Hasta 5. */
+  candidates: KioskMatch[];
+}
+
+/** «Descartar» (un envío de prueba, un duplicado): con motivo. */
+export const discardKioskArrivalSchema = z.object({ reason: z.string().trim().min(1).max(500) });
+export type DiscardKioskArrivalInput = z.input<typeof discardKioskArrivalSchema>;
+
+/** «Motivo declarado por el paciente» en la visita: tal como lo envió, sin interpretarlo (ADR 0031). */
+export interface DeclaredReason {
+  reason: KioskReason;
+  symptoms: string;
+}

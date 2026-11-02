@@ -306,6 +306,10 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 ## T-021 — Llegadas del kiosco en Recepción
 
 **Decisiones (resueltas el 2026-11-01):** P-06 c y d ([ADR 0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md)). No hay sugerencias de ruta ni tabla motivo → ruta en V1: **Recepción elige siempre la ruta**, también con «Vengo por resultados».
+- Al planificar (2026-11-02):
+  - en el paso «Ruta» del asistente no viene **ninguna** ruta marcada (ni la del tipo de cita) y «Continuar» exige elegir una;
+  - el «motivo declarado por el paciente» se ve en la visita, de solo lectura, para los cuatro roles clínicos;
+  - el aviso sonoro de la bandeja tiene «Silenciar», recordado solo en memoria en esa ventana.
 
 **Objetivo:** cada registro del kiosco aparece al instante en el Panel de Recepción, que lo confirma con el asistente de llegada precargado.
 
@@ -328,6 +332,13 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 - confirmar dos veces no crea dos visitas;
 - tras confirmar, el contenido del registro ya no existe en la base;
 - E2E `kiosco-recepcion.spec.ts`.
+
+**Cómo quedó implementada (2026-11-02):**
+- **Base de datos:** migración `0035`: `kiosk_checkins` gana el paciente, la visita y quién lo resolvió y cuándo (confirmado o descartado: sin contenido); `encounters.declared_reason_enc` guarda el motivo y los síntomas cifrados.
+- **API:** `GET /api/kiosk-arrivals` (bandeja, lectura auditada `kiosk.arrivals_list`), `GET /api/kiosk-arrivals/:id` (con las coincidencias por nombre, fecha de nacimiento y teléfono; `kiosk.arrival_view`), `GET /api/kiosk-arrivals/today-appointment/:patientId` y `POST /api/kiosk-arrivals/:id/discard` (motivo). Confirmar es la llegada de siempre (`POST /api/encounters` con `Idempotency-Key`) con `kioskCheckinId`: en la misma transacción bloquea el registro, abre la visita (origen `kiosk`, o `appointment` si tenía cita hoy, que pasa a «Llegó»), copia el motivo declarado y borra el contenido del registro (`kiosk.checkin_confirmed`). Un registro vencido o ya resuelto da 409. Permisos: `appointments.check_in` + `patients.access` (Recepción).
+- **En vivo:** `kiosk.checkin` con solo el id, al enviar, confirmar y descartar.
+- **Web:** bandeja `apps/web/src/components/panel/kiosk-arrivals.tsx` en el Panel; `apps/web/src/pages/kiosk-arrival.tsx` (`/app/<SEDE>/llegada/kiosco/<id>`) con el paso previo del paciente y el asistente de T-017 (`kiosk`: sin ruta marcada y con el motivo a la vista); la tarjeta «Motivo declarado por el paciente (kiosco)» en la visita.
+- **Pruebas:** `apps/api/test/kiosk-arrivals.test.ts` (reloj fijado), `packages/db/test/kiosk.test.ts`, `apps/web/src/lib/kiosk-arrivals.test.ts` y la E2E `kiosco-recepcion.spec.ts`. La E2E prepara la tableta de NOR1 como `clinic_app` con un código conocido, porque vincularla desde Sedes ya lo prueba `kiosco.spec.ts` y las cuentas de Administración de la semilla las usan otras E2E.
 
 ## T-024 — Cierre de 3A: semilla, guion y demo
 
@@ -617,7 +628,7 @@ En tu computadora, con varias ventanas abiertas como si fueran distintos puestos
 
 | # | Decisión | Resolución | ADR | Tareas |
 | --- | --- | --- | --- | --- |
-| P-06 | Kiosco: idioma, consentimientos, tabla motivo → ruta y «Vengo por resultados» | Español e inglés; consentimientos en papel en Recepción; sin sugerencias de ruta en V1: decide Recepción. Al planificar T-020: sesión de la tableta sin datos, nacimiento con mes/día/año, 20 envíos cada 10 min | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) | T-020, T-021 |
+| P-06 | Kiosco: idioma, consentimientos, tabla motivo → ruta y «Vengo por resultados» | Español e inglés; consentimientos en papel en Recepción; sin sugerencias de ruta en V1: decide Recepción. Al planificar T-020: sesión de la tableta sin datos, nacimiento con mes/día/año, 20 envíos cada 10 min. Al planificar T-021: ninguna ruta marcada al confirmar un registro del kiosco | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) | T-020, T-021 |
 | P-16 | Fusionar pacientes duplicados | Propietario o Administrador con rol clínico; todo pasa al principal; bloqueo con dos visitas abiertas en la sede; irreversible; auditado con conteos y sin nombres | [0032](../decisions/0032-fusionar-pacientes.md) | T-030 |
 | P-17 | Acciones que el manual reserva al Administrador | Forzar estado, anular y la excepción de «Enviar al proveedor»: Propietario o Administrador con rol clínico en la sede; órdenes, solo el rol Proveedor | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) | T-018, T-022, T-025, T-028 |
 | P-18 | Membresías | Completas en 3B (T-026b); en 3A, solo «Pago directo» y «Seguro» | [0034](../decisions/0034-membresias-fase-3.md) | T-017, T-026b, T-027 |

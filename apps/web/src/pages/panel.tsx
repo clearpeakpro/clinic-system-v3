@@ -5,6 +5,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { Armchair, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FilterBar } from '../components/panel/filter-bar.tsx';
+import { KioskArrivalsTray } from '../components/panel/kiosk-arrivals.tsx';
 import { PanelLiveChip } from '../components/panel/live-chip.tsx';
 import { MetricCards } from '../components/panel/metric-cards.tsx';
 import { QueueList } from '../components/panel/queue-list.tsx';
@@ -21,6 +22,7 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 //  - Los cronómetros parten de la hora del servidor y se redibujan cada 15 s
 //    sin pedir datos.
 //  - Filtro inicial según el rol; dura la sesión (lib/panel.ts).
+//  - Desde T-021: arriba, «Llegadas del kiosco» (S-REC-28) para Recepción.
 
 const TICK_MS = 15_000;
 
@@ -76,6 +78,9 @@ export function PanelPage({ sede }: { sede: string }) {
           </Button>
         </div>
       </header>
+
+      {/* S-REC-28 (T-021): Llegadas del kiosco, para quien registra llegadas (Recepción). */}
+      {ready && me.data?.permissions.includes('appointments.check_in') ? <KioskArrivalsTray sede={sede} locationId={active.id} /> : null}
 
       <MetricCards
         metrics={data?.metrics}

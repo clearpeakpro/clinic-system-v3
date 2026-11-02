@@ -29,19 +29,23 @@ const EMPTY: Values = { firstName: '', lastName: '', birthDate: '', phone: '', r
 
 export function NewPatientDialog({
   today,
+  initial,
   onClose,
   onCreated,
   onOpenExisting,
 }: {
   /** Hoy en la sede activa: la fecha de nacimiento no puede ser posterior. */
   today: string;
+  /** Datos ya escritos (T-021: los del registro del kiosco); se revisan antes de crear. */
+  initial?: Partial<Pick<Values, 'firstName' | 'lastName' | 'birthDate' | 'phone'>>;
   onClose: () => void;
   onCreated: (created: CreatedPatient) => void;
   onOpenExisting: (patientId: string) => void;
 }) {
   const catalog = useQuery<CatalogList, ApiError>({ queryKey: ['catalog'], queryFn: api.catalog });
   const sources = catalog.data?.items['referral-sources'] ?? [];
-  const [values, setValues] = useState(EMPTY);
+  const [start] = useState<Values>(() => ({ ...EMPTY, ...initial }));
+  const [values, setValues] = useState(start);
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -65,7 +69,7 @@ export function NewPatientDialog({
   else if (values.birthDate > today) errors.birthDate = 'La fecha de nacimiento no puede ser futura.';
   const digits = values.phone.replace(/\D/g, '');
   if (values.phone.trim() !== '' && (digits.length < 7 || digits.length > 15)) errors.phone = 'Ingrese un teléfono válido (al menos 7 dígitos).';
-  const dirty = (Object.keys(EMPTY) as (keyof Values)[]).some((k) => values[k] !== EMPTY[k]);
+  const dirty = (Object.keys(EMPTY) as (keyof Values)[]).some((k) => values[k] !== start[k]);
   const shown = (key: keyof Values) => (submitted ? (errors[key] ?? null) : null);
 
   const requestClose = () => {

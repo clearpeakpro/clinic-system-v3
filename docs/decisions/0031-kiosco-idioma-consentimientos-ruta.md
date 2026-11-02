@@ -34,3 +34,8 @@ El kiosco (`docs/manual/11_kiosco.md`) dejaba cuatro preguntas abiertas: si se o
 - **Motivo:** el registro guarda la clave del motivo (`sick`, `results`, `injection`, `other`) sin interpretarla. De Stitch entra una línea de ayuda bajo cada motivo (decisión del 2026-11-02).
 - **Consentimientos:** el kiosco no los menciona.
 - **Ruta:** la decide Recepción al confirmar el registro (T-021).
+
+## Cómo quedó implementada la ruta en Recepción (T-021, 2026-11-02)
+
+- Al confirmar un registro del kiosco, el paso «Ruta» del asistente empieza **sin ninguna ruta marcada**, tampoco la del tipo de cita, y elegir un tipo de cita no la cambia. «Continuar» pide «Elija una ruta de atención.» (decisión del 2026-11-02).
+- El motivo se muestra en ese paso y en la visita como «Motivo declarado por el paciente (kiosco)», con icono, texto y color, de solo lectura y sin interpretar, para los cuatro roles clínicos.

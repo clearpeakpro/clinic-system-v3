@@ -77,6 +77,7 @@ import { z } from 'zod';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { EncounterService } from './encounters.ts';
+import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
 import { NursingService } from './nursing.ts';
 import { ProviderService } from './provider.ts';
@@ -1080,6 +1081,44 @@ export class KioskController {
   }
 }
 
+/**
+ * S-REC-28 Llegadas del kiosco (T-021): Recepción (appointments.check_in +
+ * patients.access). Confirmar va por POST /api/encounters con kioskCheckinId.
+ */
+@Controller('kiosk-arrivals')
+export class KioskArrivalsController {
+  readonly #arrivals: KioskArrivalService;
+  constructor(@Inject(KioskArrivalService) arrivals: KioskArrivalService) {
+    this.#arrivals = arrivals;
+  }
+
+  @Get()
+  @RequirePermission('patients.access', 'appointments.check_in')
+  list(@Req() request: FastifyRequest) {
+    return this.#arrivals.list(principalOf(request), metaOf(request));
+  }
+
+  /** La cita de hoy de un paciente en la sede (para confirmar con cita). */
+  @Get('today-appointment/:patientId')
+  @RequirePermission('patients.access', 'appointments.check_in')
+  today(@Req() request: FastifyRequest, @Param('patientId') patientId: string) {
+    return this.#arrivals.todayAppointment(principalOf(request), id(patientId));
+  }
+
+  @Get(':id')
+  @RequirePermission('patients.access', 'appointments.check_in')
+  detail(@Req() request: FastifyRequest, @Param('id') checkinId: string) {
+    return this.#arrivals.detail(principalOf(request), id(checkinId), metaOf(request));
+  }
+
+  @Post(':id/discard')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'appointments.check_in')
+  discard(@Req() request: FastifyRequest, @Param('id') checkinId: string, @Body() body: unknown) {
+    return this.#arrivals.discard(principalOf(request), id(checkinId), body, metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -1098,6 +1137,7 @@ export interface ApiProviders {
   provider: ProviderService;
   kiosk: KioskService;
   kioskAdmin: KioskAdminService;
+  kioskArrivals: KioskArrivalService;
   secureCookies: boolean;
   emailOf: UserEmailLookup;
   audit: AuditService;
@@ -1128,6 +1168,7 @@ export function createApiModule(providers: ApiProviders) {
       ProviderController,
       LocationKiosksController,
       KioskController,
+      KioskArrivalsController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -1147,6 +1188,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: ProviderService, useValue: providers.provider },
       { provide: KioskService, useValue: providers.kiosk },
       { provide: KioskAdminService, useValue: providers.kioskAdmin },
+      { provide: KioskArrivalService, useValue: providers.kioskArrivals },
       { provide: SECURE_COOKIES, useValue: providers.secureCookies },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },

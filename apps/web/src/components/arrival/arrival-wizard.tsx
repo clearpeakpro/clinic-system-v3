@@ -10,6 +10,7 @@ import {
   VISIT_ROUTES,
   type ArrivalContext,
   type ArrivalResult,
+  type DeclaredReason,
   type InsuranceTerm,
 } from '@clinic/shared';
 import { Button, Checkbox, cn, CodeText, Field, formatDateTime, RouteBadge, SegmentedControl, SelectField, VISIT_ROUTE_ICONS } from '@clinic/ui';
@@ -34,6 +35,7 @@ import {
 } from '../../lib/arrival.ts';
 import { formatDay } from '../../lib/catalog.ts';
 import { useUnsavedChanges } from '../../lib/unsaved.ts';
+import { DeclaredReasonCard } from '../kiosk/declared-reason.tsx';
 
 // S-REC-20 Asistente de llegada (marco común) con sus pasos S-REC-21 a 26
 // (Stitch: design/stitch/recepcion/S-REC-20_asistente_de_llegada). De Stitch:
@@ -53,17 +55,24 @@ export function ArrivalWizard({
   sede,
   context,
   mode,
+  kiosk,
   onSending,
   onDone,
 }: {
   sede: string;
   context: ArrivalContext;
   mode: ArrivalMode;
+  /**
+   * T-021: confirmar un registro del kiosco. Sin ruta preseleccionada (ni la
+   * del tipo de cita): la elige Recepción (ADR 0031). El motivo declarado se
+   * ve, pero no decide nada.
+   */
+  kiosk?: { checkinId: string; declared: DeclaredReason };
   /** Envío en curso: la página no cambia a «No es posible…» por el eco en vivo de su propio registro. */
   onSending?: (sending: boolean) => void;
   onDone: (result: ArrivalResult) => void;
 }) {
-  const [draft, setDraft] = useState<ArrivalDraft>(() => emptyDraft(suggestedRoute(context.appointment?.appointmentType)));
+  const [draft, setDraft] = useState<ArrivalDraft>(() => emptyDraft(kiosk ? null : suggestedRoute(context.appointment?.appointmentType)));
   const [step, setStep] = useState<ArrivalStep>('patient');
   const [done, setDone] = useState<ArrivalStep[]>([]);
   const [issues, setIssues] = useState<string[]>([]);
@@ -102,7 +111,7 @@ export function ArrivalWizard({
       setIssues(found);
       return;
     }
-    const input = arrivalInput(draft, mode.kind === 'appointment' ? mode : { kind: 'walk_in', patientId: mode.patientId });
+    const input = arrivalInput(draft, mode.kind === 'appointment' ? mode : { kind: 'walk_in', patientId: mode.patientId }, kiosk?.checkinId);
     const body = JSON.stringify(input);
     if (lastSent.current?.body !== body) lastSent.current = { body, key: newIdempotencyKey() };
     setSending(true);
@@ -225,8 +234,8 @@ export function ArrivalWizard({
                 onChange={(e) => {
                   const id = e.target.value || null;
                   const type = context.appointmentTypes.find((t) => t.id === id);
-                  // Elegir un tipo ajusta la ruta a su sugerencia (S-REC-23).
-                  change({ appointmentTypeId: id, ...(type ? { route: suggestedRoute(type) } : {}) });
+                  // Elegir un tipo ajusta la ruta a su sugerencia (S-REC-23); con un registro del kiosco, no (ADR 0031).
+                  change({ appointmentTypeId: id, ...(type && !kiosk ? { route: suggestedRoute(type) } : {}) });
                 }}
               >
                 <option value="">Sin tipo de cita</option>
@@ -236,11 +245,20 @@ export function ArrivalWizard({
                   </option>
                 ))}
               </SelectField>
-            ) : context.appointment?.appointmentType ? (
+            ) : context.appointment?.appointmentType && !kiosk ? (
               <p className="flex items-center gap-space-xs text-body-md text-on-surface-variant">
                 <Info aria-hidden className="size-5 text-secondary" />
                 {`Sugerida por el tipo de cita (${context.appointment.appointmentType.name}). Puede cambiarla.`}
               </p>
+            ) : null}
+            {kiosk ? (
+              <>
+                <DeclaredReasonCard declared={kiosk.declared} compact />
+                <p className="flex items-center gap-space-xs text-body-md text-on-surface-variant">
+                  <Info aria-hidden className="size-5 text-secondary" />
+                  Elija la ruta de atención. El motivo del kiosco no la decide.
+                </p>
+              </>
             ) : null}
             <div role="radiogroup" aria-label="Ruta de atención" className="grid gap-space-sm tab:grid-cols-2">
               {VISIT_ROUTES.map((r) => {
@@ -387,9 +405,7 @@ function Summary({ context, draft }: { context: ArrivalContext; draft: ArrivalDr
           <Pair label="Visita">Sin cita</Pair>
         )}
         {type ? <Pair label="Tipo de cita">{type.name}</Pair> : null}
-        <Pair label="Ruta">
-          <RouteBadge route={draft.route} />
-        </Pair>
+        <Pair label="Ruta">{draft.route ? <RouteBadge route={draft.route} /> : '—'}</Pair>
         <Pair label="Cobertura">{COVERAGE_TYPE_LABELS[draft.coverage]}</Pair>
         {draft.coverage === 'insurance' ? (
           <>

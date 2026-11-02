@@ -44,7 +44,18 @@ export const EVENT_BATCH_MS = 500;
  */
 export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) => void, delay = EVENT_BATCH_MS) {
   let pending: { appointments: Set<string>; encounters: Set<string> } | null = null;
+  let kioskPending = false;
   return (event: ScreenEvent) => {
+    // T-021: un registro del kiosco llegó, se confirmó o se descartó (solo su id): la bandeja del Panel.
+    if (event.name === 'kiosk.checkin') {
+      if (kioskPending) return;
+      kioskPending = true;
+      setTimeout(() => {
+        kioskPending = false;
+        invalidate(['kiosk-arrivals']);
+      }, delay);
+      return;
+    }
     if (event.name !== 'appointment.changed' && event.name !== 'encounter.changed') return;
     const first = pending === null;
     pending ??= { appointments: new Set(), encounters: new Set() };

@@ -163,4 +163,25 @@ describe('kiosco', () => {
     expect(await call('purge_kiosk_checkins', '2027-06-02T16:00:00Z')).toBeGreaterThanOrEqual(1);
     expect(await read()).toMatchObject({ contentEnc: null, contentPurgedAt: new Date('2027-06-02T16:00:00Z') });
   });
+
+  it('T-021: confirmado exige paciente y visita; confirmado o descartado, sin contenido y con quién y cuándo; el paciente, de la misma organización', async () => {
+    const d = device(NORTE);
+    await db.withTenant(NORTE.id, (tx) => tx.insert(kioskDevices).values(d));
+    const purged = { contentEnc: null, contentPurgedAt: now };
+    const resolved = { resolvedAt: now, resolvedByMembershipId: by(NORTE) };
+    const bad: Partial<typeof kioskCheckins.$inferInsert>[] = [
+      { status: 'discarded', ...purged },
+      { status: 'discarded', ...resolved },
+      { status: 'confirmed', ...purged, ...resolved, patientId: NORTE.patients[0].id },
+      { status: 'pending', ...resolved },
+    ];
+    for (const extra of bad) {
+      await expectPgError(db.withTenant(NORTE.id, (tx) => tx.insert(kioskCheckins).values(checkin(NORTE, d.id ?? '', extra))), CHECK_VIOLATION);
+    }
+    await db.withTenant(NORTE.id, (tx) => tx.insert(kioskCheckins).values(checkin(NORTE, d.id ?? '', { status: 'discarded', ...purged, ...resolved })));
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.insert(kioskCheckins).values(checkin(NORTE, d.id ?? '', { patientId: SUR.patients[0].id }))),
+      SQLSTATE.foreignKeyViolation,
+    );
+  });
 });

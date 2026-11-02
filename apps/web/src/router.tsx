@@ -17,6 +17,7 @@ import { NotFoundPage } from './pages/not-found.tsx';
 import { NursingQueuePage } from './pages/nursing-queue.tsx';
 import { ProviderQueuePage } from './pages/provider-queue.tsx';
 import { KioskPage } from './pages/kiosk.tsx';
+import { KioskArrivalPage } from './pages/kiosk-arrival.tsx';
 import { PanelPage } from './pages/panel.tsx';
 import { PatientPage } from './pages/patient.tsx';
 import { PatientsPage } from './pages/patients.tsx';
@@ -207,6 +208,21 @@ const appWalkInRoute = createRoute({
   },
 });
 
+// T-021: confirmar un registro del kiosco (S-REC-28 → asistente de llegada). Solo Recepción.
+const appKioskArrivalRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'llegada/kiosco/$id',
+  component: function KioskArrival() {
+    const { sede, id } = appKioskArrivalRoute.useParams();
+    if (!UUID_RE.test(id)) return <NotFoundPage />;
+    return (
+      <ArrivalGuard sede={sede}>
+        <KioskArrivalPage key={id} sede={sede} checkinId={id} />
+      </ArrivalGuard>
+    );
+  },
+});
+
 const appArrivalRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'llegada/$cita',
@@ -366,6 +382,7 @@ const routeTree = rootRoute.addChildren([
     appProviderQueueRoute,
     appAppointmentsRoute,
     appWalkInRoute,
+    appKioskArrivalRoute,
     appArrivalRoute,
     appEncounterRoute,
     appDestinationRoute,

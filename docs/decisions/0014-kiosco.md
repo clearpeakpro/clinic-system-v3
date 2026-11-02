@@ -21,3 +21,10 @@ Formulario único (`docs/manual/11_kiosco.md`). El token de dispositivo es persi
 - **Web:** `/kiosk/<SEDE>`, fuera de la app del personal. Fecha de nacimiento con mes, día y año (decisión del 2026-11-02). El formulario vive en el estado de React, con `autoComplete="off"`, y se limpia al enviar, a los 60 s (aviso a los 50 s), al ocultar la pestaña y al recargar. Tema claro de alto contraste y botones de 64 px.
 - **Pruebas:** `packages/db/test/kiosk.test.ts`, `packages/shared/test/kiosk.test.ts`, `apps/api/test/kiosk.test.ts` (reloj fijado: 11:59 p. m. / 12:01 a. m. y día del cambio de horario), `apps/worker/test/worker.test.ts`, `apps/web/src/lib/kiosk.test.ts` y la E2E `apps/web/e2e/kiosco.spec.ts`, que comprueba que tras enviar no queda nada en el almacenamiento del navegador ni respuestas de la API en la caché.
 - **Tableta Android:** [`docs/KIOSCO-TABLETA.md`](../KIOSCO-TABLETA.md).
+
+## Cómo quedó implementada la confirmación en Recepción (T-021, 2026-11-02)
+
+- **Bandeja «Llegadas del kiosco» (S-REC-28)** en el Panel de Recepción: los pendientes de la sede que no han vencido, en vivo con el evento `kiosk.checkin` (solo el id) y con aviso sonoro que se puede silenciar.
+- **Confirmar** pasa por la llegada de siempre (`POST /api/encounters` con `Idempotency-Key` y `kioskCheckinId`). En la misma transacción: el registro se bloquea y se comprueba que siga pendiente y sin vencer, se abre la visita, el motivo declarado pasa cifrado a la visita y **el contenido del registro se borra**; quedan el paciente, la visita, quién lo confirmó y cuándo. Confirmar dos veces con la misma clave devuelve la misma visita; con otra, 409.
+- **Descartar** (un envío de prueba, un duplicado) exige motivo, que queda en la auditoría, y también borra el contenido.
+- Pruebas: `apps/api/test/kiosk-arrivals.test.ts` y la E2E `apps/web/e2e/kiosco-recepcion.spec.ts`.

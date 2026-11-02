@@ -41,6 +41,15 @@ describe('agenda en vivo', () => {
     expect(invalidate).toHaveBeenCalledTimes(12);
   });
 
+  it('kiosk.checkin (T-021) relee solo la bandeja del kiosco, una vez por ráfaga', () => {
+    const invalidate = vi.fn<(queryKey: readonly unknown[]) => void>();
+    const onEvent = createEventBatcher(invalidate);
+    onEvent({ name: 'kiosk.checkin', ids: { kioskCheckin: ID_A } });
+    onEvent({ name: 'kiosk.checkin', ids: { kioskCheckin: ID_B } });
+    vi.advanceTimersByTime(500);
+    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['kiosk-arrivals']]);
+  });
+
   it('encounter.changed relee el Panel (T-019), esa visita (T-017) y las visitas del perfil (T-018), en la misma ráfaga', () => {
     const invalidate = vi.fn<(queryKey: readonly unknown[]) => void>();
     const onEvent = createEventBatcher(invalidate);
