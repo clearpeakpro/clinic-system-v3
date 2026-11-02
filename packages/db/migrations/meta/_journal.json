@@ -232,6 +232,20 @@
       "when": 1793593879574,
       "tag": "0032_nursing_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793640186093,
+      "tag": "0033_kiosk",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793640196273,
+      "tag": "0034_kiosk_rls",
+      "breakpoints": true
     }
   ]
 }

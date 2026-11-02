@@ -1,4 +1,11 @@
 import type {
+  CreateKioskPairingInput,
+  KioskCheckinInput,
+  KioskCheckinReceipt,
+  KioskDeviceView,
+  KioskLinkInput,
+  KioskPairing,
+  KioskSession,
   ProviderQueue,
   StartConsultInput,
   AgendaDay,
@@ -350,6 +357,18 @@ export const api = {
   saveVitals: (encounterId: string, input: SaveVitalsInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/vitals`, input),
   saveAssessment: (encounterId: string, input: SaveAssessmentInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/assessment`, input),
   sendToProvider: (encounterId: string, input: SendToProviderInput) => request<NursingSaved>('POST', `/api/encounters/${encounterId}/send-to-provider`, input),
+  // Kiosco (T-020). Sedes › Kioscos (kiosks.manage).
+  kiosks: (locationId: string) => request<KioskDeviceView[]>('GET', `/api/locations/${locationId}/kiosks`),
+  createKioskPairing: (locationId: string, input: CreateKioskPairingInput) => request<KioskPairing>('POST', `/api/locations/${locationId}/kiosks`, input),
+  regenerateKioskCode: (locationId: string, deviceId: string, expectedVersion: number) =>
+    request<KioskPairing>('POST', `/api/locations/${locationId}/kiosks/${deviceId}/code`, { expectedVersion }),
+  revokeKiosk: (locationId: string, deviceId: string, reason: string, expectedVersion: number) =>
+    request<KioskDeviceView>('POST', `/api/locations/${locationId}/kiosks/${deviceId}/revoke`, { reason, expectedVersion }),
+  // La tableta: solo su cookie (Path=/api/kiosk); nunca lee datos.
+  kioskLink: (input: KioskLinkInput) => request<KioskSession>('POST', '/api/kiosk/link', input),
+  kioskSession: () => request<KioskSession>('POST', '/api/kiosk/session'),
+  kioskSubmit: (input: KioskCheckinInput, idempotencyKey: string) =>
+    request<KioskCheckinReceipt>('POST', '/api/kiosk/checkins', input, { 'idempotency-key': idempotencyKey }),
   // Cola de proveedor (T-023).
   providerQueue: () => request<ProviderQueue>('GET', '/api/provider/queue'),
   patientAppointments: (patientId: string, offset: number) =>

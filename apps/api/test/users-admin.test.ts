@@ -389,6 +389,7 @@ describe('Administración › Usuarios', () => {
     expect(me.permissions).toEqual([
       'admin.access',
       'catalog.manage',
+      'kiosks.manage',
       'locations.manage',
       'members.invite',
       'members.manage',

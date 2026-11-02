@@ -27,3 +27,10 @@ El kiosco (`docs/manual/11_kiosco.md`) dejaba cuatro preguntas abiertas: si se o
 - Sigue en pie lo del ADR 0014: el motivo no decide nada clínico.
 - Escanear los consentimientos firmados llegará con los Documentos del paciente (fase 4, con S3).
 - Si una organización pide sugerencias de ruta, se hará con un ADR nuevo: tabla configurable, desactivada hasta que su director médico la apruebe por escrito, con la aprobación auditada. El kiosco no cambia.
+
+## Cómo quedó implementado (T-020, 2026-11-02)
+
+- **Idioma:** botón «English» / «Español» en la cabecera del kiosco. Los textos de los dos idiomas están en un solo catálogo (`apps/web/src/lib/kiosk-texts.ts`), con una prueba que comprueba que tienen las mismas claves. El idioma vive solo en la memoria de la página: «Listo» sale en el idioma elegido y el formulario vuelve a español al limpiarse.
+- **Motivo:** el registro guarda la clave del motivo (`sick`, `results`, `injection`, `other`) sin interpretarla. De Stitch entra una línea de ayuda bajo cada motivo (decisión del 2026-11-02).
+- **Consentimientos:** el kiosco no los menciona.
+- **Ruta:** la decide Recepción al confirmar el registro (T-021).

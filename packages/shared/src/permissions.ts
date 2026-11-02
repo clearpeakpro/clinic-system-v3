@@ -55,6 +55,12 @@ export const PERMISSIONS = [
   // Excepción de «Enviar al proveedor» sin peso ni presión (ADR 0003 y 0033):
   // Propietario y Administrador, solo junto a patients.access.
   'nursing.send_exception',
+  // Kiosco (T-020; ADR 0014). Vincular y revocar tabletas desde Sedes:
+  // Propietario y Administrador (no da acceso a ningún dato clínico).
+  // kiosk.submit es el único permiso del token de una tableta: ningún rol lo
+  // tiene y ninguna sesión del personal lo recibe.
+  'kiosks.manage',
+  'kiosk.submit',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -81,6 +87,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'members.invite',
     'members.manage',
     'locations.manage',
+    'kiosks.manage',
     'catalog.manage',
     'admin.access',
     'patients.edit_birth_date',
@@ -92,6 +99,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'members.invite',
     'members.manage',
     'locations.manage',
+    'kiosks.manage',
     'catalog.manage',
     'admin.access',
     'patients.edit_birth_date',

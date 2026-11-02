@@ -45,6 +45,9 @@ export interface AppConfig {
   /** Bloqueo por cuenta del plugin twoFactor: códigos incorrectos seguidos y duración. */
   twoFactorMaxFailures: number;
   twoFactorLockSeconds: number;
+  /** Kiosco (T-020): envíos por tableta en la ventana (decisión del 2026-11-02: 20 cada 10 min). */
+  kioskSubmitMax: number;
+  kioskSubmitWindowSeconds: number;
   /** Fuerza Secure y el prefijo __Secure- en las cookies. Siempre en producción. */
   secureCookies: boolean;
   /** Detrás de Caddy: confiar en X-Forwarded-For para la IP del cliente. */
@@ -88,6 +91,8 @@ export const DEFAULTS = {
   twoFactorIpWindowSeconds: 60,
   twoFactorMaxFailures: 10,
   twoFactorLockSeconds: 15 * 60,
+  kioskSubmitMax: 20,
+  kioskSubmitWindowSeconds: 10 * 60,
   realtimeRevalidateSeconds: 30,
 } as const;
 
@@ -113,6 +118,8 @@ const envSchema = z.object({
   TWO_FACTOR_IP_WINDOW_SECONDS: seconds.default(DEFAULTS.twoFactorIpWindowSeconds),
   TWO_FACTOR_MAX_FAILURES: seconds.default(DEFAULTS.twoFactorMaxFailures),
   TWO_FACTOR_LOCK_SECONDS: seconds.default(DEFAULTS.twoFactorLockSeconds),
+  KIOSK_SUBMIT_MAX: seconds.default(DEFAULTS.kioskSubmitMax),
+  KIOSK_SUBMIT_WINDOW_SECONDS: seconds.default(DEFAULTS.kioskSubmitWindowSeconds),
   TRUST_PROXY: bool.default(false),
   OUTBOX_KEY: z.string().min(32),
   FIELD_ENCRYPTION_KEY: z.string().min(32),
@@ -150,6 +157,8 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     twoFactorIpWindowSeconds: e.TWO_FACTOR_IP_WINDOW_SECONDS,
     twoFactorMaxFailures: e.TWO_FACTOR_MAX_FAILURES,
     twoFactorLockSeconds: e.TWO_FACTOR_LOCK_SECONDS,
+    kioskSubmitMax: e.KIOSK_SUBMIT_MAX,
+    kioskSubmitWindowSeconds: e.KIOSK_SUBMIT_WINDOW_SECONDS,
     secureCookies: e.NODE_ENV === 'production',
     trustProxy: e.TRUST_PROXY,
     outboxKey: e.OUTBOX_KEY,

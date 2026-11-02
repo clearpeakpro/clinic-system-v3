@@ -5,7 +5,7 @@ import type pg from 'pg';
 
 export interface AuditEvent {
   action: string;
-  actorType: 'user' | 'anonymous';
+  actorType: 'user' | 'anonymous' | 'kiosk';
   actorId?: string | undefined;
   locationId?: string | undefined;
   entityType?: string | undefined;

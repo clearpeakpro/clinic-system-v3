@@ -1,11 +1,12 @@
 import { createTenantDb, JOB_SCHEMA, OUTBOX_CHANNEL, QUEUES } from '@clinic/db';
+import { systemClock, type Clock } from '@clinic/shared';
 import { PgBoss } from 'pg-boss';
 import pg from 'pg';
 import type { WorkerConfig } from './config.ts';
 import { deliverEvent } from './deliver.ts';
 import { log } from './log.ts';
 import type { Mailer } from './mailer.ts';
-import { purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from './maintenance.ts';
+import { maintainKioskCheckins, purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from './maintenance.ts';
 
 // El worker (ADR 0020): proceso aparte, conectado como clinic_app, que nunca
 // corre dentro de la API. pg-boss no crea ni migra su esquema aquí: lo
@@ -18,6 +19,8 @@ import { purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from './m
 //    a los sockets de la persona por LISTEN/NOTIFY.
 //  - Cada día: verificación de las cadenas de auditoría y purga de las claves
 //    de idempotencia vencidas y de las notificaciones de más de 30 días.
+//  - Cada hora (T-020): vencer y vaciar los registros del kiosco, con la hora
+//    del reloj inyectable (las pruebas lo fijan).
 
 export interface RunningWorker {
   /** Revisa el outbox ahora (también lo hacen el aviso y el temporizador). */
@@ -25,7 +28,7 @@ export interface RunningWorker {
   stop(): Promise<void>;
 }
 
-export async function startWorker(config: WorkerConfig, mailer: Mailer): Promise<RunningWorker> {
+export async function startWorker(config: WorkerConfig, mailer: Mailer, clock: Clock = systemClock): Promise<RunningWorker> {
   const pool = new pg.Pool({ connectionString: config.databaseUrl, max: 5 });
   const tenantDb = createTenantDb(pool);
   const boss = new PgBoss({
@@ -60,6 +63,10 @@ export async function startWorker(config: WorkerConfig, mailer: Mailer): Promise
   });
   await boss.schedule(QUEUES.idempotencyPurge, config.idempotencyPurgeCron, null, { tz: 'UTC' });
   await boss.schedule(QUEUES.notificationsPurge, config.notificationsPurgeCron, null, { tz: 'UTC' });
+  await boss.work(QUEUES.kioskMaintenance, async () => {
+    log('info', 'kiosco: registros vencidos y vaciados', await maintainKioskCheckins(pool, clock.now()));
+  });
+  await boss.schedule(QUEUES.kioskMaintenance, config.kioskMaintenanceCron, null, { tz: 'UTC' });
 
   let sweeping: Promise<number> | null = null;
   // Cuántas veces se pidió un barrido; si cambia durante uno, se repite.

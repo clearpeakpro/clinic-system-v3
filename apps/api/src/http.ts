@@ -77,6 +77,7 @@ import { z } from 'zod';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { EncounterService } from './encounters.ts';
+import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
 import { NursingService } from './nursing.ts';
 import { ProviderService } from './provider.ts';
 import { PanelService } from './panel.ts';
@@ -96,6 +97,7 @@ import { MembershipService } from './users.ts';
 
 export const USER_EMAIL_LOOKUP = Symbol('USER_EMAIL_LOOKUP');
 export const IDLE_TIMEOUT_SECONDS = Symbol('IDLE_TIMEOUT_SECONDS');
+export const SECURE_COOKIES = Symbol('SECURE_COOKIES');
 export type UserEmailLookup = (userId: string) => Promise<string | null>;
 
 const PUBLIC = 'clinic:public';
@@ -992,6 +994,92 @@ export class ProviderController {
   }
 }
 
+/**
+ * Sedes › Kioscos (S-ADM-10, T-020): Propietario y Administrador (kiosks.manage).
+ * Las tabletas de una sede, vincular (código de un solo uso), generar otro
+ * código y revocar con motivo.
+ */
+@Controller('locations/:locationId/kiosks')
+export class LocationKiosksController {
+  readonly #kiosks: KioskAdminService;
+  constructor(@Inject(KioskAdminService) kiosks: KioskAdminService) {
+    this.#kiosks = kiosks;
+  }
+
+  @Get()
+  @RequirePermission('kiosks.manage')
+  list(@Req() request: FastifyRequest, @Param('locationId') locationId: string) {
+    return this.#kiosks.list(principalOf(request), id(locationId));
+  }
+
+  @Post()
+  @RequirePermission('kiosks.manage')
+  create(@Req() request: FastifyRequest, @Param('locationId') locationId: string, @Body() body: unknown) {
+    return this.#kiosks.createPairing(principalOf(request), id(locationId), body, metaOf(request));
+  }
+
+  @Post(':deviceId/code')
+  @HttpCode(200)
+  @RequirePermission('kiosks.manage')
+  regenerate(@Req() request: FastifyRequest, @Param('deviceId') deviceId: string, @Body() body: unknown) {
+    return this.#kiosks.regenerateCode(principalOf(request), id(deviceId), body, metaOf(request));
+  }
+
+  @Post(':deviceId/revoke')
+  @HttpCode(200)
+  @RequirePermission('kiosks.manage')
+  revoke(@Req() request: FastifyRequest, @Param('deviceId') deviceId: string, @Body() body: unknown) {
+    return this.#kiosks.revoke(principalOf(request), id(deviceId), body, metaOf(request));
+  }
+}
+
+/**
+ * La tableta del kiosco (T-020; ADR 0014). Sin sesión del personal: se
+ * identifica solo con su cookie (Path=/api/kiosk). Ninguna de estas rutas
+ * lee datos: vincular, renovar la sesión (devuelve solo su sede) y enviar.
+ */
+@Controller('kiosk')
+@Public()
+export class KioskController {
+  readonly #kiosk: KioskService;
+  readonly #secure: boolean;
+  constructor(@Inject(KioskService) kiosk: KioskService, @Inject(SECURE_COOKIES) secure: boolean) {
+    this.#kiosk = kiosk;
+    this.#secure = secure;
+  }
+
+  @Post('link')
+  @HttpCode(200)
+  async link(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply, @Body() body: unknown) {
+    const { token, session } = await this.#kiosk.link(body, metaOf(request));
+    void reply.header('set-cookie', kioskCookie(token, this.#secure));
+    return session;
+  }
+
+  /** Renueva la cookie (90 días más) y devuelve solo el código y el nombre de la sede. */
+  @Post('session')
+  @HttpCode(200)
+  async session(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+    const token = kioskTokenOf(request.headers.cookie);
+    try {
+      const session = await this.#kiosk.session(token);
+      if (token) void reply.header('set-cookie', kioskCookie(token, this.#secure));
+      return session;
+    } catch (error) {
+      // Revocada o vencida: se borra la cookie.
+      if (error instanceof HttpError && error.status === 401) void reply.header('set-cookie', `${KIOSK_COOKIE}=; Path=/api/kiosk; Max-Age=0; HttpOnly; SameSite=Strict`);
+      throw error;
+    }
+  }
+
+  /** S-KIO-01 «Registrarme», con Idempotency-Key. */
+  @Post('checkins')
+  @HttpCode(201)
+  submit(@Req() request: FastifyRequest, @Body() body: unknown, @IdempotencyKey() key: string) {
+    return this.#kiosk.submit(kioskTokenOf(request.headers.cookie), body, key, metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -1008,6 +1096,9 @@ export interface ApiProviders {
   panel: PanelService;
   nursing: NursingService;
   provider: ProviderService;
+  kiosk: KioskService;
+  kioskAdmin: KioskAdminService;
+  secureCookies: boolean;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -1035,6 +1126,8 @@ export function createApiModule(providers: ApiProviders) {
       PanelController,
       NursingController,
       ProviderController,
+      LocationKiosksController,
+      KioskController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -1052,6 +1145,9 @@ export function createApiModule(providers: ApiProviders) {
       { provide: PanelService, useValue: providers.panel },
       { provide: NursingService, useValue: providers.nursing },
       { provide: ProviderService, useValue: providers.provider },
+      { provide: KioskService, useValue: providers.kiosk },
+      { provide: KioskAdminService, useValue: providers.kioskAdmin },
+      { provide: SECURE_COOKIES, useValue: providers.secureCookies },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

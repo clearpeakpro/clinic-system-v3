@@ -14,19 +14,22 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { Ban, Building2, CircleCheck, CirclePause, Clock, MapPin, MoreVertical, Pencil, Phone, Plus, RefreshCw, Power } from 'lucide-react';
 import { useState } from 'react';
+import { KiosksSection } from '../components/locations/kiosks-section.tsx';
 import { LocationDialog } from '../components/locations/location-dialogs.tsx';
 import { api, ApiError, type LocationRow } from '../lib/api.ts';
 import { timezoneLabel } from '../lib/format.ts';
-import { keys, queryClient, useActiveLocation } from '../lib/session.ts';
+import { keys, queryClient, useActiveLocation, useMe } from '../lib/session.ts';
 import { isVersionConflict, userActionMessage } from '../lib/users.ts';
 
 // S-ADM-10 Sedes (Stitch: design/stitch/admin/S-ADM-10_sedes_y_kioscos). Se
 // toma la cuadrícula de tarjetas: código en recuadro monoespaciado, chip
 // «Seleccionada» y barra superior en la sede actual, nombre, zona horaria,
 // dirección y teléfono, y el estado al pie. No se construye lo que el sistema
-// no tiene: kioscos y «Vincular kiosco» (fase 3), «Sincronizar redes»,
+// no tiene: «Sincronizar redes»,
 // «HIPAA Verified Config», capacidad, VLAN, horarios, tráfico, «Sede
 // operativa principal», «Próxima apertura» ni el aviso de despliegue.
+// Desde T-020: debajo, «Kioscos de autorregistro» de la sede elegida
+// (components/locations/kiosks-section.tsx), con kiosks.manage.
 
 const LOCATIONS_KEY = ['admin-locations'] as const;
 
@@ -35,12 +38,20 @@ type Dialogs = { kind: 'new' } | { kind: 'edit'; row: LocationRow } | { kind: 'd
 export function AdminLocationsPage() {
   const locations = useQuery<LocationRow[], ApiError>({ queryKey: LOCATIONS_KEY, queryFn: api.adminLocations, staleTime: 0 });
   const active = useActiveLocation();
+  const me = useMe();
+  const canKiosks = me.data?.permissions.includes('kiosks.manage') ?? false;
   const snackbar = useSnackbar();
   const [dialog, setDialog] = useState<Dialogs>(null);
 
   // Tras cada cambio: la lista y las sedes propias (el selector de la cabecera).
   const reload = async () => {
-    await Promise.all([locations.refetch(), queryClient.invalidateQueries({ queryKey: keys.locations }), queryClient.invalidateQueries({ queryKey: keys.me })]);
+    await Promise.all([
+      locations.refetch(),
+      queryClient.invalidateQueries({ queryKey: keys.locations }),
+      queryClient.invalidateQueries({ queryKey: keys.me }),
+      // T-020: también las tabletas (Sedes no se actualiza en vivo).
+      queryClient.invalidateQueries({ queryKey: ['kiosks'] }),
+    ]);
   };
   const conflict = () => {
     setDialog(null);
@@ -96,6 +107,7 @@ export function AdminLocationsPage() {
         }
       >
         {(rows) => (
+          <>
           <ul aria-label="Sedes" className="grid grid-cols-1 gap-space-md tab:grid-cols-2 desk:grid-cols-3">
             {rows.map((row) => (
               <LocationCard
@@ -108,6 +120,8 @@ export function AdminLocationsPage() {
               />
             ))}
           </ul>
+          {canKiosks ? <KiosksSection locations={rows} defaultLocationId={active?.id ?? null} /> : null}
+          </>
         )}
       </AsyncView>
 

@@ -18,6 +18,8 @@ export interface WorkerConfig {
   idempotencyPurgeCron: string;
   /** Cron (UTC) de la purga diaria de las notificaciones de más de 30 días. */
   notificationsPurgeCron: string;
+  /** Cron (UTC) del mantenimiento del kiosco (T-020): cada hora, para cumplir el vaciado a las 24 h. */
+  kioskMaintenanceCron: string;
 }
 
 export const WORKER_DEFAULTS = {
@@ -26,6 +28,7 @@ export const WORKER_DEFAULTS = {
   auditVerifyCron: '0 3 * * *',
   idempotencyPurgeCron: '30 3 * * *',
   notificationsPurgeCron: '45 3 * * *',
+  kioskMaintenanceCron: '5 * * * *',
 } as const;
 
 const envSchema = z.object({
@@ -38,6 +41,7 @@ const envSchema = z.object({
   AUDIT_VERIFY_CRON: z.string().default(WORKER_DEFAULTS.auditVerifyCron),
   IDEMPOTENCY_PURGE_CRON: z.string().default(WORKER_DEFAULTS.idempotencyPurgeCron),
   NOTIFICATIONS_PURGE_CRON: z.string().default(WORKER_DEFAULTS.notificationsPurgeCron),
+  KIOSK_MAINTENANCE_CRON: z.string().default(WORKER_DEFAULTS.kioskMaintenanceCron),
 });
 
 /** Falla al arrancar si falta algo; el mensaje nombra la variable, nunca su valor. */
@@ -61,5 +65,6 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv): WorkerConfig {
     auditVerifyCron: e.AUDIT_VERIFY_CRON,
     idempotencyPurgeCron: e.IDEMPOTENCY_PURGE_CRON,
     notificationsPurgeCron: e.NOTIFICATIONS_PURGE_CRON,
+    kioskMaintenanceCron: e.KIOSK_MAINTENANCE_CRON,
   };
 }
