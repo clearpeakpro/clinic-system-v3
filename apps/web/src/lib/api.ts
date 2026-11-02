@@ -1,4 +1,6 @@
 import type {
+  ProviderQueue,
+  StartConsultInput,
   AgendaDay,
   ArrivalContext,
   ArrivalInput,
@@ -332,6 +334,8 @@ export const api = {
   arrive: (input: ArrivalInput, idempotencyKey: string) => request<ArrivalResult>('POST', '/api/encounters', input, { 'idempotency-key': idempotencyKey }),
   encounter: (id: string) => request<EncounterDetail>('GET', `/api/encounters/${id}`),
   encounterTransition: (id: string, input: EncounterTransitionInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/transition`, input),
+  // «Iniciar consulta» (T-023): se autoasigna si la visita no tiene proveedor.
+  startConsult: (id: string, input: StartConsultInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/start-consult`, input),
   closeEncounter: (id: string, input: CloseEncounterInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/close`, input),
   forceEncounter: (id: string, input: ForceEncounterInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/force`, input),
   assignProvider: (id: string, input: AssignProviderInput) => request<EncounterSaved>('POST', `/api/encounters/${id}/provider`, input),
@@ -346,6 +350,8 @@ export const api = {
   saveVitals: (encounterId: string, input: SaveVitalsInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/vitals`, input),
   saveAssessment: (encounterId: string, input: SaveAssessmentInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/assessment`, input),
   sendToProvider: (encounterId: string, input: SendToProviderInput) => request<NursingSaved>('POST', `/api/encounters/${encounterId}/send-to-provider`, input),
+  // Cola de proveedor (T-023).
+  providerQueue: () => request<ProviderQueue>('GET', '/api/provider/queue'),
   patientAppointments: (patientId: string, offset: number) =>
     request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),
   // Excepción del ADR 0027: el Propietario se asigna roles clínicos.

@@ -44,7 +44,14 @@ const MESSAGES: Record<string, string> = {
   vitals_required: 'Registre peso o presión arterial antes de enviar al proveedor.',
   not_with_nurse: 'La enfermería solo puede completarse mientras el paciente está con enfermería.',
   invalid_vitals: 'Un valor está fuera del rango aceptado.',
+  // Proveedor (T-023).
+  assigned_to_other: 'Esta visita está asignada a otro proveedor. Para tomarla, use «Asignarme».',
 };
+
+/** «Órdenes abiertas» (S-CLI-08): el servidor bloquea pasar a Caja con órdenes pendientes o en curso. */
+export function isOpenOrders(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'open_orders';
+}
 
 /** Mensaje en «usted» de un error al actuar sobre la visita. */
 export function encounterMessage(error: unknown): string {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Role } from '../src/permissions.ts';
 import {
   closeAction,
+  consultStart,
   encounterAbilities,
   forceTargets,
   isCloseAction,
@@ -216,5 +217,25 @@ describe('«Enviar al proveedor» (T-022)', () => {
     expect(visitTransition('WITH_NURSE', 'send_to_provider', { route: 'STANDARD', roles })).toEqual({ ok: false, reason: 'forbidden' });
     expect(visitTransition('WITH_NURSE', 'send_to_provider', { route: 'STANDARD', roles, asOwner: true })).toMatchObject({ ok: true, to: 'WAITING_FOR_PROVIDER' });
     expect(visitTransition('CHECKED_IN', 'send_to_provider', { route: 'STANDARD', roles, asOwner: true })).toEqual({ ok: false, reason: 'invalid_transition' });
+  });
+});
+
+describe('«Iniciar consulta» (T-023)', () => {
+  it('sin proveedor se autoasigna; si es suya, solo inicia; si es de otro, se rechaza', () => {
+    expect(consultStart(null, 'm-1')).toBe('assign_self');
+    expect(consultStart('m-1', 'm-1')).toBe('start');
+    expect(consultStart('m-2', 'm-1')).toBe('assigned_to_other');
+  });
+
+  it('la barra no ofrece «Iniciar consulta» en la visita de otro proveedor; «Asignarme» sí', () => {
+    const base = { status: 'WAITING_FOR_PROVIDER' as const, route: 'STANDARD' as const, roles: ['proveedor'] as Role[], canManage: false, canForce: false, isMine: false };
+    expect(encounterAbilities({ ...base, assignedToOther: true })).toMatchObject({ actions: [], assignSelf: true });
+    expect(encounterAbilities(base).actions).toEqual(['start_consult']);
+    expect(encounterAbilities({ ...base, isMine: true }).actions).toEqual(['start_consult']);
+  });
+
+  it('desde «Con proveedor»: «Enviar a procedimiento» y «Listo para caja»', () => {
+    const abilities = encounterAbilities({ status: 'WITH_PROVIDER', route: 'STANDARD', roles: ['proveedor'], canManage: false, canForce: false, isMine: true });
+    expect(abilities.actions).toEqual(['send_to_procedure', 'ready_for_checkout']);
   });
 });

@@ -63,7 +63,7 @@ Las de `CLAUDE.md` y las de la fase 2, más estas:
 | T-018 — Pantalla de la visita y su circuito | 3A | 4 días | T-017 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
 | T-019 — Panel en vivo | 3A | 2–3 días | T-018 | [0039](../decisions/0039-alertas-espera-panel.md) |
 | T-022 — Enfermería | 3A | 4 días | T-018 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md), [0036](../decisions/0036-valoracion-paciente-visita.md), [0040](../decisions/0040-alergias-sin-alergias-conocidas.md) |
-| T-023 — Proveedor | 3A | 2–3 días | T-022 | — |
+| T-023 — Proveedor | 3A | 2–3 días | T-022 | [0039](../decisions/0039-alertas-espera-panel.md) |
 | T-020 — Kiosco: tableta y formulario | 3A | 3–4 días | T-017 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
 | T-021 — Llegadas del kiosco en Recepción | 3A | 3 días | T-019, T-020 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
 | T-024 — Cierre de 3A: semilla, guion y demo | 3A | 1–2 días | T-017 a T-023 | — |
@@ -218,7 +218,11 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 
 ## T-023 — Proveedor
 
-**Decisiones:** ninguna.
+**Decisiones (al planificar, 2026-11-02):**
+- «Iniciar consulta», desde la cola y desde la barra, se autoasigna si la visita no tiene proveedor (pregunta abierta 2 del manual). En la visita de **otro** proveedor se rechaza (409 «Esta visita está asignada a otro proveedor.») y el botón no aparece; para tomarla, antes «Asignarme».
+- «Alerta» y «Crítico» también en la Cola de proveedor, solo en «Esperando proveedor» ([ADR 0039](../decisions/0039-alertas-espera-panel.md)).
+- De Stitch entran el aviso de alergias en cada tarjeta (los tres casos del [ADR 0040](../decisions/0040-alergias-sin-alergias-conocidas.md)) y «Continuar visita» en las propias con proveedor. Quedan fuera el resumen de signos vitales, el tiempo medio de espera, el consultorio, la edad y el sexo.
+- Como dicen los ADR 0027 y 0033, «Iniciar consulta» es solo del rol Proveedor: el Administrador sin ese rol no la inicia (el manual se lo permitía).
 
 **Objetivo:** el Proveedor toma pacientes de su cola, hace la consulta y la termina.
 
@@ -234,6 +238,17 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 5. Cola de enfermería de solo lectura para el Proveedor.
 
 **No incluye:** crear órdenes (T-025).
+
+**Cómo quedó implementada (2026-11-02):**
+- **API:**
+  - `GET /api/provider/queue` (`provider_queue.access` + `patients.access`, lectura auditada `encounter.provider_queue`) con el orden de `compareProviderQueue()` (`packages/shared/src/provider.ts`), «Enfermería lista» (el último «Enviar al proveedor»), la espera desde ahí o desde la llegada, el aviso de alergias (solo con `nursing.view`) y el nivel de espera;
+  - `POST /api/encounters/:id/start-consult`: en una transacción, la autoasignación (auditoría `encounter.provider_assigned` con `self` y `onConsultStart`, sin aviso a sí mismo) y el paso a «Con proveedor», con un solo aumento de versión. Dos proveedores a la vez: el segundo recibe 409 `version_conflict`. `…/transition` ya no acepta `start_consult` (400).
+- **Web:**
+  - `apps/web/src/pages/provider-queue.tsx`, ruta `/app/<sede>/cola-proveedor`: filtros con contador (el elegido se recuerda en memoria durante la sesión), búsqueda, tarjetas con «Iniciar consulta», «Continuar visita» o «Abrir», en vivo con `encounter.changed`;
+  - la barra de la visita usa el mismo endpoint y oculta «Iniciar consulta» en la visita de otro proveedor;
+  - diálogo «Órdenes abiertas» (S-CLI-08) ante `open_orders`, con solo «Cerrar» hasta T-025 («Ir a órdenes»).
+- **Etiqueta:** el botón se mantiene «Listo para caja» (T-018), como el estado al que lleva.
+- **Pruebas:** `packages/shared/test/provider.test.ts` y `visit.test.ts`, `apps/web/src/lib/provider.test.ts`, `apps/api/test/provider.test.ts` (reloj fijado) y la E2E `apps/web/e2e/proveedor.spec.ts`.
 
 **Terminada cuando:**
 - el Proveedor inicia la consulta de una visita sin asignar y queda asignada a él;
@@ -602,7 +617,8 @@ En tu computadora, con varias ventanas abiertas como si fueran distintos puestos
 | P-21 | Formato e idioma del recibo | Rollo de 80 mm desde el navegador, sin PDF; español e inglés | [0037](../decisions/0037-recibo-80mm-es-en.md) | T-029 |
 | P-22 | Reporte diario antes del piloto | Solo la pestaña «Diario» de la sede, en 3B | [0038](../decisions/0038-reporte-diario-antes-piloto.md) | T-031 |
 | — | Alergias (al planificar T-022) | «Sin alergias conocidas» es un estado explícito, distinto de «no registradas»; el encabezado muestra los tres casos | [0040](../decisions/0040-alergias-sin-alergias-conocidas.md) | T-022 |
-| — | Alertas de espera del Panel (al planificar T-019) | «Alerta» a los 5 min y «Crítico» a los 10 min en Registrado, Esperando enfermería y Esperando proveedor, desde el estado actual; minutos por organización; también en la Cola de enfermería (T-022) | [0039](../decisions/0039-alertas-espera-panel.md) | T-019, T-022 |
+| — | Alertas de espera del Panel (al planificar T-019) | «Alerta» a los 5 min y «Crítico» a los 10 min en Registrado, Esperando enfermería y Esperando proveedor, desde el estado actual; minutos por organización; también en la Cola de enfermería (T-022) y en la de proveedor (T-023) | [0039](../decisions/0039-alertas-espera-panel.md) | T-019, T-022, T-023 |
+| — | «Iniciar consulta» (al planificar T-023) | Se autoasigna sin proveedor, desde la cola y desde la barra; en la visita de otro proveedor se rechaza | — | T-023 |
 
 **Decisiones pendientes:** ninguna bloquea la fase 3. Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, que son de las fases 4 a 6, y P-23 (pantalla para los minutos del ADR 0039), sin fecha ([`PENDIENTES.md`](../decisions/PENDIENTES.md)). T-026b abrirá las suyas en su paso 0 (alta de la membresía del paciente).
 

@@ -67,6 +67,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       if (ids.encounters.size > 0) invalidate(['patient-encounters']);
       // T-022: la cola de enfermería y la sección Enfermería de esa visita.
       if (ids.encounters.size > 0) invalidate(['nursing-queue']);
+      // T-023: la cola de proveedor.
+      if (ids.encounters.size > 0) invalidate(['provider-queue']);
       for (const encounterId of ids.encounters) {
         invalidate(['encounter', encounterId]);
         invalidate(['nursing', encounterId]);

@@ -7,6 +7,7 @@ import {
   assignProviderSchema,
   closeEncounterSchema,
   encounterTransitionSchema,
+  startConsultSchema,
   forceEncounterSchema,
   updateCoverageSchema,
   saveAssessmentSchema,
@@ -77,6 +78,7 @@ import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
+import { ProviderService } from './provider.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyKey } from './idempotency.ts';
 import { AuditService } from './audit.ts';
@@ -848,6 +850,17 @@ export class EncountersController {
     return this.#encounters.transition(principalOf(request), id(encounterId), parse(encounterTransitionSchema, body), metaOf(request));
   }
 
+  /**
+   * «Iniciar consulta» (T-023), desde la cola y desde la barra: el rol
+   * Proveedor; sin proveedor asignado, se la autoasigna en la misma transacción.
+   */
+  @Post(':id/start-consult')
+  @HttpCode(200)
+  @RequirePermission('patients.access')
+  startConsult(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    return this.#encounters.startConsult(principalOf(request), id(encounterId), parse(startConsultSchema, body), metaOf(request));
+  }
+
   /** S-CLI-09 «Cerrar visita», con motivo. */
   @Post(':id/close')
   @HttpCode(200)
@@ -964,6 +977,21 @@ export class NursingController {
   }
 }
 
+/** S-CLI-02 Cola de proveedor (T-023): el rol Proveedor (provider_queue.access) con patients.access. Lectura auditada. */
+@Controller('provider')
+export class ProviderController {
+  readonly #provider: ProviderService;
+  constructor(@Inject(ProviderService) provider: ProviderService) {
+    this.#provider = provider;
+  }
+
+  @Get('queue')
+  @RequirePermission('provider_queue.access', 'patients.access')
+  queue(@Req() request: FastifyRequest) {
+    return this.#provider.queue(principalOf(request), metaOf(request));
+  }
+}
+
 export interface ApiProviders {
   contexts: ContextService;
   invitations: InvitationService;
@@ -979,6 +1007,7 @@ export interface ApiProviders {
   encounters: EncounterService;
   panel: PanelService;
   nursing: NursingService;
+  provider: ProviderService;
   emailOf: UserEmailLookup;
   audit: AuditService;
   idleTimeoutSeconds: number;
@@ -1005,6 +1034,7 @@ export function createApiModule(providers: ApiProviders) {
       PatientEncountersController,
       PanelController,
       NursingController,
+      ProviderController,
     ],
     providers: [
       { provide: ContextService, useValue: providers.contexts },
@@ -1021,6 +1051,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: EncounterService, useValue: providers.encounters },
       { provide: PanelService, useValue: providers.panel },
       { provide: NursingService, useValue: providers.nursing },
+      { provide: ProviderService, useValue: providers.provider },
       { provide: USER_EMAIL_LOOKUP, useValue: providers.emailOf },
       { provide: AuditService, useValue: providers.audit },
       { provide: IDLE_TIMEOUT_SECONDS, useValue: providers.idleTimeoutSeconds },

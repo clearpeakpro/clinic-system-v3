@@ -9,11 +9,12 @@ import { AssignProviderDialog } from '../components/encounters/assign-provider-d
 import { CoverageCard, CoverageDialog } from '../components/encounters/coverage-card.tsx';
 import { EncounterHeader } from '../components/encounters/encounter-header.tsx';
 import { EncounterTimeline } from '../components/encounters/encounter-timeline.tsx';
+import { OpenOrdersDialog } from '../components/encounters/open-orders-dialog.tsx';
 import { SectionCard } from '../components/encounters/section-card.tsx';
 import { AllergyBanner } from '../components/nursing/allergy-banner.tsx';
 import { NursingSection } from '../components/nursing/nursing-section.tsx';
 import { api, type ApiError } from '../lib/api.ts';
-import { encounterMessage, isVersionConflict, movedText, VERSION_CONFLICT_TEXT } from '../lib/encounters.ts';
+import { encounterMessage, isOpenOrders, isVersionConflict, movedText, VERSION_CONFLICT_TEXT } from '../lib/encounters.ts';
 import { useActiveLocation } from '../lib/session.ts';
 
 // S-CLI-04 Detalle de visita (Stitch: design/stitch/clinicas/S-CLI-04_visita), T-018.
@@ -26,6 +27,8 @@ import { useActiveLocation } from '../lib/session.ts';
 // tareas (Órdenes T-025, Facturación T-027) ni lo que el sistema no tiene
 // (enfermera responsable, folio). Desde T-022: la sección Enfermería y el
 // aviso de alergias arriba del encabezado (ADR 0040; Recepción no lo ve).
+// Desde T-023: «Iniciar consulta» se autoasigna (su propio endpoint) y el
+// diálogo «Órdenes abiertas» (S-CLI-08) cuando el servidor bloquea el paso.
 //  - Los cuatro roles clínicos la abren (patients.access); la API calcula qué
 //    puede hacer cada uno y revalida cada operación.
 //  - Toda acción lleva la versión leída: ante un 409 se avisa y se relee.
@@ -44,7 +47,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>('resumen');
   const [busy, setBusy] = useState<null | 'action' | 'provider'>(null);
-  const [dialog, setDialog] = useState<null | 'provider' | 'coverage'>(null);
+  const [dialog, setDialog] = useState<null | 'provider' | 'coverage' | 'open-orders'>(null);
   const encounter = useQuery<EncounterDetail, ApiError>({
     queryKey: ['encounter', encounterId],
     queryFn: () => api.encounter(encounterId),
@@ -75,7 +78,9 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
       const saved = await work();
       if (saved) snackbar({ message: success(saved.status) });
     } catch (error) {
-      snackbar({ message: isVersionConflict(error) ? VERSION_CONFLICT_TEXT : encounterMessage(error) });
+      // S-CLI-08: con órdenes abiertas, diálogo en lugar del aviso.
+      if (isOpenOrders(error)) setDialog('open-orders');
+      else snackbar({ message: isVersionConflict(error) ? VERSION_CONFLICT_TEXT : encounterMessage(error) });
     } finally {
       setBusy(null);
       await reload();
@@ -88,6 +93,8 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
       () => {
         switch (command.kind) {
           case 'transition':
+            // «Iniciar consulta» tiene su endpoint: se autoasigna si la visita no tiene proveedor (T-023).
+            if (command.action === 'start_consult') return api.startConsult(e.id, { expectedVersion: e.version });
             return api.encounterTransition(e.id, { action: command.action as RegularVisitAction, expectedVersion: e.version });
           case 'close':
             return api.closeEncounter(e.id, { outcome: command.outcome, reason: command.reason, expectedVersion: e.version });
@@ -205,6 +212,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
             {dialog === 'provider' ? (
               <AssignProviderDialog current={d.provider?.membershipId ?? null} onClose={() => { setDialog(null); }} onPick={(p) => void assign(d, p)} />
             ) : null}
+            <OpenOrdersDialog open={dialog === 'open-orders'} onClose={() => { setDialog(null); }} />
             {dialog === 'coverage' ? (
               <CoverageDialog coverage={d.coverage} onClose={() => { setDialog(null); }} onSave={(input, version) => saveCoverage(d, input, version)} />
             ) : null}

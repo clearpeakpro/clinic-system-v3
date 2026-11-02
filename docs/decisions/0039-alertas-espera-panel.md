@@ -37,3 +37,9 @@ El diseño de Stitch del Panel (`design/stitch/recepcion/S-REC-01_panel`) marca 
 - **Dónde:** también en la Cola de enfermería (S-CLI-01), pero **solo en «Esperando enfermería»**. «Con enfermería» y «Procedimiento pendiente» no llevan marca.
 - **Cómo:** con los mismos minutos de la organización y contando desde el estado actual, con la hora del servidor; la misma insignia (icono, texto y color) que en el Panel.
 - **Implementación:** `GET /api/nursing/queue` devuelve `waitThresholds` y el `waitLevel` de cada fila (`apps/api/src/nursing.ts`); la web lo recalcula cada 15 s (`apps/web/src/pages/nursing-queue.tsx`). Prueba con reloj fijado justo antes y después de 5 y de 10 minutos en `apps/api/test/nursing.test.ts`.
+
+## Ampliación: Cola de proveedor (decidido el 2026-11-02, T-023)
+
+- **Dónde:** también en la Cola de proveedor (S-CLI-02), pero **solo en «Esperando proveedor»**. «Con proveedor» y «Procedimiento pendiente» no llevan marca.
+- **Cómo:** igual que en la Cola de enfermería: los minutos de la organización, contando desde el estado actual con la hora del servidor, y la misma insignia. No es la «Espera» de la tarjeta, que cuenta desde que terminó enfermería (o desde la llegada si no hubo).
+- **Implementación:** `GET /api/provider/queue` devuelve `waitThresholds` y el `waitLevel` de cada fila (`apps/api/src/provider.ts`); la web lo recalcula cada 15 s (`apps/web/src/pages/provider-queue.tsx`). Prueba con reloj fijado justo antes y después de 5 y de 10 minutos en `apps/api/test/provider.test.ts`.

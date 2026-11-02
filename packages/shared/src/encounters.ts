@@ -201,13 +201,13 @@ export interface ArrivalResult {
 /**
  * Pasos regulares que se piden por `POST /encounters/:id/transition`: ni la
  * apertura ni los cierres, ni «Enviar al proveedor», que exige peso o presión
- * y va por `POST /encounters/:id/send-to-provider` (ADR 0003, T-022).
+ * y va por `POST /encounters/:id/send-to-provider` (ADR 0003, T-022), ni
+ * «Iniciar consulta», que autoasigna y va por `POST /encounters/:id/start-consult` (T-023).
  */
 export const REGULAR_VISIT_ACTIONS = [
   'send_to_nurse',
   'send_to_procedure',
   'start_nursing',
-  'start_consult',
   'ready_for_checkout',
   'start_checkout',
   'complete',
@@ -217,6 +217,10 @@ export type RegularVisitAction = (typeof REGULAR_VISIT_ACTIONS)[number];
 /** Acción regular de la barra (S-CLI-07). */
 export const encounterTransitionSchema = z.object({ action: z.enum(REGULAR_VISIT_ACTIONS), expectedVersion: expectedVersionSchema });
 export type EncounterTransitionInput = z.input<typeof encounterTransitionSchema>;
+
+/** «Iniciar consulta» (T-023): con la versión leída; la autoasignación la decide el servidor (consultStart). */
+export const startConsultSchema = z.object({ expectedVersion: expectedVersionSchema });
+export type StartConsultInput = z.input<typeof startConsultSchema>;
 
 /** «Cerrar visita» (S-CLI-09): resultado y motivo obligatorio (máx. 500). */
 export const closeEncounterSchema = z.object({ outcome: z.enum(CLOSE_OUTCOMES), reason: reasonSchema, expectedVersion: expectedVersionSchema });

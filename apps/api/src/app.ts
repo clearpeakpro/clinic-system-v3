@@ -23,6 +23,7 @@ import { AppointmentService } from './appointments.ts';
 import { systemClock, type Clock } from './clock.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
+import { ProviderService } from './provider.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyService } from './idempotency.ts';
 import { PatientService } from './patients.ts';
@@ -65,6 +66,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     encounters,
     panel: new PanelService(pool, tenantDb, audit, clock),
     nursing: new NursingService(pool, tenantDb, audit, fieldCipher, clock, encounters),
+    provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;
