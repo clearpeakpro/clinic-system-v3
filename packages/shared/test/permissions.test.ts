@@ -70,6 +70,7 @@ describe('permisos', () => {
       expect([...permissionsFor([role])].sort(), role).toEqual([
         'admin.access',
         'catalog.manage',
+        'kiosks.manage',
         'locations.manage',
         'members.invite',
         'members.manage',

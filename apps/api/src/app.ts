@@ -24,6 +24,7 @@ import { systemClock, type Clock } from './clock.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
 import { ProviderService } from './provider.ts';
+import { DEFAULT_KIOSK_LIMITS, KioskAdminService, KioskService, type KioskLimits } from './kiosk.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyService } from './idempotency.ts';
 import { PatientService } from './patients.ts';
@@ -50,6 +51,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
   const fieldCipher = createLocalFieldCipher(config.fieldEncryptionKey);
   const idempotency = new IdempotencyService(tenantDb);
 
+  const kioskLimits: KioskLimits = { ...DEFAULT_KIOSK_LIMITS, submitMax: config.kioskSubmitMax, submitWindowSeconds: config.kioskSubmitWindowSeconds };
   const encounters = new EncounterService(pool, tenantDb, audit, fieldCipher, idempotency, clock, config.outboxKey);
   const services = {
     contexts: new ContextService(pool, tenantDb),
@@ -67,6 +69,8 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     panel: new PanelService(pool, tenantDb, audit, clock),
     nursing: new NursingService(pool, tenantDb, audit, fieldCipher, clock, encounters),
     provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
+    kiosk: new KioskService(pool, tenantDb, audit, fieldCipher, idempotency, clock, kioskLimits),
+    kioskAdmin: new KioskAdminService(tenantDb, audit, clock),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;
@@ -83,10 +87,15 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
       },
     },
   });
-  const app = await NestFactory.create<NestFastifyApplication>(createApiModule({ emailOf, audit, idleTimeoutSeconds: config.idleTimeoutSeconds, ...services }), adapter, {
+  const app = await NestFactory.create<NestFastifyApplication>(createApiModule({ emailOf, audit, idleTimeoutSeconds: config.idleTimeoutSeconds, secureCookies: config.secureCookies, ...services }), adapter, {
     logger: false,
   });
   const fastify = app.getHttpAdapter().getInstance();
+  // Rutas registradas (T-020): la prueba del kiosco las recorre todas con su token.
+  const routes: { method: string; url: string }[] = [];
+  fastify.addHook('onRoute', (route) => {
+    for (const method of [route.method].flat()) routes.push({ method, url: route.url });
+  });
 
   fastify.decorateRequest('principal', null);
 
@@ -181,6 +190,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     services,
     resolver,
     realtime,
+    routes,
     async close() {
       await realtime.close();
       await app.close();

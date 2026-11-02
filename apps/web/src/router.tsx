@@ -16,6 +16,7 @@ import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
 import { NursingQueuePage } from './pages/nursing-queue.tsx';
 import { ProviderQueuePage } from './pages/provider-queue.tsx';
+import { KioskPage } from './pages/kiosk.tsx';
 import { PanelPage } from './pages/panel.tsx';
 import { PatientPage } from './pages/patient.tsx';
 import { PatientsPage } from './pages/patients.tsx';
@@ -41,6 +42,16 @@ interface LoginSearch {
   motivo?: LoginReason;
   paso?: 'inscripcion';
 }
+
+// S-KIO-01/02 Kiosco (T-020): fuera de la app del personal; sin sesión, sin menú ni tiempo real.
+const kioskRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/kiosk/$sede',
+  component: function Kiosk() {
+    const { sede } = kioskRoute.useParams();
+    return <KioskPage key={sede} sede={sede} />;
+  },
+});
 
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -341,6 +352,7 @@ const devRoutes = import.meta.env.DEV
 const routeTree = rootRoute.addChildren([
   bootRoute,
   loginRoute,
+  kioskRoute,
   invitationRoute,
   resetRoute,
   selectRoute,

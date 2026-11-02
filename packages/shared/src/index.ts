@@ -11,3 +11,5 @@ export * from './encounters.ts';
 export * from './panel.ts';
 export * from './nursing.ts';
 export * from './provider.ts';
+export * from './kiosk.ts';
+export * from './clock.ts';

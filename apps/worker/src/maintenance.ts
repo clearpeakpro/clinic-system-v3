@@ -80,3 +80,14 @@ export async function purgeNotifications(pool: pg.Pool): Promise<number> {
   const { rows } = await pool.query<{ purged: number }>('select app.purge_notifications() as purged');
   return rows[0]?.purged ?? 0;
 }
+
+/**
+ * Kiosco (T-020; ADR 0014): vence los registros sin confirmar cuyo día de la
+ * sede ya cerró y vacía el contenido de los de más de 24 h, con la hora del
+ * reloj del worker. Las funciones de la base devuelven solo conteos.
+ */
+export async function maintainKioskCheckins(pool: pg.Pool, now: Date): Promise<{ expired: number; purged: number }> {
+  const expired = await pool.query<{ n: number }>('select app.expire_kiosk_checkins($1) as n', [now]);
+  const purged = await pool.query<{ n: number }>('select app.purge_kiosk_checkins($1) as n', [now]);
+  return { expired: expired.rows[0]?.n ?? 0, purged: purged.rows[0]?.n ?? 0 };
+}

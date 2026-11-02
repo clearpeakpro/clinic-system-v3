@@ -18,7 +18,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { WORKER_DEFAULTS, loadWorkerConfig } from '../src/config.ts';
 import { backoffSeconds, deliverEvent, type DeliverDeps } from '../src/deliver.ts';
 import { MemoryMailer, type Mailer } from '../src/mailer.ts';
-import { purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from '../src/maintenance.ts';
+import { maintainKioskCheckins, purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from '../src/maintenance.ts';
 import { startWorker } from '../src/worker.ts';
 
 // T-008: el worker entrega el outbox al menos una vez sin procesar dos veces
@@ -333,5 +333,11 @@ describe('notificaciones', () => {
     );
     expect(await purgeNotifications(pool)).toBeGreaterThanOrEqual(1);
     expect((await mine()).some((n) => n.id === old)).toBe(false);
+  });
+
+  it('kiosco (T-020): vence y vacía con la hora del reloj del worker y devuelve solo conteos', async () => {
+    // Sin registros del kiosco en esta base: la llamada funciona como clinic_app y no devuelve filas.
+    expect(await maintainKioskCheckins(pool, new Date('2030-01-01T06:00:00Z'))).toEqual({ expired: 0, purged: 0 });
+    expect(WORKER_DEFAULTS.kioskMaintenanceCron).toBe('5 * * * *');
   });
 });

@@ -64,7 +64,7 @@ Las de `CLAUDE.md` y las de la fase 2, más estas:
 | T-019 — Panel en vivo | 3A | 2–3 días | T-018 | [0039](../decisions/0039-alertas-espera-panel.md) |
 | T-022 — Enfermería | 3A | 4 días | T-018 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md), [0036](../decisions/0036-valoracion-paciente-visita.md), [0040](../decisions/0040-alergias-sin-alergias-conocidas.md) |
 | T-023 — Proveedor | 3A | 2–3 días | T-022 | [0039](../decisions/0039-alertas-espera-panel.md) |
-| T-020 — Kiosco: tableta y formulario | 3A | 3–4 días | T-017 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
+| T-020 — Kiosco: tableta y formulario | 3A | 3–4 días | T-017 | [0014](../decisions/0014-kiosco.md), [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
 | T-021 — Llegadas del kiosco en Recepción | 3A | 3 días | T-019, T-020 | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) |
 | T-024 — Cierre de 3A: semilla, guion y demo | 3A | 1–2 días | T-017 a T-023 | — |
 | T-025 — Órdenes con cargo y laboratorio sugerido | 3B | 4 días | T-024 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
@@ -262,6 +262,11 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 - El kiosco está en **español e inglés**, con un botón grande que cambia todos los textos. El idioma no se guarda.
 - Los consentimientos se firman **en papel en Recepción**: el kiosco no los menciona.
 - Sin sugerencias de ruta (ver T-021).
+- Al planificar (2026-11-02):
+  - la tableta conoce su sede con un único `POST /api/kiosk/session`, que renueva la cookie y devuelve solo el código y el nombre de la sede; es la única excepción de la prueba que recorre las rutas;
+  - fecha de nacimiento con mes (lista), día y año (teclado numérico);
+  - límite de 20 envíos por tableta cada 10 minutos, configurable;
+  - de Stitch entran el nombre y el último uso de cada tableta, «Generar nuevo código» y copiar, la ayuda bajo cada motivo y «Registrar a otra persona». Quedan fuera la IP, el modelo, «Reiniciar», las métricas y los textos sobre HIPAA.
 
 **Objetivo:** una tableta vinculada a una sede muestra el formulario del kiosco y envía registros sin poder leer nada.
 
@@ -286,6 +291,10 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 6. Trabajo diario del worker: un registro sin confirmar vence al cierre del día de la sede y su contenido se borra a las 24 h. Se prueba con reloj fijado.
 
 **No incluye:** la bandeja de Recepción ni la confirmación (T-021). El modo de pantalla fija de Android es configuración de la tableta: se documenta, no se programa.
+
+**Cómo quedó implementada (2026-11-02):** ver la sección de implementación del [ADR 0014](../decisions/0014-kiosco.md) y la guía [`docs/KIOSCO-TABLETA.md`](../KIOSCO-TABLETA.md).
+- **Organización de la E2E:** `kiosco.spec.ts` crea su propia organización ficticia con `org:create` («Clínica Demo Kiosco», sede KIO1), como `panel.spec.ts`, porque las cuentas de Administración de la semilla las usan otras E2E con su MFA.
+- **Clock:** el reloj inyectable pasa a `packages/shared/src/clock.ts` para que lo usen la API y el worker.
 
 **Terminada cuando:**
 - una tableta vinculada envía un registro, en español y en inglés, y una revocada recibe 401;
@@ -608,7 +617,7 @@ En tu computadora, con varias ventanas abiertas como si fueran distintos puestos
 
 | # | Decisión | Resolución | ADR | Tareas |
 | --- | --- | --- | --- | --- |
-| P-06 | Kiosco: idioma, consentimientos, tabla motivo → ruta y «Vengo por resultados» | Español e inglés; consentimientos en papel en Recepción; sin sugerencias de ruta en V1: decide Recepción | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) | T-020, T-021 |
+| P-06 | Kiosco: idioma, consentimientos, tabla motivo → ruta y «Vengo por resultados» | Español e inglés; consentimientos en papel en Recepción; sin sugerencias de ruta en V1: decide Recepción. Al planificar T-020: sesión de la tableta sin datos, nacimiento con mes/día/año, 20 envíos cada 10 min | [0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md) | T-020, T-021 |
 | P-16 | Fusionar pacientes duplicados | Propietario o Administrador con rol clínico; todo pasa al principal; bloqueo con dos visitas abiertas en la sede; irreversible; auditado con conteos y sin nombres | [0032](../decisions/0032-fusionar-pacientes.md) | T-030 |
 | P-17 | Acciones que el manual reserva al Administrador | Forzar estado, anular y la excepción de «Enviar al proveedor»: Propietario o Administrador con rol clínico en la sede; órdenes, solo el rol Proveedor | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) | T-018, T-022, T-025, T-028 |
 | P-18 | Membresías | Completas en 3B (T-026b); en 3A, solo «Pago directo» y «Seguro» | [0034](../decisions/0034-membresias-fase-3.md) | T-017, T-026b, T-027 |

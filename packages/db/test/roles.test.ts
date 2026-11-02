@@ -41,6 +41,9 @@ const TABLES = [
   'encounter_vitals',
   'patient_histories',
   'encounter_assessments',
+  // T-020
+  'kiosk_devices',
+  'kiosk_checkins',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {
