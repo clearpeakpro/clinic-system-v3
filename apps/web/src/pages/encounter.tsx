@@ -11,6 +11,7 @@ import { EncounterHeader } from '../components/encounters/encounter-header.tsx';
 import { EncounterTimeline } from '../components/encounters/encounter-timeline.tsx';
 import { OpenOrdersDialog } from '../components/encounters/open-orders-dialog.tsx';
 import { SectionCard } from '../components/encounters/section-card.tsx';
+import { DeclaredReasonCard } from '../components/kiosk/declared-reason.tsx';
 import { AllergyBanner } from '../components/nursing/allergy-banner.tsx';
 import { NursingSection } from '../components/nursing/nursing-section.tsx';
 import { api, type ApiError } from '../lib/api.ts';
@@ -29,6 +30,7 @@ import { useActiveLocation } from '../lib/session.ts';
 // aviso de alergias arriba del encabezado (ADR 0040; Recepción no lo ve).
 // Desde T-023: «Iniciar consulta» se autoasigna (su propio endpoint) y el
 // diálogo «Órdenes abiertas» (S-CLI-08) cuando el servidor bloquea el paso.
+// Desde T-021: «Motivo declarado por el paciente» si la visita vino del kiosco.
 //  - Los cuatro roles clínicos la abren (patients.access); la API calcula qué
 //    puede hacer cada uno y revalida cada operación.
 //  - Toda acción lleva la versión leída: ante un 409 se avisa y se relee.
@@ -183,6 +185,8 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
               />
               <ActionBar encounter={d} busy={busy !== null} onCommand={(c) => onCommand(d, c)} />
             </div>
+            {/* T-021: lo que el paciente declaró en el kiosco, sin interpretar (ADR 0031). */}
+            {d.declaredReason ? <DeclaredReasonCard declared={d.declaredReason} /> : null}
             <Tabs label="Secciones de la visita" items={tabs} value={tab} onValueChange={setTab}>
               {tab === 'resumen' ? (
                 <div className="grid gap-space-md desk:grid-cols-3">

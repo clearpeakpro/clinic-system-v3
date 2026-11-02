@@ -50,7 +50,7 @@ function BackToAppointments({ sede }: { sede: string }) {
 }
 
 /** Paciente inactivo o fusionado: se dice qué hacer antes de empezar el asistente. */
-function PatientBlocked({ sede, patient }: { sede: string; patient: ArrivalPatient }) {
+export function PatientBlocked({ sede, patient }: { sede: string; patient: ArrivalPatient }) {
   const merged = patient.mergedInto;
   return (
     <EmptyState
@@ -71,7 +71,7 @@ function PatientBlocked({ sede, patient }: { sede: string; patient: ArrivalPatie
   );
 }
 
-const blocked = (patient: ArrivalPatient) => patient.mergedInto !== null || patient.status !== 'active';
+export const blocked = (patient: ArrivalPatient) => patient.mergedInto !== null || patient.status !== 'active';
 
 export function AppointmentArrivalPage({ sede, appointmentId }: { sede: string; appointmentId: string }) {
   const active = useActiveLocation();
@@ -129,7 +129,7 @@ export function AppointmentArrivalPage({ sede, appointmentId }: { sede: string; 
 }
 
 /** Hoy en la zona de la sede (`AAAA-MM-DD`), para la edad del selector. */
-function todayIn(timeZone: string): string {
+export function todayIn(timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
@@ -215,7 +215,7 @@ export function WalkInArrivalPage({ sede, patientId }: { sede: string; patientId
 }
 
 /** S-REC-27 Llegada registrada: sin navegación automática. */
-function ArrivalSuccess({ sede, patient, result }: { sede: string; patient: ArrivalPatient; result: ArrivalResult }) {
+export function ArrivalSuccess({ sede, patient, result }: { sede: string; patient: ArrivalPatient; result: ArrivalResult }) {
   const navigate = useNavigate();
   return (
     <div className="mx-auto flex w-full max-w-[520px] flex-col items-center gap-space-md rounded-lg bg-surface-container-lowest p-space-lg text-center shadow-level-1 dark:bg-surface-container-low">

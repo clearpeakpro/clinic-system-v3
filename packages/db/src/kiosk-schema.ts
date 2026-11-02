@@ -1,7 +1,9 @@
 import { sql } from 'drizzle-orm';
 import { check, date, foreignKey, index, integer, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
+import { encounters } from './encounters-schema.ts';
 import { memberships } from './identity-schema.ts';
+import { patients } from './patients-schema.ts';
 import { appSchema, locations, organizations } from './schema.ts';
 
 // Kiosco de autorregistro (T-020; ADR 0014 y 0031). RLS, FORCE, GRANT y las
@@ -13,6 +15,9 @@ import { appSchema, locations, organizations } from './schema.ts';
 //  - kiosk_checkins: registros enviados por el kiosco. Contenido cifrado con
 //    FieldCipher; vence al cierre del día de la sede y se vacía a las 24 h
 //    (el worker). Al vaciarse quedan solo los metadatos.
+//    Desde T-021: Recepción lo confirma (paciente y visita creada) o lo
+//    descarta con motivo; en los dos casos el contenido se borra en la misma
+//    transacción y quedan solo los metadatos.
 
 export const KIOSK_DEVICE_STATUS_VALUES = ['pending', 'active', 'revoked'] as const;
 export const KIOSK_CHECKIN_STATUS_VALUES = ['pending', 'expired', 'confirmed', 'discarded'] as const;
@@ -86,6 +91,12 @@ export const kioskCheckins = appSchema.table(
     /** 24 h después del envío: el worker vacía el contenido. */
     purgeAt: timestamp('purge_at', { withTimezone: true }).notNull(),
     contentPurgedAt: timestamp('content_purged_at', { withTimezone: true }),
+    /** T-021: paciente elegido o creado por Recepción y visita abierta al confirmar. */
+    patientId: uuid('patient_id'),
+    encounterId: uuid('encounter_id'),
+    /** Quién lo confirmó o descartó, y cuándo. */
+    resolvedByMembershipId: uuid('resolved_by_membership_id'),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
     version: integer('version').notNull().default(1),
@@ -94,6 +105,20 @@ export const kioskCheckins = appSchema.table(
     unique('kiosk_checkins_organization_id_id_key').on(t.organizationId, t.id),
     foreignKey({ name: 'kiosk_checkins_location_fk', columns: [t.organizationId, t.locationId], foreignColumns: [locations.organizationId, locations.id] }),
     foreignKey({ name: 'kiosk_checkins_device_fk', columns: [t.organizationId, t.deviceId], foreignColumns: [kioskDevices.organizationId, kioskDevices.id] }),
+    foreignKey({ name: 'kiosk_checkins_patient_fk', columns: [t.organizationId, t.patientId], foreignColumns: [patients.organizationId, patients.id] }),
+    foreignKey({ name: 'kiosk_checkins_encounter_fk', columns: [t.organizationId, t.encounterId], foreignColumns: [encounters.organizationId, encounters.id] }),
+    foreignKey({
+      name: 'kiosk_checkins_resolved_by_fk',
+      columns: [t.organizationId, t.resolvedByMembershipId],
+      foreignColumns: [memberships.organizationId, memberships.id],
+    }),
+    // Confirmado: con paciente y visita. Confirmado o descartado: sin contenido y con quién y cuándo.
+    check('kiosk_checkins_confirmed', sql`${t.status} <> 'confirmed' or (${t.patientId} is not null and ${t.encounterId} is not null)`),
+    check(
+      'kiosk_checkins_resolved',
+      sql`(${t.status} in ('confirmed', 'discarded')) = (${t.resolvedAt} is not null and ${t.resolvedByMembershipId} is not null)`,
+    ),
+    check('kiosk_checkins_resolved_purged', sql`${t.status} not in ('confirmed', 'discarded') or ${t.contentEnc} is null`),
     check('kiosk_checkins_status_check', sql`${t.status} in ('pending', 'expired', 'confirmed', 'discarded')`),
     check('kiosk_checkins_content', sql`(${t.contentEnc} is null) = (${t.contentPurgedAt} is not null)`),
     check('kiosk_checkins_expiry_order', sql`${t.expiresAt} > ${t.createdAt} and ${t.purgeAt} > ${t.createdAt}`),

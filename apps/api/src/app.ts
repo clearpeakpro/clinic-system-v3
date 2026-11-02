@@ -24,6 +24,7 @@ import { systemClock, type Clock } from './clock.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
 import { ProviderService } from './provider.ts';
+import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { DEFAULT_KIOSK_LIMITS, KioskAdminService, KioskService, type KioskLimits } from './kiosk.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyService } from './idempotency.ts';
@@ -71,6 +72,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
     kiosk: new KioskService(pool, tenantDb, audit, fieldCipher, idempotency, clock, kioskLimits),
     kioskAdmin: new KioskAdminService(tenantDb, audit, clock),
+    kioskArrivals: new KioskArrivalService(tenantDb, audit, fieldCipher, clock),
   };
   const emailOf = async (userId: string) =>
     (await plain.select({ email: userTable.email }).from(userTable).where(eq(userTable.id, userId)))[0]?.email ?? null;

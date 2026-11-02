@@ -5,6 +5,7 @@ import {
   encounterEvents,
   encounters,
   enqueueNotification,
+  kioskCheckins,
   locations,
   membershipRoles,
   memberships,
@@ -35,6 +36,7 @@ import {
   visitForce,
   visitTransition,
   type EncounterCoverage,
+  type DeclaredReason,
   type EncounterDetail,
   type EncounterEventAction,
   type EncounterProvider,
@@ -64,6 +66,7 @@ import type { AuditService } from './audit.ts';
 import type { Clock } from './clock.ts';
 import type { IdempotencyService } from './idempotency.ts';
 import { allergyNotice, latestHistory } from './nursing.ts';
+import { kioskContent, notifyKioskCheckin } from './kiosk-arrivals.ts';
 import { rolesAt, type Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
 
@@ -218,6 +221,9 @@ export class EncounterService {
           const now = this.#clock.now();
           const site = await this.#site(tx, ctx.locationId);
           if (!site.info.active) throw new HttpError(409, 'location_inactive');
+          // T-021: confirmar un registro del kiosco. Bloqueado hasta el final:
+          // dos confirmaciones a la vez no abren dos visitas.
+          const kiosk = input.kioskCheckinId ? await this.#lockKioskCheckin(tx, ctx.organizationId, ctx.locationId, input.kioskCheckinId, now) : null;
 
           let patientId: string;
           let appointmentTypeId: string | null;
@@ -282,9 +288,19 @@ export class EncounterService {
             appointmentId: appointment?.id ?? null,
             appointmentTypeId,
             code,
-            source: input.source,
+            // Del kiosco sin cita: origen «kiosk»; con cita, sigue siendo «appointment».
+            source: kiosk && input.source === 'walk_in' ? 'kiosk' : input.source,
             route: input.route,
             status: opening.to,
+            // «Motivo declarado por el paciente», tal como lo envió (ADR 0031: no decide nada).
+            declaredReasonEnc: kiosk
+              ? await this.#cipher.encrypt(JSON.stringify({ reason: kiosk.content.reason, symptoms: kiosk.content.symptoms }), {
+                  organizationId: ctx.organizationId,
+                  table: 'encounters',
+                  column: 'declared_reason',
+                  recordId: encounterId,
+                })
+              : null,
             arrivedAt: now,
           });
           await tx.insert(encounterEvents).values({
@@ -307,6 +323,24 @@ export class EncounterService {
               .where(eq(appointments.id, appointment.id));
           }
 
+          if (kiosk) {
+            // Al confirmar, el contenido del registro se borra y quedan solo los metadatos (ADR 0014).
+            await tx
+              .update(kioskCheckins)
+              .set({
+                status: 'confirmed',
+                contentEnc: null,
+                contentPurgedAt: now,
+                patientId,
+                encounterId,
+                resolvedByMembershipId: me,
+                resolvedAt: now,
+                updatedAt: now,
+                version: sql`${kioskCheckins.version} + 1`,
+              })
+              .where(eq(kioskCheckins.id, kiosk.id));
+          }
+
           const base = { actorType: 'user' as const, actorId: actor.userId, locationId: ctx.locationId, ...meta };
           await this.#audit.inTx(tx, ctx.organizationId, {
             action: 'encounter.checked_in',
@@ -319,8 +353,19 @@ export class EncounterService {
               route: input.route,
               coverage: input.coverage.type,
               ...(appointment ? { appointmentCode: appointment.code } : {}),
+              ...(kiosk ? { kiosk: true } : {}),
             },
           });
+          if (kiosk) {
+            await this.#audit.inTx(tx, ctx.organizationId, {
+              action: 'kiosk.checkin_confirmed',
+              ...base,
+              entityType: 'kiosk_checkin',
+              entityId: kiosk.id,
+              metadata: { encounterCode: code, newPatient: kiosk.content.firstVisit },
+            });
+            await notifyKioskCheckin(tx, ctx.organizationId, ctx.locationId, kiosk.id);
+          }
           if (appointment) {
             await this.#audit.inTx(tx, ctx.organizationId, {
               action: 'appointment.arrived',
@@ -360,6 +405,19 @@ export class EncounterService {
     }
   }
 
+  /** T-021: el registro del kiosco a confirmar, pendiente, sin vencer y de esta sede, con su contenido descifrado. */
+  async #lockKioskCheckin(tx: Tx, organizationId: string, locationId: string, id: string, now: Date) {
+    const [row] = await tx
+      .select({ id: kioskCheckins.id, status: kioskCheckins.status, expiresAt: kioskCheckins.expiresAt, contentEnc: kioskCheckins.contentEnc })
+      .from(kioskCheckins)
+      .where(and(eq(kioskCheckins.id, id), eq(kioskCheckins.locationId, locationId)))
+      .for('update');
+    if (!row) throw new HttpError(404, 'kiosk_checkin_not_found');
+    if (row.status !== 'pending' || !row.contentEnc) throw new HttpError(409, 'kiosk_checkin_resolved');
+    if (row.expiresAt.getTime() <= now.getTime()) throw new HttpError(409, 'kiosk_checkin_expired');
+    return { id: row.id, content: await kioskContent(this.#cipher, organizationId, row.id, row.contentEnc) };
+  }
+
   // --- Pantalla de la visita (T-018; S-CLI-04 a 12, S-CLI-24) ---------------
 
   /**
@@ -391,6 +449,7 @@ export class EncounterService {
           timezone: locations.timezone,
           typeId: appointmentTypes.id,
           typeName: appointmentTypes.name,
+          declaredReasonEnc: encounters.declaredReasonEnc,
         })
         .from(encounters)
         .innerJoin(patients, eq(patients.id, encounters.patientId))
@@ -459,6 +518,11 @@ export class EncounterService {
       myMembershipId: me,
       coverage: coverage ? await this.#coverageView(ctx.organizationId, coverage) : null,
       allergies,
+      declaredReason: row.declaredReasonEnc
+        ? (JSON.parse(
+            await this.#cipher.decrypt(row.declaredReasonEnc, { organizationId: ctx.organizationId, table: 'encounters', column: 'declared_reason', recordId: row.id }),
+          ) as DeclaredReason)
+        : null,
       timeline,
       abilities: encounterAbilities({
         status,

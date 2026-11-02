@@ -36,7 +36,8 @@ export interface ArrivalDraft {
   siteConfirmed: boolean;
   /** Solo sin cita: «Tipo de cita» (nulo = «Sin tipo de cita»). */
   appointmentTypeId: string | null;
-  route: VisitRoute;
+  /** Nula: sin preselección (registros del kiosco, ADR 0031); «Continuar» exige elegir. */
+  route: VisitRoute | null;
   coverage: DraftCoverage;
   insurerName: string;
   memberId: string;
@@ -44,7 +45,7 @@ export interface ArrivalDraft {
   value: string;
 }
 
-export function emptyDraft(route: VisitRoute): ArrivalDraft {
+export function emptyDraft(route: VisitRoute | null): ArrivalDraft {
   return {
     identityVerified: false,
     siteConfirmed: false,
@@ -82,6 +83,7 @@ export function stepIssues(step: ArrivalStep, draft: ArrivalDraft, siteActive: b
       if (!siteActive) return ['Esta sede está inactiva. No es posible registrar llegadas aquí.'];
       return draft.siteConfirmed ? [] : ['Confirme la sede antes de continuar.'];
     case 'route':
+      return draft.route ? [] : ['Elija una ruta de atención.'];
     case 'coverage':
       return [];
     case 'payer': {
@@ -115,12 +117,16 @@ export function coverageInput(draft: ArrivalDraft): ArrivalCoverageInput {
 export function arrivalInput(
   draft: ArrivalDraft,
   target: { kind: 'appointment'; appointmentId: string; version: number } | { kind: 'walk_in'; patientId: string },
+  kioskCheckinId?: string,
 ): ArrivalInput {
   const coverage = coverageInput(draft);
+  // stepIssues('confirm') ya exige la ruta antes de enviar.
+  const route = draft.route ?? 'STANDARD';
+  const kiosk = kioskCheckinId ? { kioskCheckinId } : {};
   if (target.kind === 'appointment') {
-    return { source: 'appointment', appointmentId: target.appointmentId, expectedVersion: target.version, route: draft.route, coverage };
+    return { source: 'appointment', appointmentId: target.appointmentId, expectedVersion: target.version, route, coverage, ...kiosk };
   }
-  return { source: 'walk_in', patientId: target.patientId, appointmentTypeId: draft.appointmentTypeId, route: draft.route, coverage };
+  return { source: 'walk_in', patientId: target.patientId, appointmentTypeId: draft.appointmentTypeId, route, coverage, ...kiosk };
 }
 
 /** Solo Programada o Confirmada admiten la llegada (S-REC-18). */
@@ -150,6 +156,10 @@ export const MERGED_PATIENT_TEXT = 'Este registro fue fusionado con otro pacient
 const NOT_ALLOWED = 'Esta acción no está permitida en el estado actual.';
 
 const MESSAGES: Record<string, string> = {
+  // T-021: confirmar un registro del kiosco.
+  kiosk_checkin_resolved: 'Este registro del kiosco ya se confirmó o se descartó.',
+  kiosk_checkin_expired: 'Este registro del kiosco venció al cierre del día. Registre la llegada sin cita.',
+  kiosk_checkin_not_found: 'No se encontró el registro del kiosco en esta sede.',
   encounter_already_open: NOT_ALLOWED,
   appointment_already_checked_in: NOT_ALLOWED,
   invalid_appointment_transition: NOT_ALLOWED,

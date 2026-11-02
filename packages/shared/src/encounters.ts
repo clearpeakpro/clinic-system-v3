@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AppointmentStatus } from './appointments.ts';
+import type { DeclaredReason } from './kiosk.ts';
 import type { AllergyNotice } from './nursing.ts';
 import type { PatientSummary } from './patients.ts';
 import { expectedVersionSchema, reasonSchema } from './schemas.ts';
@@ -136,6 +137,8 @@ export const arrivalSchema = z.discriminatedUnion('source', [
     expectedVersion: z.number().int().positive(),
     route,
     coverage: arrivalCoverageSchema,
+    /** T-021: confirmar un registro del kiosco (su paciente tenía cita hoy). */
+    kioskCheckinId: z.uuid().optional(),
   }),
   z.object({
     source: z.literal('walk_in'),
@@ -143,6 +146,8 @@ export const arrivalSchema = z.discriminatedUnion('source', [
     appointmentTypeId: z.uuid().nullable(),
     route,
     coverage: arrivalCoverageSchema,
+    /** T-021: confirmar un registro del kiosco (la visita se abre con origen «kiosk»). */
+    kioskCheckinId: z.uuid().optional(),
   }),
 ]);
 export type ArrivalInput = z.input<typeof arrivalSchema>;
@@ -304,6 +309,8 @@ export interface EncounterDetail {
   coverage: EncounterCoverage | null;
   /** Aviso de alergias del encabezado (ADR 0040, T-022). Nulo para quien no ve datos clínicos (Recepción). */
   allergies: AllergyNotice | null;
+  /** «Motivo declarado por el paciente» en el kiosco (T-021), para los cuatro roles clínicos. Nulo si no vino del kiosco. */
+  declaredReason: DeclaredReason | null;
   timeline: EncounterTimelineEntry[];
   abilities: EncounterAbilities;
 }

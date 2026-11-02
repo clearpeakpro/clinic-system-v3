@@ -1,4 +1,6 @@
 import type {
+  KioskArrivalDetail,
+  KioskArrivals,
   CreateKioskPairingInput,
   KioskCheckinInput,
   KioskCheckinReceipt,
@@ -364,6 +366,11 @@ export const api = {
     request<KioskPairing>('POST', `/api/locations/${locationId}/kiosks/${deviceId}/code`, { expectedVersion }),
   revokeKiosk: (locationId: string, deviceId: string, reason: string, expectedVersion: number) =>
     request<KioskDeviceView>('POST', `/api/locations/${locationId}/kiosks/${deviceId}/revoke`, { reason, expectedVersion }),
+  // Llegadas del kiosco en Recepción (T-021).
+  kioskArrivals: () => request<KioskArrivals>('GET', '/api/kiosk-arrivals'),
+  kioskArrival: (id: string) => request<KioskArrivalDetail>('GET', `/api/kiosk-arrivals/${id}`),
+  kioskTodayAppointment: (patientId: string) => request<{ appointmentId: string | null }>('GET', `/api/kiosk-arrivals/today-appointment/${patientId}`),
+  discardKioskArrival: (id: string, reason: string) => request<{ discarded: true }>('POST', `/api/kiosk-arrivals/${id}/discard`, { reason }),
   // La tableta: solo su cookie (Path=/api/kiosk); nunca lee datos.
   kioskLink: (input: KioskLinkInput) => request<KioskSession>('POST', '/api/kiosk/link', input),
   kioskSession: () => request<KioskSession>('POST', '/api/kiosk/session'),

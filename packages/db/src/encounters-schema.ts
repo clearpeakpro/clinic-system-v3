@@ -68,6 +68,11 @@ export const encounters = appSchema.table(
     /** Ruta elegida por Recepción (ADR 0005). */
     route: text('route').notNull(),
     status: text('status').notNull().default('CHECKED_IN'),
+    /**
+     * T-021: «Motivo declarado por el paciente» en el kiosco (motivo y
+     * síntomas tal como los escribió), cifrado. Nunca decide la ruta (ADR 0031).
+     */
+    declaredReasonEnc: text('declared_reason_enc'),
     arrivedAt: timestamp('arrived_at', { withTimezone: true }).notNull(),
     closedAt: timestamp('closed_at', { withTimezone: true }),
     version: integer('version').notNull().default(1),

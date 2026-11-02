@@ -22,6 +22,7 @@ import type pg from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { AuditService } from './audit.ts';
 import type { Clock } from './clock.ts';
+import { notifyKioskCheckin } from './kiosk-arrivals.ts';
 import type { IdempotencyService } from './idempotency.ts';
 import type { Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
@@ -379,6 +380,8 @@ export class KioskService {
           entityId: id,
           ...meta,
         });
+        // T-021: la bandeja de Recepción lo ve al instante (solo el id).
+        await notifyKioskCheckin(tx, device.organizationId, device.locationId, id);
         return { status: 201, resourceIds: [id] };
       },
       () => Promise.resolve(null),
