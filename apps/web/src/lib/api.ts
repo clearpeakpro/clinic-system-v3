@@ -11,6 +11,7 @@ import type {
   EncounterTransitionInput,
   ForceEncounterInput,
   PatientEncounters,
+  PanelSnapshot,
   UpdateCoverageInput,
   AppointmentDetail,
   AppointmentFormOptions,
@@ -332,7 +333,7 @@ export const api = {
   encounterProviders: () => request<EncounterProvider[]>('GET', '/api/encounters/providers'),
   patientEncounters: (patientId: string, offset: number) =>
     request<PatientEncounters>('GET', `/api/patients/${patientId}/encounters?offset=${String(offset)}`),
-  todayAppointmentCount: () => request<{ count: number; today: string }>('GET', '/api/appointments/today-count'),
+  panel: () => request<PanelSnapshot>('GET', '/api/panel'),
   patientAppointments: (patientId: string, offset: number) =>
     request<PatientAppointments>('GET', `/api/patients/${patientId}/appointments?offset=${String(offset)}`),
   // Excepción del ADR 0027: el Propietario se asigna roles clínicos.

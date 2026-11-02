@@ -42,3 +42,4 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0036. Valoración: datos del paciente y de la visita](0036-valoracion-paciente-visita.md) | Aceptada |
 | [0037. Recibo de 80 mm en español e inglés](0037-recibo-80mm-es-en.md) | Aceptada |
 | [0038. Reporte diario de la sede antes del piloto](0038-reporte-diario-antes-piloto.md) | Aceptada |
+| [0039. Alertas de espera en el Panel («Alerta» y «Crítico»)](0039-alertas-espera-panel.md) | Aceptada |

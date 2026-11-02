@@ -2,6 +2,7 @@ import { QueryClient, useQuery } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { api, ApiError, type LocationChoice, type Me, type NotificationsList } from './api.ts';
 import { agendaPrefs } from './appointments.ts';
+import { panelPrefs } from './panel.ts';
 import { patientSearch } from './patients.ts';
 import { RealtimeClient, type LiveState, type ScreenEvent } from './realtime.ts';
 
@@ -35,9 +36,10 @@ export const EVENT_BATCH_MS = 500;
 
 /**
  * Eventos de pantalla de la sede activa (el servidor solo envía los de esa
- * sede). `appointment.changed` (T-015): se relee la agenda de todos los días,
- * el detalle de esa cita (y su registro de llegada, T-017), «N citas hoy» del
- * Panel y las citas del perfil. `encounter.changed` (T-017): esa visita. Los
+ * sede). Con cualquiera de los dos, el Panel (T-019: tarjetas, lista y «N
+ * citas hoy»). `appointment.changed` (T-015): se relee la agenda de todos los
+ * días, el detalle de esa cita (y su registro de llegada, T-017) y las citas
+ * del perfil. `encounter.changed` (T-017): esa visita. Los
  * mensajes solo traen ids y estado: los datos se vuelven a pedir por HTTP.
  */
 export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) => void, delay = EVENT_BATCH_MS) {
@@ -52,9 +54,9 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
     setTimeout(() => {
       const ids = pending ?? { appointments: new Set<string>(), encounters: new Set<string>() };
       pending = null;
+      invalidate(['panel']);
       if (ids.appointments.size > 0) {
         invalidate(['agenda']);
-        invalidate(['today-count']);
         invalidate(['patient-appointments']);
       }
       for (const appointmentId of ids.appointments) {
@@ -113,6 +115,7 @@ export async function endSession(kind: 'voluntary' | 'everywhere' | 'idle'): Pro
     // La búsqueda de pacientes (T-012) vive en memoria fuera de la caché.
     patientSearch.submit(null);
     agendaPrefs.reset();
+    panelPrefs.reset();
   }
 }
 

@@ -36,6 +36,7 @@ import type { NotificationItem } from '../lib/api.ts';
 import { CalendarDays, Check, ClipboardList, Coffee, History, IdCard, MailPlus, RefreshCw, Trash2, UserRoundX, Wallet } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { IdleWarningDialog } from '../components/idle-guard.tsx';
+import { WaitBadge } from '../components/panel/wait-badge.tsx';
 
 /**
  * /dev/ui (T-005): todos los componentes compartidos en claro y oscuro, para
@@ -125,6 +126,11 @@ export function DevUiPage() {
             <SemanticChip tone="success" label="Éxito" />
             <SemanticChip tone="warning" label="Advertencia" />
             <SemanticChip tone="danger" label="Peligro" />
+          </div>
+          <p className="text-body-md text-on-surface-variant">Marcas de espera del Panel (ADR 0039):</p>
+          <div className="flex flex-wrap items-center gap-space-sm">
+            <WaitBadge level="alert" detail="6 min en Esperando enfermería" />
+            <WaitBadge level="critical" detail="12 min en Esperando proveedor" />
           </div>
         </Section>
 

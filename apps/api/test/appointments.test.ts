@@ -261,19 +261,6 @@ describe('T-014 agenda y detalle de la cita', () => {
     expect((await day(adminRecepcion, '2026-12-06')).appointments.map((a) => a.id)).toContain(created.id);
   });
 
-  it('«N citas hoy»: las de hoy en la sede menos Canceladas y No se presentó; lo ve quien ve el Panel', async () => {
-    const before = (await recepcionNor2.get('/api/appointments/today-count')).json<{ count: number }>().count;
-    for (const status of APPOINTMENT_STATUSES) await insert({ site: 1, today: { days: 0, time: '23:50' }, status });
-    await insert({ site: 1, today: { days: 1, time: '00:10' } });
-    await insert({ site: 1, today: { days: -1, time: '23:50' } });
-    await insert({ site: 0, today: { days: 0, time: '12:00' } });
-    const after = await recepcionNor2.get('/api/appointments/today-count');
-    expect(after.statusCode).toBe(200);
-    expect(after.json<{ count: number }>().count - before).toBe(3);
-    expect((await enfermeria.get('/api/appointments/today-count')).statusCode).toBe(200);
-    expect((await adminSinRol.get('/api/appointments/today-count')).statusCode).toBe(403);
-  });
-
   describe('pestaña Citas del perfil (S-PAC-07)', () => {
     let patientId: string;
 

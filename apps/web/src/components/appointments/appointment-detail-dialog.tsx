@@ -62,7 +62,7 @@ export function useAfterAppointmentChange() {
   return async (appointmentId?: string) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['agenda'] }),
-      queryClient.invalidateQueries({ queryKey: ['today-count'] }),
+      queryClient.invalidateQueries({ queryKey: ['panel'] }),
       queryClient.invalidateQueries({ queryKey: ['patient-appointments'] }),
       appointmentId ? queryClient.invalidateQueries({ queryKey: ['appointment', appointmentId] }) : Promise.resolve(),
     ]);

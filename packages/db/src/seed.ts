@@ -299,7 +299,10 @@ export async function seed(
     const { withTenant } = createTenantDb(client);
     for (const org of [DEMO.norte, DEMO.sur]) {
       await withTenant(org.id, async (tx) => {
-        await tx.insert(organizations).values({ id: org.id, name: org.name }).onConflictDoNothing();
+        // Solo id y nombre: la semilla mínima también corre sobre bases con
+        // migraciones parciales (audit-chain-backfill.test.ts), sin las
+        // columnas posteriores, que toman su valor por defecto.
+        await tx.execute(sql`insert into ${organizations} (id, name) values (${org.id}, ${org.name}) on conflict do nothing`);
         await tx
           .insert(locations)
           .values(

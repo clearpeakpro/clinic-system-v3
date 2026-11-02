@@ -1,6 +1,5 @@
 import type { AgendaAppointment } from '@clinic/shared';
 import { describe, expect, it } from 'vitest';
-import { todayText } from '../pages/panel.tsx';
 import {
   countByStatus,
   dayBadge,
@@ -88,12 +87,6 @@ describe('fechas en texto', () => {
     expect(relativeDay('2026-10-31', '2026-10-31', '2026-11-01')).toBe('Hoy');
     expect(relativeDay('2026-11-01', '2026-10-31', '2026-11-01')).toBe('Mañana');
     expect(relativeDay('2026-11-03', '2026-10-31', '2026-11-01')).toBe('Martes 3 de noviembre');
-  });
-
-  it('«N citas hoy» del Panel', () => {
-    expect(todayText(0)).toBe('Sin citas hoy');
-    expect(todayText(1)).toBe('1 cita hoy');
-    expect(todayText(18)).toBe('18 citas hoy');
   });
 });
 
