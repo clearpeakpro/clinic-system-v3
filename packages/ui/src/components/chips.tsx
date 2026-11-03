@@ -1,8 +1,10 @@
 import {
   APPOINTMENT_STATUS_LABELS,
+  ORDER_STATUS_LABELS,
   VISIT_ROUTE_LABELS,
   VISIT_STATUS_LABELS,
   type AppointmentStatus,
+  type OrderStatus,
   type VisitRoute,
   type VisitStatus,
 } from '@clinic/shared';
@@ -23,6 +25,7 @@ import {
   Info,
   LogOut,
   type LucideIcon,
+  CirclePlay,
   Route,
   Stethoscope,
   Syringe,
@@ -77,6 +80,17 @@ export const APPOINTMENT_STATUS_STYLE: Record<AppointmentStatus, { tone: StatusT
   NO_SHOW: { tone: 'waiting', icon: UserX },
 };
 
+/**
+ * Tono e icono de cada estado de la orden (S-CLI-17, T-025): «Pendiente»
+ * ámbar, «En curso» azul, «Completada» verde y «Cancelada» gris.
+ */
+export const ORDER_STATUS_STYLE: Record<OrderStatus, { tone: StatusTone; icon: LucideIcon }> = {
+  PENDING: { tone: 'waiting', icon: Hourglass },
+  IN_PROGRESS: { tone: 'in-care', icon: CirclePlay },
+  COMPLETED: { tone: 'completed', icon: CircleCheckBig },
+  CANCELLED: { tone: 'departed', icon: Ban },
+};
+
 export const VISIT_ROUTE_ICONS: Record<VisitRoute, LucideIcon> = {
   STANDARD: Route,
   INJECTION_ONLY: Syringe,
@@ -122,6 +136,11 @@ export function VisitStatusChip({ status, className }: { status: VisitStatus; cl
 export function AppointmentStatusChip({ status, className }: { status: AppointmentStatus; className?: string }) {
   const style = APPOINTMENT_STATUS_STYLE[status];
   return <StatusChip tone={style.tone} icon={style.icon} label={APPOINTMENT_STATUS_LABELS[status]} {...(className ? { className } : {})} />;
+}
+
+export function OrderStatusChip({ status, className }: { status: OrderStatus; className?: string }) {
+  const style = ORDER_STATUS_STYLE[status];
+  return <StatusChip tone={style.tone} icon={style.icon} label={ORDER_STATUS_LABELS[status]} {...(className ? { className } : {})} />;
 }
 
 /** Insignia de ruta: neutra con borde (manual, S-REC-01) e icono de la hoja. */

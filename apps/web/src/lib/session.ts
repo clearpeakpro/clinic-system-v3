@@ -45,6 +45,7 @@ export const EVENT_BATCH_MS = 500;
 export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) => void, delay = EVENT_BATCH_MS) {
   let pending: { appointments: Set<string>; encounters: Set<string> } | null = null;
   let kioskPending = false;
+  const orderPending = new Set<string>();
   return (event: ScreenEvent) => {
     // T-021: un registro del kiosco llegó, se confirmó o se descartó (solo su id): la bandeja del Panel.
     if (event.name === 'kiosk.checkin') {
@@ -53,6 +54,18 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       setTimeout(() => {
         kioskPending = false;
         invalidate(['kiosk-arrivals']);
+      }, delay);
+      return;
+    }
+    // T-025: una orden se creó o cambió, o cambiaron los cargos de una visita: sus órdenes y la visita.
+    if (event.name === 'order.created' || event.name === 'order.changed' || event.name === 'billing.changed') {
+      const encounterId = event.ids.encounter;
+      if (!encounterId || orderPending.has(encounterId)) return;
+      orderPending.add(encounterId);
+      setTimeout(() => {
+        orderPending.delete(encounterId);
+        invalidate(['orders', encounterId]);
+        invalidate(['encounter', encounterId]);
       }, delay);
       return;
     }

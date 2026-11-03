@@ -468,6 +468,24 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - cancelar la orden anula su cargo;
 - E2E `ordenes.spec.ts`.
 
+**Decisiones al planificarla (2026-11-02, [ADR 0028](../decisions/0028-laboratorios-costos.md)):**
+- Las pruebas sin laboratorio van en una orden aparte, «Sin laboratorio asignado».
+- Con seguro, elegir el laboratorio no es obligatorio. Si el Proveedor lo elige, solo entre los activos que hacen todas las pruebas de la orden; si ninguno las hace todas, una orden por prueba. Si no lo elige, Enfermería lo elige después con «Cambiar laboratorio…».
+- «Cambiar laboratorio…» sobre una orden creada (Enfermería y Proveedor, con motivo y `version`) entra en T-025.
+- En T-025 solo cancela el Proveedor que la ordenó o el de la visita, con la visita abierta; la anulación administrativa va en T-028.
+
+**Cómo quedó (2026-11-02):**
+- **Tablas:** `orders`, `order_items` y `charges` (migraciones 0036 y 0037), con RLS, sin `DELETE` y con GRANT por columnas: del cargo solo se cambia la anulación. Aislamiento en `packages/db/test/orders.test.ts`.
+- **Permisos** (`permissions.ts`): `orders.create` y `orders.cancel` (Proveedor) y `orders.execute` (Enfermería y Proveedor: ver notas, «Cambiar laboratorio…» y, en T-026, ejecutar).
+- **API:** `apps/api/src/orders.ts`, con el reloj inyectable. Precio vigente de la sede el día de la sede; el «Cargo estimado» lo da `POST …/orders/preview`. Errores propios: `encounter_not_orderable`, `price_unavailable`, `item_inactive`, `amount_too_large`, `lab_groups_changed`, `invalid_lab`, `lab_change_reason_required`, `order_not_owned`, `order_closed` y `lab_unchanged`.
+- **Visita:** «Listo para caja» e «Iniciar pago» miran las órdenes abiertas de verdad (`open_orders`). El paso automático a «Listo para caja» es `autoReadyForCheckout()` de `visit.ts`: el mismo paso de la máquina, con el actor «Sistema» en el historial. T-026 lo reutiliza al completar.
+- **Web:** `components/orders/` (S-CLI-17, 18 y 21, y «Cambiar laboratorio…»); S-CLI-08 con «Ir a órdenes»; chip de estado de la orden en `packages/ui` y en `/dev/ui`.
+- **Pruebas:** `packages/shared/test/orders.test.ts`, `apps/api/test/orders.test.ts`, `apps/web/src/lib/orders.test.ts` y la E2E `apps/web/e2e/ordenes.spec.ts`.
+- **Diferencias con el manual:**
+  - en Laboratorio se eligen varias pruebas a la vez, con una sola «Cantidad» para todas;
+  - no existe «Precio del proveedor» ni «Costo interno» (ADR 0028 y 0033: el Administrador no crea órdenes);
+  - si un ítem no tiene precio vigente en la sede, no se puede ordenar (`price_unavailable`).
+
 ## T-026 — Ejecutar órdenes y cola de órdenes
 
 **Decisiones:** ninguna.
@@ -482,13 +500,15 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 1. Cola de órdenes (S-CLI-03) con las pestañas Pendientes, En curso, «Completadas hoy» (día de la sede) y Canceladas, y el conmutador «Asignadas a mí». Las tarjetas muestran códigos, no nombres ni notas.
 2. Asignar, iniciar y completar con nota (S-CLI-19, 20 y 22), con las reglas de quién puede ejecutar en la sede.
 3. Aviso **«Orden asignada a usted»** por el outbox, con el código de la orden.
-4. Cuando se completa o cancela la última orden en «Procedimiento pendiente», la visita pasa a «Listo para caja» en la misma transacción, por la máquina de estados.
+4. Cuando se completa o cancela la última orden en «Procedimiento pendiente», la visita pasa a «Listo para caja» en la misma transacción, por la máquina de estados (`autoReadyForCheckout()`, ya usado al cancelar en T-025).
 5. Eventos en vivo de la orden (id y estado).
+6. Una orden de laboratorio no se puede completar sin laboratorio asignado: antes, «Cambiar laboratorio…» (T-025).
 
 **Terminada cuando:**
 - Enfermería se asigna una orden, la inicia y la completa, y la visita pasa sola a «Listo para caja»;
 - una orden asignada a otra persona no se puede iniciar;
 - «Completadas hoy» se prueba con reloj fijado en el cambio de día;
+- una orden de laboratorio no se puede completar sin laboratorio asignado ([ADR 0028](../decisions/0028-laboratorios-costos.md), decisión del 2026-11-02);
 - E2E `ordenes-cola.spec.ts`.
 
 ## T-026b — Planes de membresía y beneficios

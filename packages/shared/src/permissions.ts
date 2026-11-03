@@ -61,6 +61,15 @@ export const PERMISSIONS = [
   // tiene y ninguna sesión del personal lo recibe.
   'kiosks.manage',
   'kiosk.submit',
+  // Órdenes (T-025; S-CLI-17 a 21). Crear: solo el rol Proveedor (ADR 0033;
+  // el manual decía «Proveedor o Administrador»). Ejecutar (T-026), ver las
+  // notas y «Cambiar laboratorio…» (ADR 0028): Enfermería y Proveedor.
+  // Cancelar: el Proveedor, solo en las órdenes que ordenó o de visitas donde
+  // es el proveedor (lo comprueba el servidor). La anulación administrativa
+  // llega con T-028.
+  'orders.create',
+  'orders.execute',
+  'orders.cancel',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -119,7 +128,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'checkout.access',
     'reports.location',
   ],
-  enfermeria: ['panel.view', 'patients.access', 'nursing.view', 'nursing.vitals', 'nursing.assessment', 'nursing_queue.access', 'orders_queue.access'],
+  enfermeria: [
+    'panel.view',
+    'patients.access',
+    'nursing.view',
+    'nursing.vitals',
+    'nursing.assessment',
+    'nursing_queue.access',
+    'orders_queue.access',
+    'orders.execute',
+  ],
   proveedor: [
     'panel.view',
     'patients.access',
@@ -131,6 +149,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'nursing_queue.access',
     'provider_queue.access',
     'orders_queue.access',
+    'orders.create',
+    'orders.execute',
+    'orders.cancel',
   ],
 };
 

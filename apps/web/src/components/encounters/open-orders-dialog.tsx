@@ -3,8 +3,7 @@ import { ArrowRight, ClipboardList } from 'lucide-react';
 
 // S-CLI-08 Diálogo «Órdenes abiertas» (T-023): aparece cuando el servidor
 // rechaza pasar a Caja con órdenes pendientes o en curso (`open_orders`).
-// «Ir a órdenes» solo existe cuando la visita tiene la sección Órdenes
-// (T-025); hasta entonces, solo «Cerrar».
+// Desde T-025, «Ir a órdenes» lleva a la sección Órdenes (S-CLI-17).
 
 export function OpenOrdersDialog({ open, onClose, onGoToOrders }: { open: boolean; onClose: () => void; onGoToOrders?: (() => void) | undefined }) {
   return (

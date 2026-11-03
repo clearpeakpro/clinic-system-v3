@@ -10,6 +10,7 @@ import { CoverageCard, CoverageDialog } from '../components/encounters/coverage-
 import { EncounterHeader } from '../components/encounters/encounter-header.tsx';
 import { EncounterTimeline } from '../components/encounters/encounter-timeline.tsx';
 import { OpenOrdersDialog } from '../components/encounters/open-orders-dialog.tsx';
+import { OrdersSection } from '../components/orders/orders-section.tsx';
 import { SectionCard } from '../components/encounters/section-card.tsx';
 import { DeclaredReasonCard } from '../components/kiosk/declared-reason.tsx';
 import { AllergyBanner } from '../components/nursing/allergy-banner.tsx';
@@ -31,6 +32,7 @@ import { useActiveLocation } from '../lib/session.ts';
 // Desde T-023: «Iniciar consulta» se autoasigna (su propio endpoint) y el
 // diálogo «Órdenes abiertas» (S-CLI-08) cuando el servidor bloquea el paso.
 // Desde T-021: «Motivo declarado por el paciente» si la visita vino del kiosco.
+// Desde T-025: la sección Órdenes (S-CLI-17) y «Ir a órdenes» en S-CLI-08.
 //  - Los cuatro roles clínicos la abren (patients.access); la API calcula qué
 //    puede hacer cada uno y revalida cada operación.
 //  - Toda acción lleva la versión leída: ante un 409 se avisa y se relee.
@@ -131,6 +133,14 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
     }
   };
 
+  /** «Ir a órdenes» (S-CLI-08): pestaña «Resumen» y desplazarse hasta la sección. */
+  const goToOrders = () => {
+    setTab('resumen');
+    requestAnimationFrame(() => {
+      document.getElementById('section-orders')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const back = () => {
     if (window.history.length > 1) router.history.back();
     else void navigate({ to: '/app/$sede/$destino', params: { sede, destino: 'panel' } });
@@ -199,13 +209,13 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
                     </SectionCard>
                   </div>
                   <div className="desk:col-span-2 desk:col-start-1 desk:row-start-2">
-                    <SectionCard id="orders" icon={<FileText className="size-6" />} title="Órdenes" subtitle="Laboratorios, medicamentos y procedimientos">
-                      <EmptyState icon={FileText} title="Aún no hay órdenes en esta visita." description="Las órdenes llegan con la tarea de Órdenes (T-025)." />
+                    <SectionCard id="orders" icon={<FileText className="size-6" />} title="Órdenes" subtitle="Procedimientos, inyecciones y laboratorios">
+                      <OrdersSection encounter={d} />
                     </SectionCard>
                   </div>
                   <div className="desk:col-start-3 desk:row-start-2">
                     <SectionCard id="billing" icon={<ReceiptText className="size-6" />} title="Facturación" subtitle="Cargos y saldo">
-                      <EmptyState icon={ReceiptText} title="Aún no hay cargos." description="La facturación llega con la tarea de Caja (T-027)." />
+                      <EmptyState icon={ReceiptText} title="Estado de cuenta pendiente." description="Los cargos de las órdenes ya se registran; el estado de cuenta llega con la tarea de Caja (T-027)." />
                     </SectionCard>
                   </div>
                 </div>
@@ -216,7 +226,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
             {dialog === 'provider' ? (
               <AssignProviderDialog current={d.provider?.membershipId ?? null} onClose={() => { setDialog(null); }} onPick={(p) => void assign(d, p)} />
             ) : null}
-            <OpenOrdersDialog open={dialog === 'open-orders'} onClose={() => { setDialog(null); }} />
+            <OpenOrdersDialog open={dialog === 'open-orders'} onClose={() => { setDialog(null); }} onGoToOrders={goToOrders} />
             {dialog === 'coverage' ? (
               <CoverageDialog coverage={d.coverage} onClose={() => { setDialog(null); }} onSave={(input, version) => saveCoverage(d, input, version)} />
             ) : null}

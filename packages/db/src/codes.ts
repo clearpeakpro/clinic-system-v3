@@ -45,3 +45,11 @@ export async function nextAppointmentCode(tx: Tx, organizationId: string, locati
 export async function nextEncounterCode(tx: Tx, organizationId: string, location: { id: string; code: string }): Promise<string> {
   return `${location.code}-V-${padded(await nextValue(tx, organizationId, `encounter:${location.id}`))}`;
 }
+
+/**
+ * Siguiente código de orden de una sede: `NOR1-O-000045` (T-025; ADR 0019).
+ * Contador propio por sede (`order:<id de la sede>`).
+ */
+export async function nextOrderCode(tx: Tx, organizationId: string, location: { id: string; code: string }): Promise<string> {
+  return `${location.code}-O-${padded(await nextValue(tx, organizationId, `order:${location.id}`))}`;
+}

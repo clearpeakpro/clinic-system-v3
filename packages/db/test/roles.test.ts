@@ -44,6 +44,10 @@ const TABLES = [
   // T-020
   'kiosk_devices',
   'kiosk_checkins',
+  // T-025
+  'orders',
+  'order_items',
+  'charges',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {

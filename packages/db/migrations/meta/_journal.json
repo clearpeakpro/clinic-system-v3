@@ -253,6 +253,20 @@
       "when": 1793647056125,
       "tag": "0035_kiosk_reception",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793679056013,
+      "tag": "0036_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793679057172,
+      "tag": "0037_orders_rls",
+      "breakpoints": true
     }
   ]
 }

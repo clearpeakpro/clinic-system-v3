@@ -23,6 +23,7 @@ import { AppointmentService } from './appointments.ts';
 import { systemClock, type Clock } from './clock.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
+import { OrderService } from './orders.ts';
 import { ProviderService } from './provider.ts';
 import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { DEFAULT_KIOSK_LIMITS, KioskAdminService, KioskService, type KioskLimits } from './kiosk.ts';
@@ -70,6 +71,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     panel: new PanelService(pool, tenantDb, audit, clock),
     nursing: new NursingService(pool, tenantDb, audit, fieldCipher, clock, encounters),
     provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
+    orders: new OrderService(pool, tenantDb, audit, fieldCipher, idempotency, clock, encounters),
     kiosk: new KioskService(pool, tenantDb, audit, fieldCipher, idempotency, clock, kioskLimits),
     kioskAdmin: new KioskAdminService(tenantDb, audit, clock),
     kioskArrivals: new KioskArrivalService(tenantDb, audit, fieldCipher, clock),
