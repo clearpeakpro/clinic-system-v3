@@ -7,7 +7,7 @@ import { memberships } from './identity-schema.ts';
 import { appSchema, locations, organizations } from './schema.ts';
 
 // Órdenes con su cargo (T-025; S-CLI-17, 18 y 21). RLS, FORCE y GRANT en
-// migrations/0037_orders_rls.sql. Referencias compuestas con la organización.
+// migrations/0037_orders_rls.sql (y 0038, T-026: inicio y finalización). Referencias compuestas con la organización.
 //  - orders: la orden de la visita, con su código por sede (NOR1-O-000123,
 //    ADR 0019), su estado y, en Laboratorio, el laboratorio asignado (solo el
 //    id: los costos viven en lab_test_costs y nunca salen al personal
@@ -54,6 +54,12 @@ export const orders = appSchema.table(
     /** El que sugirió el sistema al crearla (ADR 0028); nulo con seguro o sin laboratorio. */
     suggestedLabProviderId: uuid('suggested_lab_provider_id'),
     notesEnc: text('notes_enc'),
+    /** «Iniciar» (T-026): quién y cuándo. */
+    startedByMembershipId: uuid('started_by_membership_id'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    /** «Completar» (T-026): quién y cuándo. «Completadas hoy» filtra por `completed_at` en el día de la sede. */
+    completedByMembershipId: uuid('completed_by_membership_id'),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
     cancelReasonEnc: text('cancel_reason_enc'),
     cancelledByMembershipId: uuid('cancelled_by_membership_id'),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
@@ -81,6 +87,16 @@ export const orders = appSchema.table(
       columns: [t.organizationId, t.cancelledByMembershipId],
       foreignColumns: [memberships.organizationId, memberships.id],
     }),
+    foreignKey({
+      name: 'orders_started_by_fk',
+      columns: [t.organizationId, t.startedByMembershipId],
+      foreignColumns: [memberships.organizationId, memberships.id],
+    }),
+    foreignKey({
+      name: 'orders_completed_by_fk',
+      columns: [t.organizationId, t.completedByMembershipId],
+      foreignColumns: [memberships.organizationId, memberships.id],
+    }),
     foreignKey({ name: 'orders_lab_provider_fk', columns: [t.organizationId, t.labProviderId], foreignColumns: [labProviders.organizationId, labProviders.id] }),
     foreignKey({
       name: 'orders_suggested_lab_provider_fk',
@@ -97,7 +113,17 @@ export const orders = appSchema.table(
       'orders_cancelled_check',
       sql`(${t.status} = 'CANCELLED') = (${t.cancelReasonEnc} is not null and ${t.cancelledByMembershipId} is not null and ${t.cancelledAt} is not null)`,
     ),
+    // Iniciada (T-026): quién y cuándo, juntos. «En curso» y «Completada» la exigen; «Pendiente», no.
+    check('orders_started_pair_check', sql`(${t.startedByMembershipId} is null) = (${t.startedAt} is null)`),
+    check(
+      'orders_started_check',
+      sql`(${t.status} <> 'PENDING' or ${t.startedAt} is null) and (${t.status} not in ('IN_PROGRESS', 'COMPLETED') or ${t.startedAt} is not null)`,
+    ),
+    // Completada ⇔ quién y cuándo.
+    check('orders_completed_check', sql`(${t.status} = 'COMPLETED') = (${t.completedByMembershipId} is not null and ${t.completedAt} is not null)`),
     check('orders_version_check', sql`${t.version} >= 1`),
+    // «Completadas hoy» (T-026): por sede y hora de finalización.
+    index('orders_location_completed_idx').on(t.organizationId, t.locationId, t.completedAt),
     index('orders_encounter_idx').on(t.organizationId, t.encounterId, t.orderedAt),
     // Cola de órdenes (T-026): por sede y estado.
     index('orders_location_status_idx').on(t.organizationId, t.locationId, t.status, t.orderedAt),

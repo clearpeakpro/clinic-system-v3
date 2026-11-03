@@ -46,3 +46,14 @@ El manual reserva al Administrador varias acciones del flujo clínico y de Caja:
 - **Crear:** `orders.create`, solo del rol Proveedor. El Propietario y el Administrador no lo tienen, ni siquiera con un rol clínico: `POST /api/encounters/:id/orders` les responde 403. También a Recepción y a Enfermería.
 - **Cancelar:** `orders.cancel`, del Proveedor, solo en las órdenes que ordenó o de visitas donde es el proveedor (`order_not_owned`), con la visita abierta. La anulación administrativa de cargos y pagos (`billing.void`, Propietario o Administrador con rol clínico, también con la visita cerrada) llega con T-028.
 - **Pruebas:** `apps/api/test/orders.test.ts`.
+
+## Quién ejecuta las órdenes (decisión del 2026-11-02, al planificar T-026)
+
+El manual (S-CLI-03, 19, 20 y 22) da al Administrador acceso completo a ejecutar órdenes e «Iniciar» aunque estén asignadas a otra persona. Con el ADR 0027 (sin acceso clínico implícito) se decide:
+
+- **Ejecutan órdenes** (iniciar, completar, asignar y la Cola de órdenes) **solo quienes tienen el rol Enfermería o Proveedor en la sede** (`orders.execute`). El Propietario y el Administrador también, pero solo si tienen uno de esos dos roles en la sede; por serlo, no.
+- **Nadie pasa por encima de la asignación:** una orden asignada a otra persona solo la inicia esa persona (`403 order_assigned_to_other`), también para el Propietario y el Administrador con rol clínico. Antes, cualquiera que ejecuta puede reasignarla o quitar la asignación. Completar no exige ser quien la inició.
+- **A quién se asigna:** a cualquier persona activa con rol Enfermería o Proveedor en la sede (`400 assignee_not_eligible` si no). La lista de S-CLI-22 las muestra a todas (el manual solo mostraba proveedores).
+- **Cola de órdenes (S-CLI-03):** la tarjeta muestra el nombre y el código del servicio, los códigos del paciente, de la visita y de la orden, la cantidad, el tipo, el estado, el personal y el estado de la visita. Nunca nombres de pacientes ni notas. Los avisos y los eventos en vivo siguen llevando solo códigos e ids.
+
+**Implementación (T-026):** `orderActions()` de `packages/shared/src/orders.ts` (la misma regla en la web y en la API) y `OrderService.start/complete/assign/queue` de `apps/api/src/orders.ts`. Pruebas en `apps/api/test/orders-queue.test.ts`.

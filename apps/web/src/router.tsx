@@ -16,6 +16,8 @@ import { LoginPage, type LoginReason } from './pages/login.tsx';
 import { NotFoundPage } from './pages/not-found.tsx';
 import { NursingQueuePage } from './pages/nursing-queue.tsx';
 import { ProviderQueuePage } from './pages/provider-queue.tsx';
+import { OrdersQueuePage } from './pages/orders-queue.tsx';
+import { parseOrderQueueSearch, type OrderQueueSearch } from './lib/orders.ts';
 import { KioskPage } from './pages/kiosk.tsx';
 import { KioskArrivalPage } from './pages/kiosk-arrival.tsx';
 import { PanelPage } from './pages/panel.tsx';
@@ -284,6 +286,29 @@ const appProviderQueueRoute = createRoute({
   },
 });
 
+// S-CLI-03 Cola de órdenes (T-026): Enfermería y Proveedor (orders_queue.access y orders.execute).
+// ?pestana=en-curso|completadas-hoy|canceladas y ?mias=true (lo desconocido se ignora).
+const appOrdersQueueRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'cola-ordenes',
+  validateSearch: (search: Record<string, unknown>): OrderQueueSearch => {
+    const { tab, mine } = parseOrderQueueSearch(search);
+    return { ...(tab === 'pending' ? {} : { pestana: search.pestana as string }), ...(mine ? { mias: true as const } : {}) };
+  },
+  component: function OrdersQueue() {
+    const me = useMe();
+    const { sede } = appOrdersQueueRoute.useParams();
+    const search = appOrdersQueueRoute.useSearch();
+    // Sin acceso, en silencio al Panel (como las otras colas).
+    const perms = me.data?.permissions ?? [];
+    if (me.data && !(perms.includes('orders_queue.access') && perms.includes('orders.execute') && perms.includes('patients.access'))) {
+      return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+    }
+    const { tab, mine } = parseOrderQueueSearch(search);
+    return <OrdersQueuePage sede={sede} tab={tab} mine={mine} />;
+  },
+});
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -380,6 +405,7 @@ const routeTree = rootRoute.addChildren([
     appPanelRoute,
     appNursingQueueRoute,
     appProviderQueueRoute,
+    appOrdersQueueRoute,
     appAppointmentsRoute,
     appWalkInRoute,
     appKioskArrivalRoute,

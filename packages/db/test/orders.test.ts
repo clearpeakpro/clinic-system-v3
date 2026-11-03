@@ -199,4 +199,29 @@ describe('órdenes y cargos', () => {
     await expectPgError(db.withTenant(NORTE.id, (tx) => tx.insert(orders).values(order(NORTE, n.encounterId, { labProviderId: lab[NORTE.id] ?? '' }))), CHECK_VIOLATION);
     await expectPgError(db.withTenant(NORTE.id, (tx) => tx.insert(orders).values(order(NORTE, n.encounterId, { status: 'DONE' }))), CHECK_VIOLATION);
   });
+
+  it('T-026: iniciar y completar exigen quién y cuándo; no se apunta a personal de otra organización; las notas se pueden ampliar', async () => {
+    const n = await full(NORTE);
+    const set = (values: Partial<typeof orders.$inferInsert>) => db.withTenant(NORTE.id, (tx) => tx.update(orders).set(values).where(eq(orders.id, n.orderId)));
+    // «En curso» sin quién ni cuándo; «Pendiente» con inicio; solo uno de los dos.
+    await expectPgError(set({ status: 'IN_PROGRESS' }), CHECK_VIOLATION);
+    await expectPgError(set({ startedAt: now, startedByMembershipId: by(NORTE) }), CHECK_VIOLATION);
+    await expectPgError(set({ status: 'IN_PROGRESS', startedAt: now }), CHECK_VIOLATION);
+    // Personal de otra organización: no.
+    await expectPgError(set({ status: 'IN_PROGRESS', startedAt: now, startedByMembershipId: by(SUR) }), SQLSTATE.foreignKeyViolation);
+    await set({ status: 'IN_PROGRESS', startedAt: now, startedByMembershipId: by(NORTE), version: 2 });
+    // «Completada» sin quién ni cuándo, y completar sin estar completada.
+    await expectPgError(set({ status: 'COMPLETED' }), CHECK_VIOLATION);
+    await expectPgError(set({ completedAt: now, completedByMembershipId: by(NORTE) }), CHECK_VIOLATION);
+    await expectPgError(set({ status: 'COMPLETED', completedAt: now, completedByMembershipId: by(SUR) }), SQLSTATE.foreignKeyViolation);
+    await set({ status: 'COMPLETED', completedAt: now, completedByMembershipId: by(NORTE), notesEnc: 'cifrado-ficticio', version: 3 });
+    // Otra organización no la ve ni la cambia.
+    expect(await db.withTenant(SUR.id, (tx) => tx.update(orders).set({ notesEnc: 'x' }).where(eq(orders.id, n.orderId)).returning({ id: orders.id }))).toEqual([]);
+    // Completada sin haberse iniciado: no.
+    const m = await full(NORTE);
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.update(orders).set({ status: 'COMPLETED', completedAt: now, completedByMembershipId: by(NORTE) }).where(eq(orders.id, m.orderId))),
+      CHECK_VIOLATION,
+    );
+  });
 });

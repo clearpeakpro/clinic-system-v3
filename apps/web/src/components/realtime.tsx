@@ -100,6 +100,7 @@ const KIND_ICONS: Record<NotificationKind, LucideIcon> = {
   'appointment.reassigned': CalendarX,
   'order.created': ClipboardList,
   'order.changed': ClipboardList,
+  'order.assigned': ClipboardList,
   'system.setup_incomplete': Settings,
   'system.client_outdated': CircleArrowUp,
   'security.alert': ShieldAlert,
@@ -265,7 +266,17 @@ export function NotificationCenter({ organizationId }: { organizationId: string 
             if (!item.read) void run(() => api.readNotification(item.id), 'marcar la notificación como leída');
             // Avisos de citas (T-015): el detalle en la agenda del día de la cita, en su sede
             // (la URL hace el cambio de sede). «Paciente asignado a usted» (T-018): la
-            // visita en su sede (S-CLI-04). Los demás enlaces llegan con su fase.
+            // visita en su sede (S-CLI-04). «Orden asignada a usted» (T-026): la Cola de
+            // órdenes de su sede con «Asignadas a mí». Los demás enlaces llegan con su fase.
+            if (item.kind === 'order.assigned') {
+              const site = flatten(locations.data ?? []).find((l) => l.id === item.locationId);
+              if (!item.canOpen || !site) {
+                snackbar({ message: 'No tiene acceso a la cola de órdenes de esa sede.' });
+                return;
+              }
+              void navigate({ to: '/app/$sede/cola-ordenes', params: { sede: site.code }, search: { mias: true } });
+              return;
+            }
             if (item.kind === 'encounter.provider_assigned' && item.entityId) {
               const site = flatten(locations.data ?? []).find((l) => l.id === item.locationId);
               if (!item.canOpen || !site) {

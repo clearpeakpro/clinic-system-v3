@@ -1,13 +1,12 @@
 import { NOT_ORDERABLE_TEXT, ORDER_TYPE_LABELS, type EncounterDetail, type EncounterOrders, type OrderView } from '@clinic/shared';
-import { AsyncView, Button, CodeText, ConfirmDialog, Dialog, EmptyState, FilterChip, formatTime, MoneyText, OrderStatusChip, SemanticChip, useSnackbar } from '@clinic/ui';
+import { AsyncView, Button, CodeText, Dialog, EmptyState, FilterChip, formatTime, MoneyText, OrderStatusChip, SemanticChip, useSnackbar } from '@clinic/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, ClipboardList, FileText, FlaskConical, Plus, Stethoscope, Syringe } from 'lucide-react';
+import { ClipboardList, FileText, FlaskConical, Plus, Stethoscope, Syringe } from 'lucide-react';
 import { useState } from 'react';
 import { api, type ApiError } from '../../lib/api.ts';
-import { newIdempotencyKey } from '../../lib/appointments.ts';
-import { ESTIMATE_NOTE, isOrderConflict, NO_LAB_TEXT, ORDER_CONFLICT_TEXT, orderMessage, personText, visibleOrders } from '../../lib/orders.ts';
-import { ChangeLabDialog } from './change-lab-dialog.tsx';
+import { ESTIMATE_NOTE, NO_LAB_TEXT, personText, visibleOrders } from '../../lib/orders.ts';
 import { NewOrderDialog } from './new-order-dialog.tsx';
+import { OrderActions } from './order-actions.tsx';
 
 // S-CLI-17 Sección «Órdenes» de la visita (T-025), con S-CLI-18 y S-CLI-21.
 //  - Los cuatro roles clínicos la ven (Recepción: solo lectura, sin notas;
@@ -20,7 +19,11 @@ import { NewOrderDialog } from './new-order-dialog.tsx';
 //    «Cambiar laboratorio…» (Enfermería y Proveedor) pide motivo.
 //  - «Cancelar orden»: el Proveedor que la ordenó o el de la visita, con
 //    motivo e Idempotency-Key; anula el cargo y puede pasar la visita a «Listo
-//    para caja». Ejecutar órdenes llega con T-026.
+//    para caja».
+//  - T-026: la barra de acciones de cada orden (S-CLI-19): «Iniciar»,
+//    «Completar», «Asignar», «Cambiar laboratorio…» y «Cancelar orden».
+//    Completar la última en «Procedimiento pendiente» pasa la visita a «Listo
+//    para caja».
 //  - Se relee con `order.created`, `order.changed` y `billing.changed`.
 
 const TYPE_ICONS = { procedure: Stethoscope, lab: FlaskConical, injection: Syringe } as const;
@@ -29,7 +32,7 @@ export function OrdersSection({ encounter }: { encounter: EncounterDetail }) {
   const snackbar = useSnackbar();
   const queryClient = useQueryClient();
   const [showCancelled, setShowCancelled] = useState(false);
-  const [dialog, setDialog] = useState<null | { kind: 'new' } | { kind: 'not-orderable' } | { kind: 'cancel'; order: OrderView; key: string } | { kind: 'lab'; order: OrderView }>(null);
+  const [dialog, setDialog] = useState<null | { kind: 'new' } | { kind: 'not-orderable' }>(null);
   const query = useQuery<EncounterOrders, ApiError>({
     queryKey: ['orders', encounter.id],
     queryFn: () => api.encounterOrders(encounter.id),
@@ -42,17 +45,6 @@ export function OrdersSection({ encounter }: { encounter: EncounterDetail }) {
       queryClient.invalidateQueries({ queryKey: ['orders', encounter.id] }),
       queryClient.invalidateQueries({ queryKey: ['encounter', encounter.id] }),
     ]);
-  };
-
-  const cancel = async (order: OrderView, reason: string, key: string) => {
-    try {
-      const saved = await api.cancelOrder(order.id, { reason, expectedVersion: order.version }, key);
-      snackbar({ message: saved.encounter.status === 'READY_FOR_CHECKOUT' && encounter.status !== 'READY_FOR_CHECKOUT' ? 'Orden cancelada. La visita pasó a Listo para caja.' : 'Orden cancelada.' });
-    } catch (error) {
-      snackbar({ message: isOrderConflict(error) ? ORDER_CONFLICT_TEXT : orderMessage(error) });
-    } finally {
-      await reload();
-    }
   };
 
   return (
@@ -84,8 +76,7 @@ export function OrdersSection({ encounter }: { encounter: EncounterDetail }) {
                     key={order.id}
                     order={order}
                     timeZone={encounter.location.timezone}
-                    onCancel={() => { setDialog({ kind: 'cancel', order, key: newIdempotencyKey() }); }}
-                    onChangeLab={() => { setDialog({ kind: 'lab', order }); }}
+                    actions={<OrderActions order={order} visitStatus={encounter.status} onChanged={reload} />}
                   />
                 ))}
               </ul>
@@ -119,36 +110,6 @@ export function OrdersSection({ encounter }: { encounter: EncounterDetail }) {
                 </Button>
               }
             />
-            {dialog?.kind === 'cancel' ? (
-              <ConfirmDialog
-                open
-                onOpenChange={(open) => { if (!open) setDialog(null); }}
-                title="Cancelar orden"
-                description="La orden y su cargo quedarán anulados. Esta acción no se puede deshacer."
-                destructive
-                icon={<Ban className="size-7" />}
-                confirmLabel="Cancelar orden"
-                cancelLabel="Conservar orden"
-                reason={{ label: 'Motivo' }}
-                onConfirm={(reason) => cancel(dialog.order, reason ?? '', dialog.key)}
-              />
-            ) : null}
-            {dialog?.kind === 'lab' ? (
-              <ChangeLabDialog
-                order={dialog.order}
-                onClose={() => { setDialog(null); }}
-                onSaved={() => {
-                  setDialog(null);
-                  snackbar({ message: 'Laboratorio cambiado.' });
-                  void reload();
-                }}
-                onConflict={() => {
-                  setDialog(null);
-                  snackbar({ message: ORDER_CONFLICT_TEXT });
-                  void reload();
-                }}
-              />
-            ) : null}
           </div>
         );
       }}
@@ -156,7 +117,7 @@ export function OrdersSection({ encounter }: { encounter: EncounterDetail }) {
   );
 }
 
-function OrderRow({ order, timeZone, onCancel, onChangeLab }: { order: OrderView; timeZone: string; onCancel: () => void; onChangeLab: () => void }) {
+function OrderRow({ order, timeZone, actions }: { order: OrderView; timeZone: string; actions: React.ReactNode }) {
   const Icon = TYPE_ICONS[order.type];
   const many = order.items.length > 1;
   return (
@@ -191,7 +152,7 @@ function OrderRow({ order, timeZone, onCancel, onChangeLab }: { order: OrderView
               <SemanticChip tone="warning" label={NO_LAB_TEXT} />
             )
           ) : null}
-          {order.notes ? <p className="text-body-md text-on-surface select-none">Notas: {order.notes}</p> : null}
+          {order.notes ? <p className="text-body-md whitespace-pre-line text-on-surface select-none">Notas: {order.notes}</p> : null}
           {order.cancelReason ? <p className="text-body-md text-on-surface-variant select-none">Cancelada: {order.cancelReason}</p> : null}
         </div>
         <div className="flex flex-col items-end gap-space-xs">
@@ -201,20 +162,7 @@ function OrderRow({ order, timeZone, onCancel, onChangeLab }: { order: OrderView
           </span>
         </div>
       </div>
-      {order.abilities.changeLab || order.abilities.cancel ? (
-        <div className="flex flex-wrap justify-end gap-space-sm">
-          {order.abilities.changeLab ? (
-            <Button variant="outline" onClick={onChangeLab}>
-              <FlaskConical aria-hidden className="size-5" /> Cambiar laboratorio…
-            </Button>
-          ) : null}
-          {order.abilities.cancel ? (
-            <Button variant="text" className="text-error" onClick={onCancel}>
-              <Ban aria-hidden className="size-5" /> Cancelar orden
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+      {actions}
     </li>
   );
 }

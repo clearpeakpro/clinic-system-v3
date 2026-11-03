@@ -9,6 +9,8 @@ describe('catálogo de avisos', () => {
     expect(notificationText('encounter.provider_assigned', null)).toEqual({ title: 'Paciente asignado a usted', body: 'Se le asignó una visita' });
     expect(notificationText('appointment.changed', null).body).toBe('Una de sus citas cambió');
     expect(notificationText('order.changed', 'LAB-01')).toEqual({ title: 'Orden asignada actualizada', body: 'Orden LAB-01' });
+    // T-026: solo el código de la orden.
+    expect(notificationText('order.assigned', 'NOR1-O-000045')).toEqual({ title: 'Orden asignada a usted', body: 'Orden NOR1-O-000045' });
     // Los avisos de sistema no llevan código.
     expect(notificationText('system.setup_incomplete', 'X').body).toBe('Faltan ajustes. Abra Configuración para terminar.');
   });

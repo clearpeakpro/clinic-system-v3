@@ -80,7 +80,7 @@ Además, en la implementación:
   - el Proveedor puede cambiar el sugerido al crear la orden, con motivo;
   - sobre una orden ya creada, Enfermería y el Proveedor lo cambian con motivo y `version` (409 si otra persona la cambió antes);
   - solo se ofrecen los laboratorios activos que hacen todas sus pruebas ese día en la sede.
-- **Una orden de laboratorio no se puede completar sin laboratorio asignado** (T-026).
+- **Una orden de laboratorio no se puede completar sin laboratorio asignado** (T-026). Implementado: la API responde `409 lab_not_assigned` y la web no ofrece «Completar» y explica «Asigne un laboratorio con «Cambiar laboratorio…» antes de completar la orden.» (`orderActions().needsLab`).
 
 ## Cómo quedó implementada la sugerencia en la orden (T-025, 2026-11-02)
 

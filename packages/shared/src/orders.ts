@@ -3,7 +3,8 @@ import { compareLabProviders, labCostsOn, suggestLabs, type LabCostRecord, type 
 import { expectedVersionSchema, reasonSchema } from './schemas.ts';
 import { isDirectRoute, isOpenVisitStatus, type VisitRoute, type VisitStatus } from './visit.ts';
 
-// Órdenes con su cargo y laboratorio sugerido (T-025; S-CLI-17, 18 y 21).
+// Órdenes con su cargo y laboratorio sugerido (T-025; S-CLI-17, 18 y 21) y
+// su ejecución y cola (T-026; S-CLI-03, 19, 20 y 22).
 // Esquemas, estados, textos y reglas puras, los mismos en la web y en la API.
 // Los valores son los que exige la base de datos (packages/db,
 // orders-schema.ts); una prueba lo comprueba.
@@ -24,7 +25,7 @@ export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
 /** Orden del selector segmentado de S-CLI-18. */
 export const ORDER_TYPE_CHOICES: readonly OrderType[] = ['procedure', 'lab', 'injection'];
 
-/** Estados de una orden (S-CLI-19). En T-025 solo nacen «Pendiente» y se cancelan; ejecutarlas llega con T-026. */
+/** Estados de una orden (S-CLI-19): nacen «Pendiente»; se inician y completan (T-026) o se cancelan (T-025). */
 export const ORDER_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
@@ -117,6 +118,91 @@ export type CancelOrderInput = z.infer<typeof cancelOrderSchema>;
 export const changeOrderLabSchema = z.object({ labProviderId: z.uuid(), reason: reasonSchema, expectedVersion: expectedVersionSchema });
 export type ChangeOrderLabInput = z.infer<typeof changeOrderLabSchema>;
 
+/** «Iniciar» (S-CLI-19): la versión leída. */
+export const startOrderSchema = z.object({ expectedVersion: expectedVersionSchema });
+export type StartOrderInput = z.infer<typeof startOrderSchema>;
+
+/** S-CLI-20 «Completar orden»: «Notas de finalización (opcional)», máx. 4000, y la versión leída. */
+export const completeOrderSchema = z.object({ notes: notesSchema.optional(), expectedVersion: expectedVersionSchema });
+export type CompleteOrderInput = z.infer<typeof completeOrderSchema>;
+
+/** S-CLI-22 «Asignar orden»: la membresía elegida, o nula para «Quitar asignación». */
+export const assignOrderSchema = z.object({ membershipId: z.uuid().nullable(), expectedVersion: expectedVersionSchema });
+export type AssignOrderInput = z.infer<typeof assignOrderSchema>;
+
+// --- Cola de órdenes (T-026; S-CLI-03) -----------------------------------------
+
+/** Pestañas de la cola. «Completadas hoy»: completadas en el día de la sede. */
+export const ORDER_QUEUE_TABS = ['pending', 'in_progress', 'completed_today', 'cancelled'] as const;
+export type OrderQueueTab = (typeof ORDER_QUEUE_TABS)[number];
+
+export const ORDER_QUEUE_TAB_LABELS: Record<OrderQueueTab, string> = {
+  pending: 'Pendientes',
+  in_progress: 'En curso',
+  completed_today: 'Completadas hoy',
+  cancelled: 'Canceladas',
+};
+
+export function isOrderQueueTab(value: unknown): value is OrderQueueTab {
+  return typeof value === 'string' && (ORDER_QUEUE_TABS as readonly string[]).includes(value);
+}
+
+/** Filas por pestaña: las canceladas se acumulan, así que se muestran las más recientes. */
+export const ORDER_QUEUE_LIMIT = 200;
+
+/** Una persona del personal, tal como la ve la cola: «me» o su nombre (nunca pacientes). */
+export interface StaffRef {
+  kind: 'me' | 'user';
+  name: string | null;
+}
+
+/** La persona asignada a una orden, con su membresía (para marcarla en S-CLI-22). */
+export interface AssignedRef extends StaffRef {
+  membershipId: string;
+}
+
+/**
+ * Una tarjeta de la cola (S-CLI-03). Mínimo necesario: códigos, servicio,
+ * cantidad, tipo, estado y personal. Nunca nombres de pacientes, notas ni
+ * costos (decisión del 2026-11-02).
+ */
+export interface OrderQueueRow {
+  id: string;
+  code: string;
+  type: OrderType;
+  status: OrderStatus;
+  version: number;
+  items: OrderItemView[];
+  patientCode: string;
+  encounter: { id: string; code: string; status: VisitStatus };
+  orderedAt: string;
+  orderedBy: StaffRef;
+  assignedTo: AssignedRef | null;
+  /** Solo en Laboratorio: el nombre del laboratorio (nulo: «Sin laboratorio asignado»). */
+  lab: LabName | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  abilities: OrderActions & { cancel: boolean; changeLab: boolean };
+}
+
+export interface OrderQueue {
+  tab: OrderQueueTab;
+  mine: boolean;
+  /** Día de la sede de «Completadas hoy» (AAAA-MM-DD). */
+  today: string;
+  timeZone: string;
+  counts: Record<OrderQueueTab, number>;
+  rows: OrderQueueRow[];
+}
+
+/** S-CLI-22: personal activo con rol Enfermería o Proveedor en la sede (decisión del 2026-11-02). */
+export interface OrderAssignee {
+  membershipId: string;
+  name: string;
+  me: boolean;
+  roles: ('enfermeria' | 'proveedor')[];
+}
+
 // --- Respuestas ---------------------------------------------------------------
 
 /** Un laboratorio, tal como lo ven Enfermería y Proveedor: solo el nombre (ADR 0028). */
@@ -189,13 +275,13 @@ export interface OrderView {
   estimateCents: number;
   orderedAt: string;
   orderedBy: { kind: 'me' | 'user'; name: string | null };
-  assignedTo: { kind: 'me' | 'user'; name: string | null } | null;
+  assignedTo: AssignedRef | null;
   /** Solo en Laboratorio: el laboratorio asignado (nulo: «Sin laboratorio asignado»). */
   lab: LabName | null;
   /** Notas y motivo de cancelación: solo para quien crea o ejecuta órdenes; nulos para Recepción. */
   notes: string | null;
   cancelReason: string | null;
-  abilities: { cancel: boolean; changeLab: boolean };
+  abilities: OrderActions & { cancel: boolean; changeLab: boolean };
 }
 
 export interface EncounterOrders {
@@ -236,6 +322,67 @@ export function canCancelOrder(o: {
   visitProviderIsMe: boolean;
 }): boolean {
   return o.isProvider && isOpenOrderStatus(o.status) && isOpenVisitStatus(o.visitStatus) && (o.orderedByMe || o.visitProviderIsMe);
+}
+
+/**
+ * Ejecutar una orden (T-026; S-CLI-19). Ejecutan quienes tienen el rol
+ * Enfermería o Proveedor en la sede (`orders.execute`); el Propietario y el
+ * Administrador solo si tienen uno de esos roles, y sin pasar por encima de la
+ * asignación (ADR 0033, decisión del 2026-11-02). Todo, con la visita abierta.
+ *  - «Iniciar»: Pendiente, sin asignar o asignada a quien llama.
+ *  - «Completar»: En curso (no exige ser quien la inició). En Laboratorio,
+ *    solo con laboratorio asignado (ADR 0028): `needsLab` lo explica.
+ *  - «Asignar»: cualquier orden abierta; reasignar o quitar la asignación.
+ */
+export interface OrderActionsInput {
+  type: OrderType;
+  status: OrderStatus;
+  visitStatus: VisitStatus;
+  canExecute: boolean;
+  /** La persona asignada: nula = «Sin asignar»; `me` = quien llama. */
+  assigned: 'none' | 'me' | 'other';
+  labAssigned: boolean;
+}
+
+export interface OrderActions {
+  start: boolean;
+  complete: boolean;
+  assign: boolean;
+  /** En curso, de laboratorio y sin laboratorio: «Completar» espera a «Cambiar laboratorio…». */
+  needsLab: boolean;
+}
+
+export function orderActions(o: OrderActionsInput): OrderActions {
+  const live = o.canExecute && isOpenVisitStatus(o.visitStatus);
+  const needsLab = live && o.status === 'IN_PROGRESS' && o.type === 'lab' && !o.labAssigned;
+  return {
+    start: live && o.status === 'PENDING' && o.assigned !== 'other',
+    complete: live && o.status === 'IN_PROGRESS' && !needsLab,
+    assign: live && isOpenOrderStatus(o.status),
+    needsLab,
+  };
+}
+
+/** Transiciones de la orden (S-CLI-19): Pendiente → En curso → Completada; Pendiente o En curso → Cancelada. */
+export function canMoveOrder(from: OrderStatus, to: OrderStatus): boolean {
+  if (to === 'IN_PROGRESS') return from === 'PENDING';
+  if (to === 'COMPLETED') return from === 'IN_PROGRESS';
+  if (to === 'CANCELLED') return isOpenOrderStatus(from);
+  return false;
+}
+
+/** Separador entre las notas de la orden y la nota de finalización (S-CLI-20: se añade, no reemplaza). */
+export const ORDER_NOTES_SEPARATOR = '\n\n';
+
+/**
+ * Notas tras completar (S-CLI-20): la nota de finalización se añade a las
+ * existentes. Nulo si la suma pasa de 4000 (`notes_too_long`).
+ */
+export function appendCompletionNote(existing: string | null, note: string | undefined): { notes: string | null; changed: boolean } | null {
+  const added = note?.trim() ?? '';
+  if (added === '') return { notes: existing, changed: false };
+  const notes = existing ? `${existing}${ORDER_NOTES_SEPARATOR}${added}` : added;
+  return notes.length > ORDER_NOTES_MAX ? null : { notes, changed: true };
 }
 
 /** «Cambiar laboratorio…»: Enfermería y Proveedor, en una orden de laboratorio abierta de una visita abierta. */

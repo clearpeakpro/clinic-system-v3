@@ -66,6 +66,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
         orderPending.delete(encounterId);
         invalidate(['orders', encounterId]);
         invalidate(['encounter', encounterId]);
+        // T-026: la Cola de órdenes.
+        invalidate(['orders-queue']);
       }, delay);
       return;
     }
@@ -93,6 +95,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       if (ids.encounters.size > 0) invalidate(['nursing-queue']);
       // T-023: la cola de proveedor.
       if (ids.encounters.size > 0) invalidate(['provider-queue']);
+      // T-026: la Cola de órdenes muestra el estado de la visita.
+      if (ids.encounters.size > 0) invalidate(['orders-queue']);
       for (const encounterId of ids.encounters) {
         invalidate(['encounter', encounterId]);
         invalidate(['nursing', encounterId]);

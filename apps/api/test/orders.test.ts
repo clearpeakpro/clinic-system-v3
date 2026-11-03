@@ -177,6 +177,20 @@ describe('T-025 órdenes', () => {
     expect([...ORDER_STATUSES]).toEqual([...ORDER_STATUS_VALUES]);
   });
 
+  it('un servicio sin precio vigente en la sede no se puede ordenar (409 price_unavailable) y no deja orden', async () => {
+    clock.set(NOW);
+    const unpriced = uuidv7();
+    await db().withTenant(NORTE.id, (tx) =>
+      tx.insert(procedures).values({ id: unpriced, organizationId: NORTE.id, code: `PROC-NOPRICE-${randomUUID().slice(0, 6).toUpperCase()}`, name: 'Procedimiento sin precio', kind: 'procedure' }),
+    );
+    const v = await arrive();
+    const orderable = (await proveedor.get(`/api/encounters/${v.id}/orderables?type=procedure`)).json<OrderableItems>();
+    expect(orderable.items.find((i) => i.id === unpriced)?.unitPriceCents).toBeNull();
+    const response = await create(proveedor, v.id, { type: 'procedure', lines: [{ itemId: unpriced, quantity: 1 }] });
+    expect([response.statusCode, code(response)]).toEqual([409, 'price_unavailable']);
+    expect((await list(proveedor, v.id)).orders).toEqual([]);
+  });
+
   it('el cargo nace con el precio vigente en la sede el día de la sede: general, propio de la sede y «Usa el precio general»', async () => {
     const charged = async (instant: string) => {
       clock.set(instant);

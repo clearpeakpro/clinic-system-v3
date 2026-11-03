@@ -12,7 +12,7 @@ import { isOrderConflict, orderMessage } from '../../lib/orders.ts';
 // nombre (nunca costos). Motivo obligatorio, auditado; con la versión leída
 // (409 → se avisa y se relee).
 
-export function ChangeLabDialog({ order, onClose, onSaved, onConflict }: { order: OrderView; onClose: () => void; onSaved: () => void; onConflict: () => void }) {
+export function ChangeLabDialog({ order, onClose, onSaved, onConflict }: { order: Pick<OrderView, 'id' | 'code' | 'version'>; onClose: () => void; onSaved: () => void; onConflict: () => void }) {
   const options = useQuery<OrderLabOptions, ApiError>({ queryKey: ['order-lab-options', order.id], queryFn: () => api.orderLabOptions(order.id), staleTime: 0, gcTime: 0 });
   const [picked, setPicked] = useState<string | null>(null);
   const [reason, setReason] = useState('');
