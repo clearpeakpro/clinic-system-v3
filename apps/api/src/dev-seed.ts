@@ -164,9 +164,11 @@ export function hasDemoVisits(org: Org, site: number): boolean {
 }
 
 /**
- * Citas «Llegó» de hoy (índices de DEMO_AGENDA). En las sedes con visitas se
- * siembran Confirmadas y la semilla de visitas registra su llegada con el
- * servicio: así cada una tiene su visita real. En las demás quedan «Llegó».
+ * Citas «Llegó» de hoy (índices de DEMO_AGENDA). Solo en `pnpm demo:reset`
+ * (opción `withVisits`) y en las sedes con visitas se siembran Confirmadas, y la
+ * semilla de visitas registra su llegada con el servicio: así cada una tiene su
+ * visita real. En los demás casos (también `pnpm db:seed` y la base de la E2E
+ * general, que no siembran visitas) quedan «Llegó».
  */
 export const TODAY_ARRIVED = DEMO_AGENDA.flatMap((a, index) => (a.day === 0 && a.status === 'ARRIVED' ? [index] : []));
 
@@ -179,9 +181,16 @@ export function demoAppointmentId(org: Org, site: 0 | 1, index: number): string 
 /**
  * Crea (si no existen) las citas ficticias de las cuatro sedes. Idempotente.
  * Necesita los usuarios. «Hoy» es el día de la sede según el reloj (T-024).
+ * `withVisits`: la semilla de visitas (dev-encounters.ts) correrá después y
+ * registrará la llegada de las citas «Llegó» de hoy de NOR1 y SUR1.
  */
-export async function seedDevAppointments(app: Pick<ClinicApp, 'pool'>, fieldKey: string, clock: Clock = systemClock): Promise<void> {
-  const now = clock.now().toISOString();
+export async function seedDevAppointments(
+  app: Pick<ClinicApp, 'pool'>,
+  fieldKey: string,
+  options: { clock?: Clock; withVisits?: boolean } = {},
+): Promise<void> {
+  const now = (options.clock ?? systemClock).now().toISOString();
+  const withVisits = options.withVisits ?? false;
   const plain = drizzle({ client: app.pool });
   const tenantDb = createTenantDb(app.pool);
   const cipher: FieldCipher = createLocalFieldCipher(fieldKey);
@@ -218,7 +227,7 @@ export async function seedDevAppointments(app: Pick<ClinicApp, 'pool'>, fieldKey
             code: await nextAppointmentCode(tx, org.id, site),
             startsAt: sql`((${row.today}::date + ${a.day}::int) + ${a.time}::time) at time zone ${row.timezone}`,
             durationMinutes: a.minutes,
-            status: a.status === 'ARRIVED' && a.day === 0 && hasDemoVisits(org, siteIndex) ? 'CONFIRMED' : a.status,
+            status: a.status === 'ARRIVED' && a.day === 0 && withVisits && hasDemoVisits(org, siteIndex) ? 'CONFIRMED' : a.status,
             notesEnc: a.notes ? await cipher.encrypt(a.notes, context('notes')) : null,
             cancelReasonEnc: a.cancelReason ? await cipher.encrypt(a.cancelReason, context('cancel_reason')) : null,
           });

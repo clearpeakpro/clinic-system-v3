@@ -100,7 +100,7 @@ export async function resetDemo(options: ResetOptions): Promise<void> {
   const app = await createApp({ config: options.config, logs: new MemoryLogSink(), clock });
   try {
     await seedDevUsers(app, options.seedPassword);
-    await seedDevAppointments(app, options.config.fieldEncryptionKey, clock);
+    await seedDevAppointments(app, options.config.fieldEncryptionKey, { clock, withVisits: true });
     await seedDevEncounters(app, clock);
   } finally {
     await app.close();

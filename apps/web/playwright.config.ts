@@ -4,8 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   // Los guiones de las demos van aparte, cada uno con su propia base
-  // (playwright.demo.config.ts y playwright.demo2.config.ts).
-  testIgnore: ['demo.spec.ts', 'demo-fase-2.spec.ts'],
+  // (playwright.demo.config.ts, playwright.demo2.config.ts y playwright.demo3a.config.ts).
+  testIgnore: ['demo.spec.ts', 'demo-fase-2.spec.ts', 'demo-fase-3a.spec.ts'],
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
