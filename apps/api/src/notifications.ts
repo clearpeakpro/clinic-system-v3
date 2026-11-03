@@ -73,13 +73,15 @@ export class NotificationService {
                   code: r.code,
                   when: r.startsAt && timezone ? appointmentWhenLabel(r.startsAt, timezone) : null,
                   day: r.startsAt && timezone ? localDate(r.startsAt, timezone) : null,
-                  // Citas: acceso a Citas en esa sede. «Paciente asignado a usted» (T-018): acceso a la visita (patients.access).
+                  // Citas: acceso a Citas en esa sede. «Paciente asignado a usted» (T-018): acceso a la visita (patients.access). «Orden asignada a usted» (T-026): la Cola de órdenes.
                   canOpen:
                     r.locationId !== null &&
                     (isAppointmentNotification(r.kind)
                       ? permissionsFor(rolesAt(actor.assignments, ctx.organizationId, r.locationId)).has('appointments.access')
-                      : r.kind === 'encounter.provider_assigned' &&
-                        permissionsFor(rolesAt(actor.assignments, ctx.organizationId, r.locationId)).has('patients.access')),
+                      : r.kind === 'encounter.provider_assigned'
+                        ? permissionsFor(rolesAt(actor.assignments, ctx.organizationId, r.locationId)).has('patients.access')
+                        : // «Orden asignada a usted» (T-026): la Cola de órdenes de esa sede.
+                          r.kind === 'order.assigned' && permissionsFor(rolesAt(actor.assignments, ctx.organizationId, r.locationId)).has('orders_queue.access')),
                   locationId: r.locationId,
                   entityType: r.entityType,
                   entityId: r.entityId,

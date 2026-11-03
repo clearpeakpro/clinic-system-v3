@@ -1,7 +1,21 @@
 import type { LabGroupPreview, OrderView } from '@clinic/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api.ts';
-import { chosenLab, filterOrderables, isNotOrderable, labChanged, labGroupsInput, orderMessage, personText, quantityError, visibleOrders } from './orders.ts';
+import {
+  chosenLab,
+  completionNoteError,
+  filterOrderables,
+  isNotOrderable,
+  labChanged,
+  labGroupsInput,
+  orderMessage,
+  orderQueueSubtitle,
+  orderQueueTabSlug,
+  parseOrderQueueSearch,
+  personText,
+  quantityError,
+  visibleOrders,
+} from './orders.ts';
 
 // T-025: textos y borrador de «Nueva orden» (S-CLI-18) y la sección Órdenes (S-CLI-17).
 
@@ -62,6 +76,30 @@ describe('sección Órdenes', () => {
   });
   it('mensajes del servidor en «usted»', () => {
     expect(orderMessage(new ApiError(403, 'order_not_owned'))).toContain('Solo el proveedor');
+    // T-025: un servicio sin precio vigente en la sede no se puede ordenar.
+    expect(orderMessage(new ApiError(409, 'price_unavailable'))).toBe('Este servicio no tiene precio en esta sede. Pida al Administrador que lo agregue en Catálogos.');
+    // T-026.
+    expect(orderMessage(new ApiError(403, 'order_assigned_to_other'))).toBe('Esta orden está asignada a otro miembro del personal.');
+    expect(orderMessage(new ApiError(409, 'lab_not_assigned'))).toBe('Asigne un laboratorio con «Cambiar laboratorio…» antes de completar la orden.');
+    expect(orderMessage(new ApiError(400, 'assignee_not_eligible'))).toBe('El miembro del personal seleccionado no puede ejecutar órdenes en esta sede.');
     expect(isNotOrderable(new ApiError(409, 'encounter_not_orderable'))).toBe(true);
+  });
+});
+
+describe('cola de órdenes (T-026)', () => {
+  it('subtítulo: «Sin tareas», «1 tarea», «{n} tareas»', () => {
+    expect(orderQueueSubtitle(0)).toBe('Sin tareas');
+    expect(orderQueueSubtitle(1)).toBe('1 tarea');
+    expect(orderQueueSubtitle(6)).toBe('6 tareas');
+  });
+  it('la pestaña y «Asignadas a mí» desde la URL; lo desconocido se ignora', () => {
+    expect(parseOrderQueueSearch({})).toEqual({ tab: 'pending', mine: false });
+    expect(parseOrderQueueSearch({ pestana: 'completadas-hoy', mias: true })).toEqual({ tab: 'completed_today', mine: true });
+    expect(parseOrderQueueSearch({ pestana: 'otra', mias: 'no' })).toEqual({ tab: 'pending', mine: false });
+    expect(parseOrderQueueSearch({ pestana: orderQueueTabSlug('in_progress') }).tab).toBe('in_progress');
+  });
+  it('nota de finalización: máx. 4000', () => {
+    expect(completionNoteError('a'.repeat(4000))).toBeNull();
+    expect(completionNoteError('a'.repeat(4001))).toBe('Máximo 4000 caracteres.');
   });
 });

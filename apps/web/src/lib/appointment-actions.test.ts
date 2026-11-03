@@ -65,13 +65,23 @@ describe('agenda en vivo', () => {
       ['patient-encounters'],
       ['nursing-queue'],
       ['provider-queue'],
+      ['orders-queue'],
       ['encounter', ID_B],
       ['nursing', ID_B],
     ]);
     invalidate.mockClear();
     onEvent({ name: 'encounter.changed', ids: { encounter: ID_B } });
     vi.advanceTimersByTime(500);
-    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['panel'], ['patient-encounters'], ['nursing-queue'], ['provider-queue'], ['encounter', ID_B], ['nursing', ID_B]]);
+    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['panel'], ['patient-encounters'], ['nursing-queue'], ['provider-queue'], ['orders-queue'], ['encounter', ID_B], ['nursing', ID_B]]);
+  });
+
+  it('order.changed (T-025 y T-026) relee las órdenes y la visita, y la Cola de órdenes, una vez por visita y ráfaga', () => {
+    const invalidate = vi.fn<(queryKey: readonly unknown[]) => void>();
+    const onEvent = createEventBatcher(invalidate);
+    onEvent({ name: 'order.changed', ids: { order: ID_A, encounter: ID_B }, status: 'IN_PROGRESS' });
+    onEvent({ name: 'order.changed', ids: { order: ID_A, encounter: ID_B }, status: 'COMPLETED' });
+    vi.advanceTimersByTime(500);
+    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['orders', ID_B], ['encounter', ID_B], ['orders-queue']]);
   });
 
   it('otros eventos no releen la agenda', () => {

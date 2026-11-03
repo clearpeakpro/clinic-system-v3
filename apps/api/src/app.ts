@@ -71,7 +71,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     panel: new PanelService(pool, tenantDb, audit, clock),
     nursing: new NursingService(pool, tenantDb, audit, fieldCipher, clock, encounters),
     provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
-    orders: new OrderService(pool, tenantDb, audit, fieldCipher, idempotency, clock, encounters),
+    orders: new OrderService(pool, tenantDb, audit, fieldCipher, idempotency, clock, encounters, config.outboxKey),
     kiosk: new KioskService(pool, tenantDb, audit, fieldCipher, idempotency, clock, kioskLimits),
     kioskAdmin: new KioskAdminService(tenantDb, audit, clock),
     kioskArrivals: new KioskArrivalService(tenantDb, audit, fieldCipher, clock),

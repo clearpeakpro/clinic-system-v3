@@ -13,7 +13,11 @@ import {
   saveAssessmentSchema,
   saveVitalsSchema,
   sendToProviderSchema,
+  assignOrderSchema,
   cancelOrderSchema,
+  completeOrderSchema,
+  isOrderQueueTab,
+  startOrderSchema,
   changeOrderLabSchema,
   createOrderSchema,
   orderPreviewSchema,
@@ -993,6 +997,8 @@ export class NursingController {
  * Cancelar: orders.cancel (el servicio comprueba que sea suya o de su
  * visita), con Idempotency-Key. «Cambiar laboratorio…»: orders.execute
  * (Enfermería y Proveedor). Ninguna respuesta lleva costos de laboratorio.
+ * T-026: cola, asignar, iniciar y completar: orders.execute (Enfermería y
+ * Proveedor en la sede; el servicio respeta la asignación), con `version`.
  */
 @Controller()
 export class OrdersController {
@@ -1048,6 +1054,43 @@ export class OrdersController {
   @RequirePermission('patients.access', 'orders.execute')
   changeLab(@Req() request: FastifyRequest, @Param('id') orderId: string, @Body() body: unknown) {
     return this.#orders.changeLab(principalOf(request), id(orderId), parse(changeOrderLabSchema, body), metaOf(request));
+  }
+
+  /** S-CLI-03 Cola de órdenes (T-026): orders_queue.access y orders.execute (Enfermería y Proveedor). */
+  @Get('orders/queue')
+  @RequirePermission('patients.access', 'orders_queue.access', 'orders.execute')
+  queue(@Req() request: FastifyRequest, @Query('tab') tab: unknown, @Query('mine') mine: unknown) {
+    const selected = tab === undefined ? 'pending' : tab;
+    if (!isOrderQueueTab(selected)) throw new HttpError(400, 'invalid_request');
+    return this.#orders.queue(principalOf(request), selected, mine === '1' || mine === 'true', metaOf(request));
+  }
+
+  /** S-CLI-22: a quién se puede asignar (rol Enfermería o Proveedor en la sede). */
+  @Get('orders/assignees')
+  @RequirePermission('patients.access', 'orders.execute')
+  assignees(@Req() request: FastifyRequest) {
+    return this.#orders.assignees(principalOf(request));
+  }
+
+  @Post('orders/:id/assign')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'orders.execute')
+  assign(@Req() request: FastifyRequest, @Param('id') orderId: string, @Body() body: unknown) {
+    return this.#orders.assign(principalOf(request), id(orderId), parse(assignOrderSchema, body), metaOf(request));
+  }
+
+  @Post('orders/:id/start')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'orders.execute')
+  start(@Req() request: FastifyRequest, @Param('id') orderId: string, @Body() body: unknown) {
+    return this.#orders.start(principalOf(request), id(orderId), parse(startOrderSchema, body), metaOf(request));
+  }
+
+  @Post('orders/:id/complete')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'orders.execute')
+  complete(@Req() request: FastifyRequest, @Param('id') orderId: string, @Body() body: unknown) {
+    return this.#orders.complete(principalOf(request), id(orderId), parse(completeOrderSchema, body), metaOf(request));
   }
 }
 

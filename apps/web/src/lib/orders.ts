@@ -1,4 +1,4 @@
-import { ORDER_QUANTITY_MAX, ORDER_QUANTITY_MIN, type LabGroupChoice, type LabGroupPreview, type OrderableItem, type OrderView } from '@clinic/shared';
+import { ORDER_NOTES_MAX, ORDER_QUANTITY_MAX, ORDER_QUANTITY_MIN, ORDER_QUEUE_TABS, type LabGroupChoice, type LabGroupPreview, type OrderableItem, type OrderQueueTab, type OrderView } from '@clinic/shared';
 import { ApiError } from './api.ts';
 import { userActionMessage } from './users.ts';
 
@@ -10,11 +10,15 @@ import { userActionMessage } from './users.ts';
 export const ORDER_CONFLICT_TEXT = 'Otro usuario actualizó esta orden. La lista se ha actualizado.';
 export const ESTIMATE_NOTE = 'Las estimaciones provienen del catálogo; el estado de cuenta es la autoridad.';
 export const NO_LAB_TEXT = 'Sin laboratorio asignado';
+/** T-025: un servicio sin precio vigente en la sede no se puede ordenar. */
+export const PRICE_UNAVAILABLE_TEXT = 'Este servicio no tiene precio en esta sede. Pida al Administrador que lo agregue en Catálogos.';
+/** T-026 (ADR 0028): una orden de laboratorio no se completa sin laboratorio. */
+export const NEEDS_LAB_TEXT = 'Asigne un laboratorio con «Cambiar laboratorio…» antes de completar la orden.';
 
 const MESSAGES: Record<string, string> = {
   encounter_closed: 'Esta consulta está cerrada.',
   encounter_not_found: 'No se encontró el registro solicitado.',
-  price_unavailable: 'Este elemento no tiene precio vigente en esta sede.',
+  price_unavailable: PRICE_UNAVAILABLE_TEXT,
   item_inactive: 'Este elemento ya no está activo. Elija otro.',
   item_not_found: 'No se encontró el elemento elegido.',
   amount_too_large: 'El importe del cargo es demasiado alto. Revise la cantidad.',
@@ -26,6 +30,12 @@ const MESSAGES: Record<string, string> = {
   order_not_found: 'No se encontró la orden.',
   order_not_owned: 'Solo el proveedor que la ordenó o el proveedor de la consulta pueden cancelar esta orden.',
   order_closed: 'Esta orden ya está cerrada.',
+  // T-026 (S-CLI-19, 20 y 22).
+  order_assigned_to_other: 'Esta orden está asignada a otro miembro del personal.',
+  invalid_order_transition: 'Esta orden no puede pasar a ese estado.',
+  assignee_not_eligible: 'El miembro del personal seleccionado no puede ejecutar órdenes en esta sede.',
+  lab_not_assigned: NEEDS_LAB_TEXT,
+  notes_too_long: 'Las notas de la orden no pueden pasar de 4000 caracteres en total.',
   version_conflict: ORDER_CONFLICT_TEXT,
   forbidden: 'No tiene permiso para realizar esta acción.',
   invalid_request: 'Algunos campos no son válidos. Revíselos.',
@@ -111,4 +121,41 @@ export function visibleOrders(orders: readonly OrderView[], showCancelled: boole
 export function personText(person: OrderView['orderedBy'] | null): string {
   if (!person) return 'Sin asignar';
   return person.kind === 'me' ? 'Usted' : (person.name ?? 'Miembro del personal');
+}
+
+// --- Ejecutar órdenes y cola (T-026; S-CLI-03, 19, 20 y 22) -------------------
+
+/** Subtítulo de la Cola de órdenes: «Sin tareas» / «1 tarea» / «{n} tareas». */
+export function orderQueueSubtitle(count: number): string {
+  if (count === 0) return 'Sin tareas';
+  return count === 1 ? '1 tarea' : `${String(count)} tareas`;
+}
+
+/** «Notas de finalización (opcional)»: máx. 4000 (S-CLI-20). Nulo si es válida. */
+export function completionNoteError(text: string): string | null {
+  return text.length > ORDER_NOTES_MAX ? 'Máximo 4000 caracteres.' : null;
+}
+
+/** Estado de la URL de la cola: pestaña y «Asignadas a mí» (sin PHI). */
+export interface OrderQueueSearch {
+  pestana?: string;
+  mias?: true;
+}
+
+const TAB_SLUGS: Record<OrderQueueTab, string> = {
+  pending: 'pendientes',
+  in_progress: 'en-curso',
+  completed_today: 'completadas-hoy',
+  cancelled: 'canceladas',
+};
+
+export function orderQueueTabSlug(tab: OrderQueueTab): string {
+  return TAB_SLUGS[tab];
+}
+
+/** `?pestana=en-curso&mias=true` → la pestaña y el conmutador; lo desconocido se ignora. */
+export function parseOrderQueueSearch(search: Record<string, unknown>): { tab: OrderQueueTab; mine: boolean } {
+  const tab = ORDER_QUEUE_TABS.find((t) => TAB_SLUGS[t] === search.pestana) ?? 'pending';
+  const mine = search.mias === true || search.mias === 'true';
+  return { tab, mine };
 }

@@ -11,6 +11,8 @@ export const NOTIFICATION_KINDS = [
   'appointment.reassigned',
   'order.created',
   'order.changed',
+  // T-026: a quien le asignan una orden (S-CLI-22); nadie se avisa a sí mismo.
+  'order.assigned',
   'system.setup_incomplete',
   'system.client_outdated',
   'security.alert',
@@ -37,6 +39,7 @@ const LABELS: Record<NotificationKind, NotificationLabel> = {
   'appointment.reassigned': { title: 'Cita reasignada', withCode: appointmentBody, body: 'Una de sus citas pasó a otro proveedor' },
   'order.created': { title: 'Orden asignada a usted', withCode: (c) => `Orden ${c}`, body: 'Una orden asignada a usted' },
   'order.changed': { title: 'Orden asignada actualizada', withCode: (c) => `Orden ${c}`, body: 'Una orden asignada a usted' },
+  'order.assigned': { title: 'Orden asignada a usted', withCode: (c) => `Orden ${c}`, body: 'Se le asignó una orden' },
   'system.setup_incomplete': { title: 'Configuración incompleta', body: 'Faltan ajustes. Abra Configuración para terminar.' },
   'system.client_outdated': { title: 'Actualización requerida', body: 'Esta versión de la aplicación ya no es compatible.' },
   'security.alert': { title: 'Alerta de seguridad', body: 'Revísela en Administración > Seguridad' },

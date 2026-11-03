@@ -511,6 +511,24 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - una orden de laboratorio no se puede completar sin laboratorio asignado ([ADR 0028](../decisions/0028-laboratorios-costos.md), decisión del 2026-11-02);
 - E2E `ordenes-cola.spec.ts`.
 
+**Decisiones al planificarla (2026-11-02, [ADR 0033](../decisions/0033-acciones-administrativas-flujo-clinico.md)):**
+- Ejecutan órdenes solo quienes tienen el rol Enfermería o Proveedor en la sede; el Propietario y el Administrador, solo con uno de esos roles. Nadie pasa por encima de la asignación.
+- Se puede asignar a cualquier persona activa con rol Enfermería o Proveedor en la sede.
+- La tarjeta de la cola muestra el servicio (nombre y código), los códigos del paciente, de la visita y de la orden, cantidad, tipo, estado, personal y estado de la visita; sin nombres de pacientes ni notas.
+
+**Cómo quedó (2026-11-02):**
+- **Base de datos:** migración 0038: `orders` gana quién y cuándo se inició y se completó, con CHECK («En curso» y «Completada» exigen inicio; «Completada», finalización) y GRANT solo de esas columnas y de las notas. Pruebas en `packages/db/test/orders.test.ts`.
+- **Compartido:** `orderActions()`, `canMoveOrder()` y `appendCompletionNote()` en `packages/shared/src/orders.ts`; esquemas de iniciar, completar y asignar; tipos de la cola. Aviso `order.assigned` en `notifications.ts`.
+- **API** (`apps/api/src/orders.ts`): `GET /api/orders/queue`, `GET /api/orders/assignees` y `POST /api/orders/:id/assign|start|complete`, con `version` y el reloj inyectable. Errores nuevos: `order_assigned_to_other`, `invalid_order_transition`, `lab_not_assigned`, `assignee_not_eligible` y `notes_too_long`. Completar la última orden en «Procedimiento pendiente» reutiliza `autoReadyForCheckout()` en la misma transacción. Auditoría `order.assigned`, `order.started`, `order.completed` (de la nota, solo el nombre del campo) y `order.queue_view`.
+- **Web:** página `/app/<sede>/cola-ordenes` (`?pestana=` y `?mias=true`); `components/orders/order-actions.tsx` (S-CLI-19, en la cola y en la sección Órdenes), `complete-order-dialog.tsx` (S-CLI-20) y `assign-order-dialog.tsx` (S-CLI-22). Se relee con `order.*` y `encounter.changed`; sin conexión, cada 30 s.
+- **Corrección de T-025:** `price_unavailable` dice «Este servicio no tiene precio en esta sede. Pida al Administrador que lo agregue en Catálogos.», con prueba de API (antes no la había) y unitaria.
+- **Pruebas:** `packages/shared/test/orders-execution.test.ts`, `apps/api/test/orders-queue.test.ts` (incluye «Completadas hoy» a las 11:59 p. m. y 12:01 a. m. y el 1 nov 2026, de 25 horas) y la E2E `apps/web/e2e/ordenes-cola.spec.ts`.
+- **Diferencias con el manual:**
+  - «Completadas hoy» la filtra el servidor con el día de la sede (el manual decía que el servidor no filtraba por fecha);
+  - en la cola la visita se llama «Visita» y no «Consulta» (terminología unificada);
+  - quitar la asignación muestra «Asignación quitada.» y no «Orden asignada.»;
+  - «Canceladas» muestra las 200 más recientes (igual tope en todas las pestañas).
+
 ## T-026b — Planes de membresía y beneficios
 
 **Decisiones (resueltas el 2026-11-01):** P-18 ([ADR 0034](../decisions/0034-membresias-fase-3.md)). Lancaster ya vende membresías: entran completas en 3B. Esta tarea añade «Membresía» al paso Cobertura de la llegada y sus beneficios en Caja.

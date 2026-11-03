@@ -2,15 +2,18 @@ import {
   charges,
   coverages,
   encounters,
+  enqueueNotification,
   labProviders,
   labTestCosts,
   labTests,
   locations,
+  membershipRoles,
   memberships,
   nextOrderCode,
   notifyRealtime,
   orderItems,
   orders,
+  patients,
   procedures,
   user as userTable,
   type FieldCipher,
@@ -18,31 +21,43 @@ import {
   type Tx,
 } from '@clinic/db';
 import {
+  appendCompletionNote,
+  assignOrderSchema,
   autoReadyForCheckout,
   canCancelOrder,
   canChangeOrderLab,
   canOrderIn,
   cancelOrderSchema,
+  canMoveOrder,
   changeOrderLabSchema,
   compareLabProviders,
+  completeOrderSchema,
   createOrderSchema,
   isOpenOrderStatus,
   isOpenVisitStatus,
   labOrderGroups,
   labsForAll,
   linesTotalCents,
+  orderActions,
   orderPreviewSchema,
+  ORDER_QUEUE_LIMIT,
+  ORDER_QUEUE_TABS,
   ORDER_TYPES,
+  startOrderSchema,
   type EncounterOrders,
   type LabCostRecord,
   type LabCoverageType,
   type LabGroup,
   type LabName,
   type OrderableItems,
+  type OrderAssignee,
   type OrderLabOptions,
   type OrderLineInput,
   type OrderPreview,
   type OrderPreviewLine,
+  type OrderQueue,
+  type OrderQueueRow,
+  type OrderQueueTab,
   type OrderSaved,
   type OrdersCreated,
   type OrderStatus,
@@ -51,7 +66,7 @@ import {
   type VisitRoute,
   type VisitStatus,
 } from '@clinic/shared';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 import { v7 as uuidv7 } from 'uuid';
@@ -79,6 +94,16 @@ import { HttpError, requireContext, type RequestMeta } from './services.ts';
 //    estados (en el historial, «Sistema»).
 //  - Auditoría: de las notas, solo el nombre del campo (ADR 0018); de los
 //    cargos, el importe antes y después. Los eventos en vivo, ids y estados.
+//  - Ejecutar (T-026; S-CLI-19, 20 y 22): orders.execute, es decir, el rol
+//    Enfermería o Proveedor en la sede, sin pasar por encima de la asignación
+//    (ADR 0033, decisión del 2026-11-02). Con `version` (409). Completar la
+//    última orden abierta en «Procedimiento pendiente» pasa la visita a «Listo
+//    para caja» en la misma transacción. Una orden de laboratorio no se
+//    completa sin laboratorio (ADR 0028). El aviso «Orden asignada a usted» va
+//    por el outbox con el código de la orden.
+//  - Cola (S-CLI-03): solo códigos, servicio, cantidad y personal; nunca
+//    nombres de pacientes, notas ni costos. «Completadas hoy», con el día de
+//    la sede y el reloj inyectable.
 
 /** Tope de un cargo: el mayor entero de la columna `amount_cents`. */
 const MAX_CHARGE_CENTS = 2_147_483_647;
@@ -103,6 +128,7 @@ export class OrderService {
   readonly #idempotency: IdempotencyService;
   readonly #clock: Clock;
   readonly #encounters: EncounterService;
+  readonly #outboxKey: string;
 
   constructor(
     pool: pg.Pool,
@@ -112,6 +138,7 @@ export class OrderService {
     idempotency: IdempotencyService,
     clock: Clock,
     encounters: EncounterService,
+    outboxKey: string,
   ) {
     this.#tenantDb = tenantDb;
     this.#plain = drizzle({ client: pool });
@@ -120,6 +147,7 @@ export class OrderService {
     this.#idempotency = idempotency;
     this.#clock = clock;
     this.#encounters = encounters;
+    this.#outboxKey = outboxKey;
   }
 
   // --- Lecturas ----------------------------------------------------------------
@@ -230,11 +258,19 @@ export class OrderService {
         estimateCents: counted.reduce((sum, c) => sum + c.amountCents, 0),
         orderedAt: r.orderedAt.toISOString(),
         orderedBy: person(r.orderedByMembershipId) ?? { kind: 'user', name: null },
-        assignedTo: person(r.assignedToMembershipId),
+        assignedTo: assigned(person, r.assignedToMembershipId),
         lab: lab ? { id: lab.id, name: lab.name } : null,
         notes: clinical && r.notesEnc ? await this.#cipher.decrypt(r.notesEnc, notesContext(ctx.organizationId, r.id)) : null,
         cancelReason: clinical && r.cancelReasonEnc ? await this.#cipher.decrypt(r.cancelReasonEnc, cancelContext(ctx.organizationId, r.id)) : null,
         abilities: {
+          ...orderActions({
+            type: r.type as OrderType,
+            status,
+            visitStatus,
+            canExecute: actor.permissions.has('orders.execute'),
+            assigned: assignedState(r.assignedToMembershipId, me),
+            labAssigned: r.labProviderId !== null,
+          }),
           cancel: canCancelOrder({
             status,
             visitStatus,
@@ -263,6 +299,132 @@ export class OrderService {
       const { optionIds, names } = await this.#labOptionsFor(tx, order.id, this.#day(site.timezone));
       return { current: order.labProviderId ? labName(names, order.labProviderId) : null, options: optionIds.map((id) => labName(names, id)) };
     });
+  }
+
+  /**
+   * S-CLI-03 Cola de órdenes de la sede activa, por pestaña y «Asignadas a
+   * mí». Pendientes y En curso, las más antiguas primero; «Completadas hoy»
+   * (día de la sede, reloj inyectable) y Canceladas, las más recientes. Solo
+   * códigos, servicio, cantidad y personal: nunca nombres de pacientes, notas
+   * ni costos. Lectura auditada con el número de filas.
+   */
+  async queue(actor: Principal, tab: OrderQueueTab, mine: boolean, meta: RequestMeta): Promise<OrderQueue> {
+    const ctx = requireContext(actor);
+    const now = this.#clock.now();
+    const data = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const site = await this.#site(tx, ctx.locationId);
+      const today = this.#day(site.timezone, now);
+      const me = await myMembership(tx, actor.userId);
+      const dayStart = sql`(${today}::date::timestamp at time zone ${site.timezone})`;
+      const dayEnd = sql`((${today}::date + 1)::timestamp at time zone ${site.timezone})`;
+      const tabWhere: Record<OrderQueueTab, SQL> = {
+        pending: sql`${orders.status} = 'PENDING'`,
+        in_progress: sql`${orders.status} = 'IN_PROGRESS'`,
+        completed_today: sql`${orders.status} = 'COMPLETED' and ${orders.completedAt} >= ${dayStart} and ${orders.completedAt} < ${dayEnd}`,
+        cancelled: sql`${orders.status} = 'CANCELLED'`,
+      };
+      const scope = and(eq(orders.locationId, ctx.locationId), mine ? eq(orders.assignedToMembershipId, me) : undefined);
+      const counts = {} as Record<OrderQueueTab, number>;
+      for (const t of ORDER_QUEUE_TABS) {
+        const [row] = await tx.select({ n: count() }).from(orders).where(and(scope, tabWhere[t]));
+        counts[t] = row?.n ?? 0;
+      }
+      const sort =
+        tab === 'completed_today'
+          ? [desc(orders.completedAt), desc(orders.code)]
+          : tab === 'cancelled'
+            ? [desc(orders.cancelledAt), desc(orders.code)]
+            : [asc(orders.orderedAt), asc(orders.code)];
+      const rows = await tx
+        .select({
+          order: orders,
+          encounterCode: encounters.code,
+          encounterStatus: encounters.status,
+          encounterProvider: encounters.providerMembershipId,
+          patientCode: patients.code,
+        })
+        .from(orders)
+        .innerJoin(encounters, eq(encounters.id, orders.encounterId))
+        .innerJoin(patients, eq(patients.id, encounters.patientId))
+        .where(and(scope, tabWhere[tab]))
+        .orderBy(...sort)
+        .limit(ORDER_QUEUE_LIMIT);
+      const ids = rows.map((r) => r.order.id);
+      const items = ids.length > 0 ? await tx.select().from(orderItems).where(inArray(orderItems.orderId, ids)).orderBy(asc(orderItems.createdAt), asc(orderItems.id)) : [];
+      const labIds = [...new Set(rows.map((r) => r.order.labProviderId).filter((id): id is string => id !== null))];
+      const labs = labIds.length > 0 ? await tx.select({ id: labProviders.id, name: labProviders.name }).from(labProviders).where(inArray(labProviders.id, labIds)) : [];
+      const memberIds = [...new Set(rows.flatMap((r) => [r.order.orderedByMembershipId, r.order.assignedToMembershipId]).filter((id): id is string => id !== null))];
+      const members = memberIds.length > 0 ? await tx.select({ id: memberships.id, userId: memberships.userId }).from(memberships).where(inArray(memberships.id, memberIds)) : [];
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'order.queue_view',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: ctx.locationId,
+        entityType: 'order',
+        ...meta,
+        metadata: { tab, mine, results: rows.length },
+      });
+      return { site, today, me, counts, rows, items, labs, members };
+    });
+    const names = await this.#names(data.members.map((m) => m.userId));
+    const person = (membershipId: string | null) => {
+      if (membershipId === null) return null;
+      if (membershipId === data.me) return { kind: 'me' as const, name: null };
+      const member = data.members.find((m) => m.id === membershipId);
+      return { kind: 'user' as const, name: member ? (names.get(member.userId) ?? null) : null };
+    };
+    const canExecute = actor.permissions.has('orders.execute');
+    const rows = data.rows.map(({ order: r, encounterCode, encounterStatus, encounterProvider, patientCode }): OrderQueueRow => {
+      const status = r.status as OrderStatus;
+      const type = r.type as OrderType;
+      const visitStatus = encounterStatus as VisitStatus;
+      const lab = r.labProviderId ? (data.labs.find((l) => l.id === r.labProviderId) ?? null) : null;
+      return {
+        id: r.id,
+        code: r.code,
+        type,
+        status,
+        version: r.version,
+        items: data.items.filter((i) => i.orderId === r.id).map((i) => ({ code: i.itemCode, name: i.itemName, quantity: i.quantity })),
+        patientCode,
+        encounter: { id: r.encounterId, code: encounterCode, status: visitStatus },
+        orderedAt: r.orderedAt.toISOString(),
+        orderedBy: person(r.orderedByMembershipId) ?? { kind: 'user', name: null },
+        assignedTo: assigned(person, r.assignedToMembershipId),
+        lab: lab ? { id: lab.id, name: lab.name } : null,
+        completedAt: r.completedAt ? r.completedAt.toISOString() : null,
+        cancelledAt: r.cancelledAt ? r.cancelledAt.toISOString() : null,
+        abilities: {
+          ...orderActions({ type, status, visitStatus, canExecute, assigned: assignedState(r.assignedToMembershipId, data.me), labAssigned: r.labProviderId !== null }),
+          cancel: canCancelOrder({
+            status,
+            visitStatus,
+            isProvider: actor.permissions.has('orders.cancel'),
+            orderedByMe: r.orderedByMembershipId === data.me,
+            visitProviderIsMe: encounterProvider !== null && encounterProvider === data.me,
+          }),
+          changeLab: canChangeOrderLab({ type, status, visitStatus, canExecute }),
+        },
+      };
+    });
+    return { tab, mine, today: data.today, timeZone: data.site.timezone, counts: data.counts, rows };
+  }
+
+  /** S-CLI-22: personal activo con rol Enfermería o Proveedor en la sede activa, por nombre (decisión del 2026-11-02). */
+  async assignees(actor: Principal): Promise<OrderAssignee[]> {
+    const ctx = requireContext(actor);
+    const { rows, me } = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => ({
+      rows: await this.#eligible(tx, ctx.locationId),
+      me: await myMembership(tx, actor.userId),
+    }));
+    const names = await this.#names(rows.map((r) => r.userId));
+    const byMember = new Map<string, OrderAssignee>();
+    for (const r of rows) {
+      const found = byMember.get(r.id) ?? { membershipId: r.id, name: names.get(r.userId) ?? '', me: r.id === me, roles: [] };
+      found.roles.push(r.role as 'enfermeria' | 'proveedor');
+      byMember.set(r.id, found);
+    }
+    return [...byMember.values()].map((a) => ({ ...a, roles: a.roles.sort() })).sort((a, b) => a.name.localeCompare(b.name, 'es'));
   }
 
   // --- Escrituras --------------------------------------------------------------
@@ -477,10 +639,127 @@ export class OrderService {
     return this.#saved(actor, orderId);
   }
 
+  /** S-CLI-19 «Iniciar»: Pendiente, sin asignar o asignada a quien llama (ADR 0033: nadie pasa por encima de la asignación). */
+  async start(actor: Principal, orderId: string, raw: unknown, meta: RequestMeta): Promise<OrderSaved> {
+    const ctx = requireContext(actor);
+    const input = startOrderSchema.parse(raw);
+    await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const now = this.#clock.now();
+      const { current, order, me } = await this.#lockOrder(tx, actor, orderId);
+      requireExecutable(current, order, 'IN_PROGRESS', input.expectedVersion);
+      if (order.assignedToMembershipId !== null && order.assignedToMembershipId !== me) throw new HttpError(403, 'order_assigned_to_other');
+      await tx
+        .update(orders)
+        .set({ status: 'IN_PROGRESS', startedByMembershipId: me, startedAt: now, version: order.version + 1, updatedAt: now })
+        .where(eq(orders.id, order.id));
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'order.started',
+        ...auditBase(actor, ctx.locationId, 'order', order.id, meta),
+        metadata: { code: order.code, encounterCode: current.code, from: order.status, to: 'IN_PROGRESS' },
+      });
+      await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'order.changed', ids: { order: order.id, encounter: current.id }, status: 'IN_PROGRESS' });
+    });
+    return this.#saved(actor, orderId);
+  }
+
+  /**
+   * S-CLI-20 «Completar orden»: En curso; la nota se añade a las notas
+   * cifradas. Laboratorio sin laboratorio: 409 `lab_not_assigned` (ADR 0028).
+   * Si era la última orden abierta en «Procedimiento pendiente», la visita
+   * pasa a «Listo para caja» en la misma transacción.
+   */
+  async complete(actor: Principal, orderId: string, raw: unknown, meta: RequestMeta): Promise<OrderSaved> {
+    const ctx = requireContext(actor);
+    const input = completeOrderSchema.parse(raw);
+    await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const now = this.#clock.now();
+      const { current, order, me } = await this.#lockOrder(tx, actor, orderId);
+      requireExecutable(current, order, 'COMPLETED', input.expectedVersion);
+      if (order.type === 'lab' && order.labProviderId === null) throw new HttpError(409, 'lab_not_assigned');
+      const context = notesContext(ctx.organizationId, order.id);
+      const existing = order.notesEnc ? await this.#cipher.decrypt(order.notesEnc, context) : null;
+      const notes = appendCompletionNote(existing, input.notes);
+      if (!notes) throw new HttpError(400, 'notes_too_long');
+      await tx
+        .update(orders)
+        .set({
+          status: 'COMPLETED',
+          completedByMembershipId: me,
+          completedAt: now,
+          ...(notes.changed && notes.notes ? { notesEnc: await this.#cipher.encrypt(notes.notes, context) } : {}),
+          version: order.version + 1,
+          updatedAt: now,
+        })
+        .where(eq(orders.id, order.id));
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'order.completed',
+        ...auditBase(actor, ctx.locationId, 'order', order.id, meta),
+        // De la nota clínica, solo el nombre del campo (ADR 0018).
+        metadata: { code: order.code, encounterCode: current.code, from: order.status, to: 'COMPLETED', fields: notes.changed ? 'notes' : '' },
+      });
+      await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'order.changed', ids: { order: order.id, encounter: current.id }, status: 'COMPLETED' });
+      await this.#afterResolved(tx, actor, current, me, now, meta);
+    });
+    return this.#saved(actor, orderId);
+  }
+
+  /**
+   * S-CLI-22 «Asignar orden»: a una persona activa con rol Enfermería o
+   * Proveedor en la sede, o a nadie. Volver a elegir la misma no escribe nada.
+   * El aviso «Orden asignada a usted» va por el outbox con el código de la
+   * orden; nadie se avisa a sí mismo.
+   */
+  async assign(actor: Principal, orderId: string, raw: unknown, meta: RequestMeta): Promise<OrderSaved> {
+    const ctx = requireContext(actor);
+    const input = assignOrderSchema.parse(raw);
+    await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      const now = this.#clock.now();
+      const { current, order, me } = await this.#lockOrder(tx, actor, orderId);
+      if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
+      if (!isOpenOrderStatus(order.status as OrderStatus)) throw new HttpError(409, 'order_closed');
+      if (order.version !== input.expectedVersion) throw new HttpError(409, 'version_conflict');
+      if (order.assignedToMembershipId === input.membershipId) return;
+      let assignee: { id: string; userId: string } | null = null;
+      if (input.membershipId !== null) {
+        const found = (await this.#eligible(tx, ctx.locationId)).find((r) => r.id === input.membershipId);
+        if (!found) throw new HttpError(400, 'assignee_not_eligible');
+        assignee = found;
+      }
+      await tx
+        .update(orders)
+        .set({ assignedToMembershipId: input.membershipId, version: order.version + 1, updatedAt: now })
+        .where(eq(orders.id, order.id));
+      await this.#audit.inTx(tx, ctx.organizationId, {
+        action: 'order.assigned',
+        ...auditBase(actor, ctx.locationId, 'order', order.id, meta),
+        metadata: {
+          code: order.code,
+          encounterCode: current.code,
+          previousAssignee: order.assignedToMembershipId ?? 'none',
+          assignee: input.membershipId ?? 'none',
+          self: input.membershipId === me,
+        },
+      });
+      if (assignee && assignee.userId !== actor.userId) {
+        await enqueueNotification(tx, this.#outboxKey, {
+          organizationId: ctx.organizationId,
+          userId: assignee.userId,
+          kind: 'order.assigned',
+          locationId: ctx.locationId,
+          entityType: 'order',
+          entityId: order.id,
+          code: order.code,
+        });
+      }
+      await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'order.changed', ids: { order: order.id, encounter: current.id }, status: order.status });
+    });
+    return this.#saved(actor, orderId);
+  }
+
   // --- Ayudas ------------------------------------------------------------------
 
   /**
-   * Tras resolver una orden (cancelarla en T-025; completarla en T-026): si la
+   * Tras resolver una orden (cancelarla o completarla): si la
    * visita está en «Procedimiento pendiente» y ya no quedan órdenes abiertas,
    * pasa sola a «Listo para caja» por la máquina de estados.
    */
@@ -495,6 +774,15 @@ export class OrderService {
       audit: 'encounter.transitioned',
       system: true,
     });
+  }
+
+  /** Personal que puede ejecutar órdenes en la sede: activo, con rol Enfermería o Proveedor ahí. Una fila por rol. */
+  async #eligible(tx: Tx, locationId: string) {
+    return tx
+      .select({ id: memberships.id, userId: memberships.userId, role: membershipRoles.role })
+      .from(memberships)
+      .innerJoin(membershipRoles, eq(membershipRoles.membershipId, memberships.id))
+      .where(and(eq(memberships.status, 'active'), eq(membershipRoles.locationId, locationId), inArray(membershipRoles.role, ['enfermeria', 'proveedor'])));
   }
 
   /** La orden de la sede activa y su visita, bloqueadas (primero la visita, como en el resto de cambios). */
@@ -677,6 +965,28 @@ export function chooseLabs(
     if (choice.labProviderId !== null && !g.optionIds.includes(choice.labProviderId)) throw new HttpError(409, 'invalid_lab');
     return { itemIds: g.labTestIds, labProviderId: choice.labProviderId, suggestedId: g.suggestedId, changed: g.suggestedId !== null && choice.labProviderId !== g.suggestedId };
   });
+}
+
+/** Iniciar o completar: visita abierta, la transición de la orden (S-CLI-19) y la versión leída. */
+function requireExecutable(current: LockedEncounter, order: { status: string; version: number }, to: OrderStatus, expectedVersion: number): void {
+  if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
+  // El estado antes que la versión: si otra persona ya la cerró, ese es el motivo útil.
+  const from = order.status as OrderStatus;
+  if (!isOpenOrderStatus(from)) throw new HttpError(409, 'order_closed');
+  if (!canMoveOrder(from, to)) throw new HttpError(409, 'invalid_order_transition');
+  if (order.version !== expectedVersion) throw new HttpError(409, 'version_conflict');
+}
+
+/** La persona asignada con su membresía (S-CLI-22), o nula. */
+function assigned(person: (id: string | null) => { kind: 'me' | 'user'; name: string | null } | null, membershipId: string | null) {
+  const found = person(membershipId);
+  return found && membershipId ? { ...found, membershipId } : null;
+}
+
+/** La persona asignada, vista por quien llama. */
+function assignedState(assignedTo: string | null, me: string): 'none' | 'me' | 'other' {
+  if (assignedTo === null) return 'none';
+  return assignedTo === me ? 'me' : 'other';
 }
 
 function labName(names: Map<string, string>, id: string): LabName {

@@ -24,3 +24,4 @@ Se guardan 30 días en la base de datos.
 - **Catálogo de tipos y textos:** `packages/shared/src/notifications.ts`, con los textos del manual en «usted».
   - Quien genera cada aviso llega con su fase: paciente asignado, cita, orden, configuración incompleta, actualización requerida y alerta de seguridad.
   - La insignia de «Seguridad» queda fuera hasta que exista su módulo.
+  - **T-026:** «Orden asignada a usted» (`order.assigned`) a quien le asignan una orden, con el código `NOR1-O-…`; nadie se avisa a sí mismo. Al tocarlo se abre la Cola de órdenes de esa sede con «Asignadas a mí».
