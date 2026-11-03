@@ -345,10 +345,25 @@ Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al f
 **Decisiones:** ninguna.
 
 **Incluye:**
-- semilla de `pnpm demo:reset` con visitas en varios estados en cada sede y una tableta de kiosco vinculada;
+- semilla de `pnpm demo:reset` con visitas en varios estados en la primera sede de cada clínica (NOR1 y SUR1: las otras no tienen Recepción ni Enfermería en la semilla) y una tableta de kiosco vinculada;
 - guion `docs/DEMO-FASE-3A.md`;
 - su E2E (`demo-fase-3a.spec.ts`), con su propia base, como en la fase 2;
 - el cierre de 3A en este archivo, con lo que pasa a 3B.
+
+**Cómo quedó implementada (2026-11-02):**
+- **Semilla** (`apps/api/src/dev-encounters.ts`, dentro de `pnpm demo:reset`): las visitas no se escriben a mano. Cada paso lo da el servicio real (llegada, transiciones, enfermería, consulta, kiosco) como el usuario ficticio que le corresponde, con el reloj inyectable puesto en el minuto de ese paso. Así pasan por la máquina de estados, quedan en `encounter_events` y en la auditoría, y las esperas son reales.
+  - **NOR1:** una visita en cada estado de 3A. Registrado hace 12 min y Esperando proveedor hace 15 min («Crítico»), Esperando enfermería hace 6 min («Alerta»), Con enfermería sin signos vitales, Con proveedor, Listo para caja y Procedimiento pendiente. Las alergias, en sus tres estados (ADR 0040).
+  - **SUR1:** cuatro visitas, para comprobar el aislamiento.
+  - **Citas «Llegó» de hoy de NOR1 y SUR1:** se siembran Confirmadas y se registra su llegada con el servicio, así que tienen su visita real.
+  - **NOR2 y SUR2:** sin visitas. La semilla no tiene Recepción ni Enfermería en esas sedes, y sus citas «Llegó» de hoy siguen sin visita.
+  - **Tabletas:** «Tableta recepción (demo)» vinculada en NOR1 y en SUR1 por su Propietario, con un código de un solo uso.
+  - **Reloj:** `resetDemo` acepta un `clock`, y la semilla de citas también toma «hoy» de él. Poco después de medianoche, los pasos de las visitas con cita se agrupan al empezar el día de la sede, para que la cita siga siendo de hoy.
+- **Guion** [`docs/DEMO-FASE-3A.md`](../DEMO-FASE-3A.md):
+  - tres ventanas: Chrome normal para Recepción, Chrome incógnito para las demás personas y Edge como tableta;
+  - el bloque A va justo después de `pnpm dev`, porque las marcas cambian con el tiempo.
+- **Pruebas:**
+  - `apps/api/test/demo.test.ts`, con el reloj fijado a las 10:00 a. m. y a las 12:05 a. m. de la sede;
+  - la E2E `apps/web/e2e/demo-fase-3a.spec.ts` (`playwright.demo3a.config.ts`, dentro de `pnpm test:e2e` y de la CI, informe `playwright-report-demo3a`). Cubre también «Ya soy paciente» con la cita de hoy, que no tenía E2E.
 
 ### Demo 3A — qué podrás hacer tú
 
@@ -362,6 +377,55 @@ En tu computadora, con varias ventanas abiertas como si fueran distintos puestos
 6. En la siguiente visita de ese paciente, sus alergias aparecen solas.
 7. Cierras con su motivo la visita de un paciente que se fue, y ves el historial de cambios de la visita.
 8. Compruebas que «Clínica Demo Sur» no ve nada de «Clínica Demo Norte».
+
+## Cierre de 3A (T-024, 2026-11-02)
+
+**Guion:** [`docs/DEMO-FASE-3A.md`](../DEMO-FASE-3A.md). Lo recorre `apps/web/e2e/demo-fase-3a.spec.ts`, con su propia base preparada con `pnpm demo:reset` (`playwright.demo3a.config.ts`).
+
+**Qué quedó hecho:**
+
+| Objetivo de 3A | Tareas | E2E |
+| --- | --- | --- |
+| Llegada con cita y sin cita, en una transacción con `Idempotency-Key`; máquina de estados de la visita | T-017 ([ADR 0034](../decisions/0034-membresias-fase-3.md)) | `llegada.spec.ts` |
+| Pantalla de la visita: circuito, asignar proveedor con aviso, cerrar con motivo, cobertura, historial y «Forzar estado…» | T-018 ([ADR 0033](../decisions/0033-acciones-administrativas-flujo-clinico.md)) | `visita.spec.ts` |
+| Panel en vivo con métricas del día de la sede, filtros por rol y «Alerta» / «Crítico» | T-019 ([ADR 0039](../decisions/0039-alertas-espera-panel.md)) | `panel.spec.ts` |
+| Enfermería: cola, signos vitales, valoración, alergias con tres estados, «Enviar al proveedor» y la excepción | T-022 ([ADR 0036](../decisions/0036-valoracion-paciente-visita.md), [ADR 0040](../decisions/0040-alergias-sin-alergias-conocidas.md)) | `enfermeria.spec.ts` |
+| Proveedor: cola, «Iniciar consulta» con autoasignación y «Listo para caja» | T-023 | `proveedor.spec.ts` |
+| Kiosco en español e inglés: vincular, enviar y revocar, sin dejar nada en la tableta | T-020 ([ADR 0014](../decisions/0014-kiosco.md), [ADR 0031](../decisions/0031-kiosco-idioma-consentimientos-ruta.md)) | `kiosco.spec.ts` |
+| Llegadas del kiosco en Recepción: «Primera vez», «Ya soy paciente», cita de hoy y descartar | T-021 | `kiosco-recepcion.spec.ts`, `demo-fase-3a.spec.ts` |
+| Semilla con visitas y tabletas, guion y su E2E | T-024 | `demo-fase-3a.spec.ts` |
+
+Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pruebas de aislamiento con el rol real en cada tabla nueva.
+
+**Lo que pasa a 3B:**
+
+| Qué | Hoy, en 3A | Tarea de 3B |
+| --- | --- | --- |
+| Crear órdenes con su cargo y el laboratorio sugerido; activar «Órdenes abiertas» (S-CLI-08, hoy solo con «Cerrar») | El Proveedor solo consulta y pasa a «Listo para caja» | T-025 |
+| Ejecutar órdenes desde su cola. La visita en «Procedimiento pendiente» pasa sola a «Listo para caja» al resolver la última | «Procedimiento pendiente» solo avanza con «Listo para caja» | T-026 |
+| «Membresía» en el paso Cobertura y sus beneficios en Caja | La cobertura es solo «Pago directo» o «Seguro» (ADR 0034) | T-026b |
+| Caja: cola, estado de cuenta, «Iniciar caja» y «Completar visita». Las visitas «Listo para caja» de la semilla la esperan | «Listo para caja» no avanza; una visita así solo se cierra con «Cerrar visita…» | T-027 |
+| Pagos, anulaciones, saldos y la pestaña Saldos del perfil | — | T-028 |
+| Recibos de 80 mm en español e inglés | — | T-029 |
+| Fusionar pacientes. Un «Primera vez» del kiosco que ya existía puede crear un duplicado si Recepción no lo detecta | Solo se detectan los duplicados al crear | T-030 |
+| Reporte diario de la sede | — | T-031 |
+| Semilla con órdenes, cargos, pagos, planes y duplicados, sobre la de 3A | — | T-032 |
+
+**Decisiones pendientes:**
+- **P-23** ([`PENDIENTES.md`](../decisions/PENDIENTES.md)): la pantalla para cambiar los minutos de «Alerta» y «Crítico». Hoy son 5 y 10 por organización, sin pantalla. Falta decidir dónde va (Administración › Configuración) y sus límites. No bloquea 3B.
+- **Membresías (paso 0 de T-026b), antes de programar T-026b.** Hacen falta dos cosas del dueño del producto:
+  1. Los datos de los planes de Lancaster: nombre en español y en inglés, precio, qué incluye, descuentos, vigencia, renovación, número de miembros y si el precio cambia por sede. Solo datos de los planes, **nunca de pacientes**.
+  2. Las respuestas sobre un hueco del manual: no hay ninguna pantalla para dar de alta la membresía de un paciente. No dice quién la vende, desde dónde, cómo se cobran las cuotas ni cómo vence.
+
+  Las respuestas se escribirán como ADR. Hasta tenerlas, T-026b no puede empezar. T-025 y T-026 sí.
+- Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, de las fases 4 a 6.
+
+**Límites conocidos:**
+- Las marcas «Alerta» y «Crítico» de la semilla cuentan desde el `pnpm demo:reset`: pocos minutos después, «Alerta» pasa a «Crítico». El guion pide empezar por el Panel.
+- NOR2 y SUR2 no tienen visitas en la semilla, y sus citas «Llegó» de hoy no tienen visita.
+- El aviso sonoro de la bandeja del kiosco solo suena cuando la ventana de Recepción ya se ha tocado alguna vez (regla del navegador).
+- En 3A, una visita «Listo para caja» no puede completarse: la Caja llega en T-027.
+- Los minutos de las marcas no se pueden cambiar desde la aplicación (P-23).
 
 ---
 

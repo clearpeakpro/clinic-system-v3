@@ -5,7 +5,9 @@ import { DEV_USERS } from '../src/dev-seed.ts';
 
 // pnpm demo:reset (T-010, T-016): deja la base de datos LOCAL como recién
 // instalada, con las dos organizaciones ficticias, sus usuarios (ninguno con
-// MFA), su catálogo, laboratorios, pacientes y citas. Borra todo lo demás. Solo en desarrollo; con «pnpm dev» detenido.
+// MFA), su catálogo, laboratorios, pacientes y citas, y (T-024) las visitas
+// abiertas y las tabletas del kiosco de NOR1 y SUR1. Borra todo lo demás. Solo
+// en desarrollo; con «pnpm dev» detenido.
 
 function fail(message: string): never {
   console.error(`\n✖ ${message}\n`);
@@ -47,7 +49,8 @@ Esto BORRA la base de datos local de Clinic System y la deja como recién instal
   - «Clínica Demo Norte» (sedes NOR1 y NOR2) y «Clínica Demo Sur» (sedes SUR1 y SUR2);
   - ${String(DEV_USERS.length)} usuarios ficticios, todos con la contraseña de DEV_SEED_PASSWORD y sin MFA;
   - catálogo con precios generales y por sede, laboratorios con sus costos y 20 pacientes ficticios por clínica;
-  - citas ficticias de ayer, hoy y los próximos días en las cuatro sedes.
+  - citas ficticias de ayer, hoy y los próximos días en las cuatro sedes;
+  - visitas abiertas en NOR1 y SUR1 (algunas ya con «Alerta» o «Crítico») y una tableta del kiosco vinculada en cada una.
 Todo lo que haya hecho (invitaciones, sedes nuevas, MFA, auditoría…) se pierde.
 `);
   const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -80,5 +83,6 @@ console.log(`
   Usuarios (contraseña: la de DEV_SEED_PASSWORD en su .env):
 ${DEV_USERS.map((u) => `    - ${u.email}`).join('\n')}
   El operador de la plataforma (clinic_operator) está listo para «pnpm org:create».
-  Ahora ejecute «pnpm dev» y abra http://localhost:5173
+  Ahora ejecute «pnpm dev» enseguida y abra http://localhost:5173
+  (las esperas de las visitas corren desde ahora: ver docs/DEMO-FASE-3A.md).
 `);

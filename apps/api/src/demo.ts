@@ -5,6 +5,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { createApp, type ClinicApp } from './app.ts';
 import type { AppConfig } from './config.ts';
+import { FixedClock, systemClock, type Clock } from './clock.ts';
+import { seedDevEncounters } from './dev-encounters.ts';
 import { seedDevAppointments, seedDevUsers } from './dev-seed.ts';
 import { MemoryLogSink } from './logging.ts';
 import { operatorErrorMessage } from './platform.ts';
@@ -12,7 +14,8 @@ import { operatorErrorMessage } from './platform.ts';
 // Demo de la fase 1 (T-010), solo en desarrollo:
 //  - resetDemo: deja la base de datos local como recién instalada, con las dos
 //    organizaciones ficticias, sus usuarios (ninguno con MFA), su catálogo,
-//    laboratorios, pacientes y citas (fase 2, T-016).
+//    laboratorios, pacientes y citas (fase 2, T-016), y las visitas abiertas
+//    y las tabletas vinculadas de NOR1 y SUR1 (fase 3A, T-024).
 //  - sendDemoNotification: un aviso ficticio para ver la campana en vivo.
 
 const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
@@ -47,6 +50,8 @@ export interface ResetOptions {
   config: AppConfig;
   /** Contraseña de todos los usuarios ficticios. */
   seedPassword: string;
+  /** Hora del reinicio (T-024): las pruebas la fijan. Por defecto, la del sistema. */
+  clock?: Clock;
 }
 
 function withDatabase(url: string, database: string, user?: string, password?: string): string {
@@ -90,10 +95,13 @@ export async function resetDemo(options: ResetOptions): Promise<void> {
   await migrate(migratorUrl);
   await seed(migratorUrl, { fieldKey: options.config.fieldEncryptionKey });
 
-  const app = await createApp({ config: options.config, logs: new MemoryLogSink() });
+  // La semilla de visitas mueve este reloj paso a paso (dev-encounters.ts).
+  const clock = new FixedClock((options.clock ?? systemClock).now());
+  const app = await createApp({ config: options.config, logs: new MemoryLogSink(), clock });
   try {
     await seedDevUsers(app, options.seedPassword);
-    await seedDevAppointments(app, options.config.fieldEncryptionKey);
+    await seedDevAppointments(app, options.config.fieldEncryptionKey, { clock, withVisits: true });
+    await seedDevEncounters(app, clock);
   } finally {
     await app.close();
   }
