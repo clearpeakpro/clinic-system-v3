@@ -132,7 +132,7 @@ export interface VisitTransitionContext {
   route: VisitRoute;
   /** Roles de quien actúa en la sede de la visita. */
   roles: readonly Role[];
-  /** ¿Hay órdenes pendientes o en curso? (Desde T-025; antes, siempre false.) */
+  /** ¿Hay órdenes pendientes o en curso? (Desde T-025 lo calcula la API con las órdenes de la visita.) */
   hasOpenOrders?: boolean;
   /**
    * Excepción administrativa (ADR 0033): quien actúa no necesita el rol dueño
@@ -177,6 +177,19 @@ export function visitActions(status: VisitStatus, ctx: Omit<VisitTransitionConte
     if (result.ok && !actions.includes(action)) actions.push(action);
   }
   return actions;
+}
+
+/**
+ * Paso automático (T-025 y T-026; S-CLI-17): cuando la visita está en
+ * «Procedimiento pendiente» y se resuelve (completa o cancela) la última
+ * orden abierta, pasa sola a «Listo para caja». Es el mismo paso de la
+ * máquina («ready_for_checkout»), dado por el sistema: no exige el rol dueño
+ * y queda en el historial como «Sistema». Nulo si no corresponde.
+ */
+export function autoReadyForCheckout(status: VisitStatus, route: VisitRoute, hasOpenOrders: boolean): VisitTransitionResult | null {
+  if (status !== 'PROCEDURE_PENDING' || hasOpenOrders) return null;
+  const result = visitTransition(status, 'ready_for_checkout', { route, roles: [], asOwner: true, hasOpenOrders });
+  return result.ok ? result : null;
 }
 
 /** Cierres: se hacen con «Cerrar visita…» (S-CLI-09), nunca con una transición normal ni forzando. */

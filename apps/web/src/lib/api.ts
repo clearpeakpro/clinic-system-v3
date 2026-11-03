@@ -1,4 +1,15 @@
 import type {
+  CancelOrderInput,
+  ChangeOrderLabInput,
+  CreateOrderInput,
+  EncounterOrders,
+  OrderableItems,
+  OrderLabOptions,
+  OrderPreview,
+  OrderPreviewInput,
+  OrderSaved,
+  OrdersCreated,
+  OrderType,
   KioskArrivalDetail,
   KioskArrivals,
   CreateKioskPairingInput,
@@ -359,6 +370,16 @@ export const api = {
   saveVitals: (encounterId: string, input: SaveVitalsInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/vitals`, input),
   saveAssessment: (encounterId: string, input: SaveAssessmentInput) => request<NursingSaved>('PUT', `/api/encounters/${encounterId}/assessment`, input),
   sendToProvider: (encounterId: string, input: SendToProviderInput) => request<NursingSaved>('POST', `/api/encounters/${encounterId}/send-to-provider`, input),
+  // Órdenes (T-025; S-CLI-17, 18 y 21). Crear y cancelar llevan Idempotency-Key.
+  encounterOrders: (encounterId: string) => request<EncounterOrders>('GET', `/api/encounters/${encounterId}/orders`),
+  orderables: (encounterId: string, type: OrderType) => request<OrderableItems>('GET', `/api/encounters/${encounterId}/orderables?type=${type}`),
+  orderPreview: (encounterId: string, input: OrderPreviewInput) => request<OrderPreview>('POST', `/api/encounters/${encounterId}/orders/preview`, input),
+  createOrder: (encounterId: string, input: CreateOrderInput, idempotencyKey: string) =>
+    request<OrdersCreated>('POST', `/api/encounters/${encounterId}/orders`, input, { 'idempotency-key': idempotencyKey }),
+  cancelOrder: (orderId: string, input: CancelOrderInput, idempotencyKey: string) =>
+    request<OrderSaved>('POST', `/api/orders/${orderId}/cancel`, input, { 'idempotency-key': idempotencyKey }),
+  orderLabOptions: (orderId: string) => request<OrderLabOptions>('GET', `/api/orders/${orderId}/lab-options`),
+  changeOrderLab: (orderId: string, input: ChangeOrderLabInput) => request<OrderSaved>('POST', `/api/orders/${orderId}/lab`, input),
   // Kiosco (T-020). Sedes › Kioscos (kiosks.manage).
   kiosks: (locationId: string) => request<KioskDeviceView[]>('GET', `/api/locations/${locationId}/kiosks`),
   createKioskPairing: (locationId: string, input: CreateKioskPairingInput) => request<KioskPairing>('POST', `/api/locations/${locationId}/kiosks`, input),

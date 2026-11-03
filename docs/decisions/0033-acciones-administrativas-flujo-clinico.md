@@ -30,7 +30,7 @@ El manual reserva al Administrador varias acciones del flujo clínico y de Caja:
 - **Reabrir:** desde una visita cerrada, forzar a un estado abierto la reabre (`closed_at` vuelve a nulo). Si el paciente ya tiene otra visita abierta en la sede: 409 `encounter_already_open`, «El paciente ya tiene una visita abierta en esta sede.» (decisión del 2026-11-01).
 - **Motivo obligatorio** (máx. 500), cifrado en `encounter_events` y en la auditoría `encounter.forced` (`forced`, `reopened`). En el historial (S-CLI-24) la entrada lleva el chip «Forzado» y el motivo.
 - **Pruebas:** `apps/api/test/encounter-screen.test.ts` (Administrador sin rol clínico, Recepción, Enfermería y Proveedor: 403; destinos regulares y cierres: 409; reabrir y su bloqueo) y `apps/web/e2e/visita.spec.ts` (el Propietario de una organización nueva se asigna Recepción y fuerza con motivo).
-- **Pendiente en sus tareas:** la excepción de «Enviar al proveedor» (T-022), la creación de órdenes (T-025) y anular cargos y pagos (T-028).
+- **Pendiente en sus tareas:** la excepción de «Enviar al proveedor» (T-022), la creación de órdenes (T-025) y anular cargos y pagos (T-028). Las dos primeras ya están hechas: ver las secciones de abajo.
 
 ## Cómo quedó implementada la excepción de «Enviar al proveedor» (T-022, 2026-11-01)
 
@@ -40,3 +40,9 @@ El manual reserva al Administrador varias acciones del flujo clínico y de Caja:
 - **Registro:** el motivo va cifrado en la fila `send_to_provider` del historial (chip «Excepción» en S-CLI-24) y en la auditoría `encounter.nursing_exception`.
 - **En la web:** solo se ofrece cuando no hay peso ni presión guardados, desde el botón de la sección Enfermería o desde el diálogo «Sin signos vitales».
 - **Pruebas:** `apps/api/test/nursing.test.ts`.
+
+## Cómo quedaron las órdenes (T-025, 2026-11-02)
+
+- **Crear:** `orders.create`, solo del rol Proveedor. El Propietario y el Administrador no lo tienen, ni siquiera con un rol clínico: `POST /api/encounters/:id/orders` les responde 403. También a Recepción y a Enfermería.
+- **Cancelar:** `orders.cancel`, del Proveedor, solo en las órdenes que ordenó o de visitas donde es el proveedor (`order_not_owned`), con la visita abierta. La anulación administrativa de cargos y pagos (`billing.void`, Propietario o Administrador con rol clínico, también con la visita cerrada) llega con T-028.
+- **Pruebas:** `apps/api/test/orders.test.ts`.

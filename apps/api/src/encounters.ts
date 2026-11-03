@@ -11,6 +11,7 @@ import {
   memberships,
   nextEncounterCode,
   notifyRealtime,
+  orders,
   patients,
   user as userTable,
   type FieldCipher,
@@ -28,6 +29,7 @@ import {
   FORCE_ACTION,
   forceEncounterSchema,
   isOpenVisitStatus,
+  OPEN_ORDER_STATUSES,
   PATIENT_ENCOUNTERS_PAGE_SIZE,
   permissionsFor,
   reopens,
@@ -114,6 +116,38 @@ export interface LockedEncounter {
 function uniqueViolation(error: unknown): string | null {
   const pgError = ((error as { cause?: unknown }).cause ?? error) as { code?: string; constraint?: string };
   return pgError.code === '23505' ? (pgError.constraint ?? '') : null;
+}
+
+/** La visita de la sede, bloqueada (FOR UPDATE) para un cambio. 404 si es de otra sede o no existe. */
+export async function lockEncounter(tx: Tx, locationId: string, encounterId: string): Promise<LockedEncounter> {
+  const [row] = await tx
+    .select({
+      id: encounters.id,
+      organizationId: encounters.organizationId,
+      locationId: encounters.locationId,
+      patientId: encounters.patientId,
+      code: encounters.code,
+      status: encounters.status,
+      route: encounters.route,
+      version: encounters.version,
+      closedAt: encounters.closedAt,
+      providerMembershipId: encounters.providerMembershipId,
+    })
+    .from(encounters)
+    .where(and(eq(encounters.id, encounterId), eq(encounters.locationId, locationId)))
+    .for('update');
+  if (!row) throw new HttpError(404, 'encounter_not_found');
+  return { ...row, status: row.status as VisitStatus, route: row.route as VisitRoute };
+}
+
+/** ¿Tiene la visita órdenes pendientes o en curso? (S-CLI-08, T-025.) */
+export async function hasOpenOrders(tx: Tx, encounterId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(eq(orders.encounterId, encounterId), inArray(orders.status, [...OPEN_ORDER_STATUSES])))
+    .limit(1);
+  return row !== undefined;
 }
 
 export class EncounterService {
@@ -542,7 +576,8 @@ export class EncounterService {
     return this.change(actor, encounterId, async (tx, current, me, now) => {
       this.#requireVersion(current, input.expectedVersion);
       if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
-      const result = visitTransition(current.status, input.action, { route: current.route, roles: actor.roles, hasOpenOrders: false });
+      // T-025: «Listo para caja» e «Iniciar pago» se bloquean con órdenes abiertas (S-CLI-08).
+      const result = visitTransition(current.status, input.action, { route: current.route, roles: actor.roles, hasOpenOrders: await hasOpenOrders(tx, current.id) });
       if (!result.ok) throw this.#transitionError(result.reason);
       await this.move(tx, actor, current, me, now, meta, { action: input.action, to: result.to, forced: false, reason: null, audit: 'encounter.transitioned' });
     });
@@ -810,24 +845,7 @@ export class EncounterService {
     const ctx = requireContext(actor);
     try {
       return await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
-        const [row] = await tx
-          .select({
-            id: encounters.id,
-            organizationId: encounters.organizationId,
-            locationId: encounters.locationId,
-            patientId: encounters.patientId,
-            code: encounters.code,
-            status: encounters.status,
-            route: encounters.route,
-            version: encounters.version,
-            closedAt: encounters.closedAt,
-            providerMembershipId: encounters.providerMembershipId,
-          })
-          .from(encounters)
-          .where(and(eq(encounters.id, encounterId), eq(encounters.locationId, ctx.locationId)))
-          .for('update');
-        if (!row) throw new HttpError(404, 'encounter_not_found');
-        const current: LockedEncounter = { ...row, status: row.status as VisitStatus, route: row.route as VisitRoute };
+        const current = await lockEncounter(tx, ctx.locationId, encounterId);
         const me = await this.#myMembership(tx, actor.userId);
         await work(tx, current, me, this.#clock.now());
         const [saved] = await tx.select({ status: encounters.status, version: encounters.version }).from(encounters).where(eq(encounters.id, current.id));
@@ -866,7 +884,15 @@ export class EncounterService {
     me: string,
     now: Date,
     meta: RequestMeta,
-    step: { action: EncounterEventAction; to: VisitStatus; forced: boolean; reason: string | null; audit: string },
+    step: {
+      action: EncounterEventAction;
+      to: VisitStatus;
+      forced: boolean;
+      reason: string | null;
+      audit: string;
+      /** Paso automático (T-025: la última orden resuelta): en el historial, «Sistema»; en la auditoría, quien lo provocó. */
+      system?: boolean;
+    },
   ): Promise<void> {
     const version = current.version + 1;
     const toClosed = !isOpenVisitStatus(step.to);
@@ -881,8 +907,8 @@ export class EncounterService {
       action: step.action,
       fromStatus: current.status,
       toStatus: step.to,
-      actorType: 'user',
-      actorMembershipId: me,
+      actorType: step.system ? 'system' : 'user',
+      actorMembershipId: step.system ? null : me,
       reasonEnc: step.reason ? await this.#cipher.encrypt(step.reason, reasonContext(current.organizationId, eventId)) : null,
       forced: step.forced,
       encounterVersion: version,
@@ -899,6 +925,7 @@ export class EncounterService {
         to: step.to,
         version,
         ...(step.forced ? { forced: true, reopened: reopens(current.status, step.to) } : {}),
+        ...(step.system ? { automatic: true } : {}),
       },
     });
     await this.changed(tx, current, step.to);

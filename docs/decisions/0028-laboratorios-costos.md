@@ -67,3 +67,26 @@ Además, en la implementación:
 - **Fecha mínima de un costo:** la del precio general, el día más adelantado entre las sedes activas, porque los costos son de la organización.
 - **«Sin laboratorio asignado»:** ningún laboratorio **activo** realiza la prueba hoy.
 - **Manual sin reemplazo:** no se construyen «Código externo» ni «Vigente hasta» de S-ADM-16; la vigencia termina con el registro siguiente.
+
+## Laboratorio con seguro y cambio de laboratorio (decisión del 2026-11-02, al planificar T-025)
+
+- **Con seguro, elegir el laboratorio no es obligatorio al crear la orden.**
+  - Si el Proveedor lo elige, solo puede elegir entre los laboratorios **activos que hacen todas las pruebas de la orden**.
+  - Si ningún laboratorio las hace todas, se crea **una orden por prueba**, cada una con los laboratorios que la hacen.
+  - Si no lo elige, la orden queda **«Sin laboratorio asignado»** y Enfermería lo elige después con «Cambiar laboratorio…».
+  - Con seguro no hay sugerido, así que elegir no es un cambio: no pide motivo.
+- **Pruebas sin laboratorio** (pago directo y membresía): van en una orden aparte, «Sin laboratorio asignado».
+- **«Cambiar laboratorio…»:**
+  - el Proveedor puede cambiar el sugerido al crear la orden, con motivo;
+  - sobre una orden ya creada, Enfermería y el Proveedor lo cambian con motivo y `version` (409 si otra persona la cambió antes);
+  - solo se ofrecen los laboratorios activos que hacen todas sus pruebas ese día en la sede.
+- **Una orden de laboratorio no se puede completar sin laboratorio asignado** (T-026).
+
+## Cómo quedó implementada la sugerencia en la orden (T-025, 2026-11-02)
+
+- **Reparto:** `labOrderGroups()` de `packages/shared/src/orders.ts`, sobre `suggestLabs()`. Cada grupo es una orden con su sugerido (nulo con seguro o sin laboratorio) y sus opciones. Corre en el servidor con los costos vigentes el día de la orden en la sede (reloj inyectable) y la cobertura de la visita.
+- **Vista previa:** `POST /api/encounters/:id/orders/preview` devuelve los grupos con el **nombre** de los laboratorios. Al crear, el servidor vuelve a calcular el reparto: si cambió desde la vista previa, responde 409 `lab_groups_changed`; un laboratorio que no está entre las opciones, 409 `invalid_lab`.
+- **Auditoría:**
+  - `order.created` lleva `labAssigned`, `labChanged` y, si se cambió el sugerido, el motivo;
+  - `order.lab_changed` lleva el motivo y el laboratorio anterior y el nuevo (solo ids).
+- **Sin costos:** ninguna respuesta a Enfermería ni al Proveedor lleva costos. Lo comprueba `apps/api/test/orders.test.ts`, que recorre todas las respuestas que reciben.

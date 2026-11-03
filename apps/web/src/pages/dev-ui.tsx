@@ -1,4 +1,4 @@
-import { APPOINTMENT_STATUSES, VISIT_ROUTES, VISIT_STATUSES } from '@clinic/shared';
+import { APPOINTMENT_STATUSES, ORDER_STATUSES, VISIT_ROUTES, VISIT_STATUSES } from '@clinic/shared';
 import {
   AppointmentStatusChip,
   Button,
@@ -15,6 +15,7 @@ import {
   FloatingPanel,
   MoneyField,
   MoneyText,
+  OrderStatusChip,
   RefreshBar,
   RouteBadge,
   SegmentedControl,
@@ -118,6 +119,10 @@ export function DevUiPage() {
           <p className="text-body-md text-on-surface-variant">Estados de la cita (T-014):</p>
           <div className="flex flex-wrap gap-space-sm">
             {APPOINTMENT_STATUSES.map((s) => <AppointmentStatusChip key={s} status={s} />)}
+          </div>
+          <p className="text-body-md text-on-surface-variant">Estados de la orden (T-025):</p>
+          <div className="flex flex-wrap gap-space-sm">
+            {ORDER_STATUSES.map((s) => <OrderStatusChip key={s} status={s} />)}
           </div>
           <p className="text-body-md text-on-surface-variant">Tonos generales (S-GEN-30):</p>
           <div className="flex flex-wrap gap-space-sm">

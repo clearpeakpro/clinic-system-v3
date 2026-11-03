@@ -10,6 +10,8 @@ export { Button, type ButtonProps } from './components/button.tsx';
 export {
   APPOINTMENT_STATUS_STYLE,
   AppointmentStatusChip,
+  ORDER_STATUS_STYLE,
+  OrderStatusChip,
   RouteBadge,
   SEMANTIC_TONES,
   SemanticChip,

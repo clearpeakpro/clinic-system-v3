@@ -93,10 +93,24 @@ describe('permisos', () => {
       ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
     );
     expect([...permissionsFor(['enfermeria'])].sort()).toEqual(
-      ['nursing.assessment', 'nursing.view', 'nursing.vitals', 'nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access'],
+      ['nursing.assessment', 'nursing.view', 'nursing.vitals', 'nursing_queue.access', 'orders.execute', 'orders_queue.access', 'panel.view', 'patients.access'],
     );
     expect([...permissionsFor(['proveedor'])].sort()).toEqual(
-      ['appointments.access', 'appointments.manage', 'nursing.view', 'nursing.vitals', 'nursing_queue.access', 'orders_queue.access', 'panel.view', 'patients.access', 'patients.edit_phone', 'provider_queue.access'],
+      [
+        'appointments.access',
+        'appointments.manage',
+        'nursing.view',
+        'nursing.vitals',
+        'nursing_queue.access',
+        'orders.cancel',
+        'orders.create',
+        'orders.execute',
+        'orders_queue.access',
+        'panel.view',
+        'patients.access',
+        'patients.edit_phone',
+        'provider_queue.access',
+      ],
     );
   });
 });

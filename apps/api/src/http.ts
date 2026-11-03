@@ -13,6 +13,10 @@ import {
   saveAssessmentSchema,
   saveVitalsSchema,
   sendToProviderSchema,
+  cancelOrderSchema,
+  changeOrderLabSchema,
+  createOrderSchema,
+  orderPreviewSchema,
   cancelAppointmentSchema,
   createAppointmentSchema,
   type CreateAppointmentInput,
@@ -80,6 +84,7 @@ import { EncounterService } from './encounters.ts';
 import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
 import { NursingService } from './nursing.ts';
+import { isOrderType, OrderService } from './orders.ts';
 import { ProviderService } from './provider.ts';
 import { PanelService } from './panel.ts';
 import { IdempotencyKey } from './idempotency.ts';
@@ -980,6 +985,72 @@ export class NursingController {
   }
 }
 
+/**
+ * Órdenes (T-025; S-CLI-17, 18 y 21). Todo exige patients.access (un rol
+ * clínico en la sede, ADR 0027). Ver la sección: los cuatro roles clínicos
+ * (Recepción sin notas). Crear, el catálogo con precios y la vista previa:
+ * orders.create (solo el rol Proveedor, ADR 0033), con Idempotency-Key.
+ * Cancelar: orders.cancel (el servicio comprueba que sea suya o de su
+ * visita), con Idempotency-Key. «Cambiar laboratorio…»: orders.execute
+ * (Enfermería y Proveedor). Ninguna respuesta lleva costos de laboratorio.
+ */
+@Controller()
+export class OrdersController {
+  readonly #orders: OrderService;
+  constructor(@Inject(OrderService) orders: OrderService) {
+    this.#orders = orders;
+  }
+
+  @Get('encounters/:id/orders')
+  @RequirePermission('patients.access')
+  list(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
+    return this.#orders.list(principalOf(request), id(encounterId), metaOf(request));
+  }
+
+  @Get('encounters/:id/orderables')
+  @RequirePermission('patients.access', 'orders.create')
+  orderables(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Query('type') type: unknown) {
+    if (!isOrderType(type)) throw new HttpError(400, 'invalid_request');
+    return this.#orders.orderable(principalOf(request), id(encounterId), type);
+  }
+
+  @Post('encounters/:id/orders/preview')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'orders.create')
+  preview(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown) {
+    return this.#orders.preview(principalOf(request), id(encounterId), parse(orderPreviewSchema, body));
+  }
+
+  @Post('encounters/:id/orders')
+  @RequirePermission('patients.access', 'orders.create')
+  create(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    // El hash de la clave se calcula con el cuerpo tal como llegó; el servicio lo valida.
+    parse(createOrderSchema, body);
+    return this.#orders.create(principalOf(request), id(encounterId), body, key, metaOf(request));
+  }
+
+  @Post('orders/:id/cancel')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'orders.cancel')
+  cancel(@Req() request: FastifyRequest, @Param('id') orderId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(cancelOrderSchema, body);
+    return this.#orders.cancel(principalOf(request), id(orderId), body, key, metaOf(request));
+  }
+
+  @Get('orders/:id/lab-options')
+  @RequirePermission('patients.access', 'orders.execute')
+  labOptions(@Req() request: FastifyRequest, @Param('id') orderId: string) {
+    return this.#orders.labOptions(principalOf(request), id(orderId));
+  }
+
+  @Post('orders/:id/lab')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'orders.execute')
+  changeLab(@Req() request: FastifyRequest, @Param('id') orderId: string, @Body() body: unknown) {
+    return this.#orders.changeLab(principalOf(request), id(orderId), parse(changeOrderLabSchema, body), metaOf(request));
+  }
+}
+
 /** S-CLI-02 Cola de proveedor (T-023): el rol Proveedor (provider_queue.access) con patients.access. Lectura auditada. */
 @Controller('provider')
 export class ProviderController {
@@ -1135,6 +1206,7 @@ export interface ApiProviders {
   panel: PanelService;
   nursing: NursingService;
   provider: ProviderService;
+  orders: OrderService;
   kiosk: KioskService;
   kioskAdmin: KioskAdminService;
   kioskArrivals: KioskArrivalService;
@@ -1166,6 +1238,7 @@ export function createApiModule(providers: ApiProviders) {
       PanelController,
       NursingController,
       ProviderController,
+      OrdersController,
       LocationKiosksController,
       KioskController,
       KioskArrivalsController,
@@ -1186,6 +1259,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: PanelService, useValue: providers.panel },
       { provide: NursingService, useValue: providers.nursing },
       { provide: ProviderService, useValue: providers.provider },
+      { provide: OrderService, useValue: providers.orders },
       { provide: KioskService, useValue: providers.kiosk },
       { provide: KioskAdminService, useValue: providers.kioskAdmin },
       { provide: KioskArrivalService, useValue: providers.kioskArrivals },
