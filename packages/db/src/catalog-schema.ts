@@ -9,6 +9,9 @@ import { appSchema, locations, organizations } from './schema.ts';
 // su fecha de vigencia. RLS, FORCE y GRANT en migrations/0018_catalog_rls.sql
 // y 0021_lab_providers_rls.sql. Los valores permitidos (rutas, tipos,
 // colores) son los de @clinic/shared (catalog.ts); una prueba los compara.
+// T-026b (ADR 0034 y 0041): el catálogo «Consultas», con precio por sede como
+// los procedimientos y las pruebas, y la categoría de membresía de cada
+// procedimiento y prueba (las consultas son siempre «Consulta»).
 
 /** Código de un ítem: empieza por letra; A–Z, dígitos, `_` y `-`; de 2 a 41 caracteres. */
 export const CATALOG_CODE_PATTERN = '^[A-Z][A-Z0-9_-]{1,40}$';
@@ -16,6 +19,8 @@ export const CATALOG_CODE_PATTERN = '^[A-Z][A-Z0-9_-]{1,40}$';
 export const VISIT_ROUTE_VALUES = ['STANDARD', 'INJECTION_ONLY', 'LAB_ONLY', 'PROCEDURE_ONLY'] as const;
 export const PROCEDURE_KIND_VALUES = ['procedure', 'injection'] as const;
 export const AGENDA_COLOR_VALUES = ['teal', 'cyan', 'blue', 'indigo', 'violet', 'fuchsia', 'slate', 'stone'] as const;
+/** Categoría de membresía (T-026b): sobre ella se aplica el descuento del plan. */
+export const MEMBERSHIP_CATEGORY_VALUES = ['consultation', 'treatment', 'lab', 'minor_procedure'] as const;
 
 const inList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(', '));
 
@@ -63,6 +68,8 @@ export const procedures = appSchema.table(
     ...common(),
     /** Procedimiento o Inyección. */
     kind: text('kind').notNull(),
+    /** Categoría de membresía (T-026b); nula: ningún descuento de membresía. */
+    membershipCategory: text('membership_category'),
   },
   (t) => [
     unique('procedures_organization_id_id_key').on(t.organizationId, t.id),
@@ -71,18 +78,41 @@ export const procedures = appSchema.table(
     check('procedures_name_length', sql`char_length(${t.name}) between 1 and 120`),
     check('procedures_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
     check('procedures_kind_check', sql`${t.kind} in (${inList(PROCEDURE_KIND_VALUES)})`),
+    check('procedures_membership_category_check', sql`${t.membershipCategory} in (${inList(MEMBERSHIP_CATEGORY_VALUES)})`),
   ],
 );
 
 export const labTests = appSchema.table(
   'lab_tests',
-  { ...common() },
+  {
+    ...common(),
+    /** Categoría de membresía (T-026b); nula: ningún descuento de membresía. */
+    membershipCategory: text('membership_category'),
+  },
   (t) => [
     unique('lab_tests_organization_id_id_key').on(t.organizationId, t.id),
     unique('lab_tests_organization_id_code_key').on(t.organizationId, t.code),
     check('lab_tests_code_format', sql`${t.code} ~ ${sql.raw(`'${CATALOG_CODE_PATTERN}'`)}`),
     check('lab_tests_name_length', sql`char_length(${t.name}) between 1 and 120`),
     check('lab_tests_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
+    check('lab_tests_membership_category_check', sql`${t.membershipCategory} in (${inList(MEMBERSHIP_CATEGORY_VALUES)})`),
+  ],
+);
+
+/**
+ * Consultas (T-026b, ADR 0041): lo que Recepción agrega en Caja desde el
+ * catálogo, al precio vigente de la sede. Su categoría de membresía es
+ * siempre «Consulta».
+ */
+export const consultations = appSchema.table(
+  'consultations',
+  { ...common() },
+  (t) => [
+    unique('consultations_organization_id_id_key').on(t.organizationId, t.id),
+    unique('consultations_organization_id_code_key').on(t.organizationId, t.code),
+    check('consultations_code_format', sql`${t.code} ~ ${sql.raw(`'${CATALOG_CODE_PATTERN}'`)}`),
+    check('consultations_name_length', sql`char_length(${t.name}) between 1 and 120`),
+    check('consultations_sort_order_range', sql`${t.sortOrder} between 0 and 100000`),
   ],
 );
 
@@ -122,6 +152,8 @@ export const prices = appSchema.table(
     locationId: uuid('location_id'),
     procedureId: uuid('procedure_id'),
     labTestId: uuid('lab_test_id'),
+    /** T-026b: consulta. */
+    consultationId: uuid('consultation_id'),
     /** Centavos de USD (regla 4). Nulo solo en una sede: «Usa el precio general desde». */
     amountCents: integer('amount_cents'),
     effectiveFrom: date('effective_from').notNull(),
@@ -132,12 +164,18 @@ export const prices = appSchema.table(
     check('prices_amount_check', sql`${t.amountCents} >= 0`),
     // El precio general siempre tiene importe.
     check('prices_general_amount_check', sql`${t.locationId} is not null or ${t.amountCents} is not null`),
-    check('prices_one_item_check', sql`num_nonnulls(${t.procedureId}, ${t.labTestId}) = 1`),
+    check('prices_one_item_check', sql`num_nonnulls(${t.procedureId}, ${t.labTestId}, ${t.consultationId}) = 1`),
     foreignKey({ name: 'prices_location_fk', columns: [t.organizationId, t.locationId], foreignColumns: [locations.organizationId, locations.id] }),
     foreignKey({ name: 'prices_procedure_fk', columns: [t.organizationId, t.procedureId], foreignColumns: [procedures.organizationId, procedures.id] }),
     foreignKey({ name: 'prices_lab_test_fk', columns: [t.organizationId, t.labTestId], foreignColumns: [labTests.organizationId, labTests.id] }),
+    foreignKey({
+      name: 'prices_consultation_fk',
+      columns: [t.organizationId, t.consultationId],
+      foreignColumns: [consultations.organizationId, consultations.id],
+    }),
     index('prices_procedure_idx').on(t.organizationId, t.locationId, t.procedureId, t.effectiveFrom),
     index('prices_lab_test_idx').on(t.organizationId, t.locationId, t.labTestId, t.effectiveFrom),
+    index('prices_consultation_idx').on(t.organizationId, t.locationId, t.consultationId, t.effectiveFrom),
   ],
 );
 

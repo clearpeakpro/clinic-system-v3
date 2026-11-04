@@ -48,6 +48,12 @@ const TABLES = [
   'orders',
   'order_items',
   'charges',
+  // T-026b
+  'consultations',
+  'membership_plans',
+  'membership_plan_fees',
+  'membership_benefits',
+  'membership_benefit_items',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {

@@ -217,6 +217,124 @@ test('el Administrador gestiona el catálogo, los precios por sede y los laborat
   await expect(ficticio).toContainText('Inactivo');
   await tabs.getByRole('link', { name: /Pruebas de laboratorio/ }).click();
   await expect(row(page, 'LAB-STREP')).toContainText('Sin laboratorio asignado');
+  await expect(row(page, 'LAB-STREP')).toContainText('Laboratorio');
   await expectAccessible(page);
   await page.locator('main').screenshot({ path: 'test-results/catalogo-pruebas.png' });
+
+  // T-026b. Consultas (ADR 0041): con precio por sede, como los procedimientos.
+  await tabs.getByRole('link', { name: /Consultas/ }).click();
+  await expect(page).toHaveURL(/\/admin\/catalogos\/consultas$/);
+  await expect(row(page, 'CONS-INICIAL')).toContainText('$55.00');
+  await expect(row(page, 'CONS-SEGUIMIENTO')).toContainText('$40.00');
+  await page.getByRole('button', { name: 'Nueva consulta' }).click();
+  const newConsultation = page.getByRole('dialog', { name: 'Nueva consulta' });
+  await newConsultation.getByLabel('Código').fill('CONS-URG');
+  await newConsultation.getByLabel('Nombre', { exact: true }).fill('Consulta de urgencia ficticia');
+  await newConsultation.getByLabel('Precio general', { exact: true }).fill('70');
+  await expectAccessible(page);
+  await newConsultation.getByRole('button', { name: 'Crear' }).click();
+  await expect(row(page, 'CONS-URG')).toContainText('$70.00');
+  await expectAccessible(page);
+  await page.locator('main').screenshot({ path: 'test-results/catalogo-consultas.png' });
+
+  // La categoría de membresía de un procedimiento.
+  await tabs.getByRole('link', { name: /Procedimientos/ }).click();
+  await expect(row(page, 'INJ-B12')).toContainText('Tratamiento');
+  await expect(row(page, 'PROC-CURA')).toContainText('Sin categoría');
+  await row(page, 'PROC-CURA').getByRole('button', { name: 'Editar Curación ficticia' }).click();
+  const cura = page.getByRole('dialog', { name: 'Editar procedimiento' });
+  await cura.getByLabel('Categoría de membresía (opcional)').selectOption({ label: 'Cirugía menor o procedimiento' });
+  await cura.getByRole('button', { name: 'Guardar' }).click();
+  await expect(row(page, 'PROC-CURA')).toContainText('Cirugía menor o procedimiento');
+
+  // Planes de membresía (S-ADM-21): sin sede; las cuotas valen en todas.
+  await tabs.getByRole('link', { name: /Planes de membresía/ }).click();
+  await expect(page).toHaveURL(/\/admin\/catalogos\/planes-de-membresia$/);
+  await expect(page.getByLabel('Sede de los precios')).toHaveCount(0);
+  await expect(row(page, 'FAMILIAR')).toContainText('Plan Familiar');
+  await expect(row(page, 'FAMILIAR')).toContainText('$250.00');
+  await expect(row(page, 'FAMILIAR')).toContainText('$99.00');
+  await expectAccessible(page);
+  await page.getByRole('button', { name: 'Nuevo plan' }).click();
+  const newPlan = page.getByRole('dialog', { name: 'Nuevo plan de membresía' });
+  await newPlan.getByRole('button', { name: 'Crear' }).click();
+  await expect(newPlan.getByText('Este campo es obligatorio.').first()).toBeVisible();
+  await newPlan.getByLabel('Código').fill('PLAN-E2E');
+  await newPlan.getByLabel('Nombre (ES)').fill('Plan Ficticio E2E');
+  await newPlan.getByLabel('Nombre (EN)').fill('Dummy E2E Plan');
+  await newPlan.getByLabel('Máximo de miembros').fill('2');
+  await newPlan.getByLabel('Cuota inicial').fill('120');
+  await newPlan.getByLabel('Cuota mensual').fill('45.50');
+  await expectAccessible(page);
+  await newPlan.getByRole('button', { name: 'Crear' }).click();
+  await expect(page.getByText('Guardado.').first()).toBeVisible();
+  await expect(row(page, 'PLAN-E2E')).toContainText('$120.00');
+  await expect(row(page, 'PLAN-E2E')).toContainText('$45.50');
+  await page.locator('main').screenshot({ path: 'test-results/catalogo-planes.png' });
+
+  // Un cambio de cuotas desde mañana: hoy siguen las anteriores y se ven las programadas.
+  await row(page, 'PLAN-E2E').getByRole('button', { name: 'Editar Plan Ficticio E2E' }).click();
+  const editPlan = page.getByRole('dialog', { name: 'Editar plan de membresía' });
+  await editPlan.getByLabel('Cuota mensual').fill('50');
+  await editPlan.getByLabel('Vigente desde').fill(tomorrow.iso);
+  await editPlan.getByRole('button', { name: 'Guardar' }).click();
+  await expect(row(page, 'PLAN-E2E')).toContainText('$45.50');
+  await expect(row(page, 'PLAN-E2E')).toContainText(`Desde ${formatShortDay(tomorrow.iso)}: 50.00`);
+
+  // Beneficios del plan (S-ADM-22): un incluido con sus servicios y un descuento por categoría.
+  await row(page, 'PLAN-E2E').getByRole('link', { name: 'Beneficios de Plan Ficticio E2E' }).click();
+  await expect(page.getByRole('heading', { name: 'Beneficios · Plan Ficticio E2E', level: 1 })).toBeVisible();
+  await expect(page.getByText('Este plan aún no tiene beneficios.')).toBeVisible();
+  await page.getByRole('button', { name: 'Nuevo beneficio' }).first().click();
+  const included = page.getByRole('dialog', { name: 'Nuevo beneficio' });
+  await included.getByRole('button', { name: 'Crear' }).click();
+  await expect(included.getByText('Elija al menos un servicio.')).toBeVisible();
+  await included.getByLabel('Nombre (ES)').fill('Consulta inicial');
+  await included.getByLabel('Nombre (EN)').fill('Initial visit');
+  await included.getByRole('checkbox', { name: 'CONS-INICIAL · Consulta médica inicial' }).click();
+  await expectAccessible(page);
+  await included.getByRole('button', { name: 'Crear' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'Consulta inicial' })).toContainText('CONS-INICIAL');
+  await page.getByRole('button', { name: 'Nuevo beneficio' }).first().click();
+  const discount = page.getByRole('dialog', { name: 'Nuevo beneficio' });
+  await discount.getByLabel('Tipo de beneficio').selectOption('discount');
+  await discount.getByLabel('Categoría').selectOption({ label: 'Laboratorio' });
+  await discount.getByLabel('Descuento', { exact: true }).fill('101');
+  await discount.getByRole('button', { name: 'Crear' }).click();
+  await expect(discount.getByText('Ingrese un porcentaje entre 0 y 100.')).toBeVisible();
+  await discount.getByLabel('Descuento', { exact: true }).fill('12.5');
+  await discount.getByRole('button', { name: 'Crear' }).click();
+  const labDiscount = page.getByRole('row').filter({ hasText: 'Descuento' });
+  await expect(labDiscount).toContainText('Laboratorio');
+  await expect(labDiscount).toContainText('12.50 %');
+  // El tipo no se puede cambiar al editar.
+  await labDiscount.getByRole('button', { name: 'Editar Descuento Laboratorio' }).click();
+  const editDiscount = page.getByRole('dialog', { name: 'Editar beneficio' });
+  await expect(editDiscount.getByLabel('Tipo de beneficio')).toBeDisabled();
+  await editDiscount.getByLabel('Descuento', { exact: true }).fill('20');
+  await editDiscount.getByRole('button', { name: 'Guardar' }).click();
+  await expect(labDiscount).toContainText('20.00 %');
+  await expectAccessible(page);
+  await page.locator('main').screenshot({ path: 'test-results/catalogo-beneficios.png' });
+
+  // Desactivar pide motivo; el inactivo se ve solo con «Mostrar inactivos».
+  await page.getByRole('row').filter({ hasText: 'Consulta inicial' }).getByRole('button', { name: 'Desactivar Incluido Consulta inicial' }).click();
+  const deactivateBenefit = page.getByRole('dialog', { name: '¿Desactivar Incluido Consulta inicial?' });
+  await deactivateBenefit.getByLabel('Motivo').fill('Prueba ficticia');
+  await deactivateBenefit.getByRole('button', { name: 'Desactivar' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'Consulta inicial' })).toHaveCount(0);
+  await page.getByRole('checkbox', { name: 'Mostrar inactivos' }).click();
+  await expect(page.getByRole('row').filter({ hasText: 'Consulta inicial' })).toContainText('Inactivo');
+
+  // Volver a Planes: el plan muestra un beneficio activo.
+  await page.getByRole('link', { name: 'Volver a Planes de membresía' }).click();
+  await expect(page).toHaveURL(/\/admin\/catalogos\/planes-de-membresia$/);
+  await expect(row(page, 'PLAN-E2E')).toContainText('Activo');
 });
+
+/** «AAAA-MM-DD» como «5 nov 2026» (formatDay de la web). */
+function formatShortDay(iso: string): string {
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+  const [year, month, day] = iso.split('-');
+  return `${String(Number(day))} ${months[Number(month) - 1] ?? ''} ${year ?? ''}`;
+}

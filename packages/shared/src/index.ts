@@ -14,3 +14,4 @@ export * from './provider.ts';
 export * from './orders.ts';
 export * from './kiosk.ts';
 export * from './clock.ts';
+export * from './membership-plans.ts';
