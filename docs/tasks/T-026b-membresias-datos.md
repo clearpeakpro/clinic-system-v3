@@ -93,3 +93,21 @@ Respuestas a las preguntas del plan de T-026b. Están también en el [ADR 0034](
 **Trabajo:** T-026b se hace en dos PR:
 - **(A)** planes, cuotas de plan, beneficios, categorías y el tipo «Consulta»;
 - **(B)** inscripción, cuotas del paciente, trabajo del worker, cobertura y aplicación de beneficios.
+
+## 8. Decisiones del dueño (2026-11-04, plan de la parte B)
+
+Respuestas a las preguntas del plan de la parte B. Están también en el [ADR 0034](../decisions/0034-membresias-fase-3.md).
+
+| # | Tema | Decisión |
+| --- | --- | --- |
+| 1 | Cantidad mayor que los incluidos que quedan | Se reparte **por unidad**: de una cantidad 2 con 1 incluido restante, 1 sale sin costo y la otra lleva el descuento de su categoría. |
+| 2 | Cuándo se calculan los beneficios | Mientras la visita está abierta, el servidor **recalcula los beneficios de todos sus cargos activos en el orden en que se crearon**; al completarse la visita quedan fijos. |
+| 3 | «Pendiente de pago» que nunca se paga | Se **cancela sola a los 30 días de la inscripción**. |
+| 4 | Cuotas pendientes al cancelarse sola en D+30 | Se **anulan, sin dejar deuda**. |
+| 5 | Volver después de una cancelación | Es una **inscripción nueva**, con cuota inicial y un año de beneficios nuevo. La suspendida vuelve al pagar, con el mismo año. |
+| 6 | Cambio de cuota del plan | Cada membresía **mantiene la cuota inicial y la mensualidad vigentes el día de su inscripción** («Monto fijo» del formulario firmado). Un cambio de cuota del plan aplica solo a las inscripciones nuevas. |
+| 7 | Cómo se cuenta la cantidad de un incluido con varios servicios | Cada incluido tiene un **tipo que elige el Administrador**: **«Paquete»** (como el Chequeo general): cada servicio del paquete hasta su cantidad por año; **«Cupo compartido»** (como las 3 consultas de seguimiento o enfermedad): la cantidad es el total entre todos sus servicios. En la semilla, el chequeo es Paquete y las consultas de seguimiento, Cupo compartido. |
+| 8 | Plan Total: laboratorio de la misma visita que también es un incluido | **Gasta cupo**: primero se usa el chequeo o el PSA como incluido; el laboratorio de la misma visita cubre lo que quede. |
+| 9 | Aviso de cancelación de una «Pendiente de pago» | Se **cancela en el momento** y se anula la cuota inicial, sin deuda. |
+| 10 | Mensualidad debida por un aviso con menos de 15 días que sigue sin pagar al final | Al cancelarse se **anula, sin deuda**, igual que en la cancelación sola en D+30. |
+| — | Fichas nuevas del manual | La tarjeta «Membresía» del perfil es **S-PAC-22** y el diálogo «Inscribir en un plan», **S-PAC-23** (S-PAC-21 ya era «Registro de exportación previo»). |

@@ -234,11 +234,21 @@ export const DEMO_MEMBERSHIP_PLANS: { plans: readonly DemoPlan[]; effectiveFrom:
 };
 
 /** Los servicios incluidos de todos los planes: nombre, cantidad por año y códigos del catálogo. */
-const DEMO_INCLUDED: readonly { nameEs: string; nameEn: string; quantity: number; consultations: string[]; labTests: string[]; followUp: boolean }[] = [
-  { nameEs: 'Consulta médica inicial', nameEn: 'Initial medical visit', quantity: 1, consultations: ['CONS-INICIAL'], labTests: [], followUp: false },
-  { nameEs: 'Chequeo general', nameEn: 'General checkup', quantity: 1, consultations: [], labTests: ['LAB-A1C', 'LAB-TSH'], followUp: false },
-  { nameEs: 'Prueba de PSA', nameEn: 'PSA test', quantity: 1, consultations: [], labTests: ['LAB-PSA'], followUp: false },
-  { nameEs: 'Consultas de seguimiento o enfermedad', nameEn: 'Follow-up or sick visits', quantity: 3, consultations: ['CONS-SEGUIMIENTO'], labTests: [], followUp: true },
+// El chequeo es un «Paquete» (cada prueba, una vez al año); las consultas de
+// seguimiento, un «Cupo compartido» (decisión del 2026-11-04).
+const DEMO_INCLUDED: readonly {
+  nameEs: string;
+  nameEn: string;
+  quantity: number;
+  quotaMode: 'package' | 'shared';
+  consultations: string[];
+  labTests: string[];
+  followUp: boolean;
+}[] = [
+  { nameEs: 'Consulta médica inicial', nameEn: 'Initial medical visit', quantity: 1, quotaMode: 'shared', consultations: ['CONS-INICIAL'], labTests: [], followUp: false },
+  { nameEs: 'Chequeo general', nameEn: 'General checkup', quantity: 1, quotaMode: 'package', consultations: [], labTests: ['LAB-A1C', 'LAB-TSH'], followUp: false },
+  { nameEs: 'Prueba de PSA', nameEn: 'PSA test', quantity: 1, quotaMode: 'shared', consultations: [], labTests: ['LAB-PSA'], followUp: false },
+  { nameEs: 'Consultas de seguimiento o enfermedad', nameEn: 'Follow-up or sick visits', quantity: 3, quotaMode: 'shared', consultations: ['CONS-SEGUIMIENTO'], labTests: [], followUp: true },
 ];
 
 /** Planes, cuotas y beneficios de una organización (idempotente: un plan que ya existe no se toca). */
@@ -274,6 +284,7 @@ async function seedMembershipPlans(tx: Tx, organizationId: string): Promise<void
           nameEs: included.nameEs,
           nameEn: included.nameEn,
           quantityPerYear: included.quantity,
+          quotaMode: included.quotaMode,
           includesSameVisitLabs: included.followUp && plan.sameVisitLabs,
           sortOrder: benefitOrder,
         })

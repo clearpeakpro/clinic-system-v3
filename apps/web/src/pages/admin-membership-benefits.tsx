@@ -1,5 +1,8 @@
 import {
   BENEFIT_QUANTITY_MAX,
+  BENEFIT_QUOTA_MODE_HELP,
+  BENEFIT_QUOTA_MODE_LABELS,
+  BENEFIT_QUOTA_MODES,
   CATALOG_LABELS,
   formatPercentBp,
   MEMBERSHIP_BENEFIT_TYPE_LABELS,
@@ -8,6 +11,7 @@ import {
   parsePercentBp,
   type BenefitItemKind,
   type BenefitItemRef,
+  type BenefitQuotaMode,
   type CatalogList,
   type MembershipBenefit,
   type MembershipBenefitType,
@@ -116,6 +120,7 @@ export function AdminMembershipBenefitsPage({ planId }: { planId: string }) {
                 <span className="font-mono text-code-md">{item.code}</span> · {item.name}
               </span>
             ))}
+            {b.quotaMode ? <span className="text-caption text-on-surface-variant">{BENEFIT_QUOTA_MODE_LABELS[b.quotaMode]}: {BENEFIT_QUOTA_MODE_HELP[b.quotaMode].toLowerCase()}</span> : null}
             {b.includesSameVisitLabs ? <span className="text-caption text-on-surface-variant">Incluye sin costo los laboratorios de la misma visita.</span> : null}
           </span>
         ),
@@ -288,6 +293,7 @@ interface Values {
   nameEs: string;
   nameEn: string;
   quantity: string;
+  quotaMode: BenefitQuotaMode;
   sameVisitLabs: boolean;
   items: string[];
   category: MembershipCategory;
@@ -322,6 +328,7 @@ function BenefitDialog({
     nameEs: benefit?.nameEs ?? '',
     nameEn: benefit?.nameEn ?? '',
     quantity: benefit?.quantityPerYear ? String(benefit.quantityPerYear) : '1',
+    quotaMode: benefit?.quotaMode ?? 'package',
     sameVisitLabs: benefit?.includesSameVisitLabs ?? false,
     items: (benefit?.items ?? []).map(keyOf),
     category: benefit?.category ?? 'consultation',
@@ -381,6 +388,7 @@ function BenefitDialog({
             nameEs: values.nameEs.trim(),
             nameEn: values.nameEn.trim(),
             quantityPerYear: quantity,
+            quotaMode: values.quotaMode,
             includesSameVisitLabs: values.sameVisitLabs,
             items: values.items.map((key) => {
               const [kind, id] = key.split(':') as [BenefitItemKind, string];
@@ -461,6 +469,19 @@ function BenefitDialog({
                 error={shown('quantity')}
                 onChange={(e) => { set('quantity', e.target.value.replace(/\D/g, '')); }}
               />
+              <SelectField
+                label="Cómo se cuenta la cantidad"
+                value={values.quotaMode}
+                disabled={busy}
+                onChange={(e) => { set('quotaMode', e.target.value as BenefitQuotaMode); }}
+              >
+                {BENEFIT_QUOTA_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {BENEFIT_QUOTA_MODE_LABELS[m]}
+                  </option>
+                ))}
+              </SelectField>
+              <p className="-mt-space-sm text-caption text-on-surface-variant">{BENEFIT_QUOTA_MODE_HELP[values.quotaMode]}</p>
               <Checkbox
                 label="Incluye sin costo los laboratorios ordenados en la misma visita"
                 checked={values.sameVisitLabs}

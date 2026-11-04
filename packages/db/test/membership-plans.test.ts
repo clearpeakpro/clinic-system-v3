@@ -60,7 +60,9 @@ describe('planes de membresía', () => {
       const total = rows.plans.find((p) => p.code === 'TOTAL');
       const totalBenefits = rows.benefits.filter((b) => b.planId === total?.id);
       expect(totalBenefits.find((b) => b.category === 'consultation')?.discountBp).toBe(10000);
-      expect(totalBenefits.filter((b) => b.includesSameVisitLabs).map((b) => b.quantityPerYear)).toEqual([3]);
+      expect(totalBenefits.filter((b) => b.includesSameVisitLabs).map((b) => [b.quantityPerYear, b.quotaMode])).toEqual([[3, 'shared']]);
+      // El chequeo es un «Paquete» (cada prueba, una vez al año).
+      expect(totalBenefits.find((b) => b.nameEs === 'Chequeo general')?.quotaMode).toBe('package');
       expect(rows.items.length).toBeGreaterThan(0);
     }
   });
@@ -93,7 +95,7 @@ describe('planes de membresía', () => {
     const [benefit] = await db.withTenant(NORTE.id, (tx) =>
       tx
         .insert(membershipBenefits)
-        .values({ organizationId: NORTE.id, planId: norte, type: 'included', nameEs: 'Ficticio', nameEn: 'Dummy', quantityPerYear: 1 })
+        .values({ organizationId: NORTE.id, planId: norte, type: 'included', nameEs: 'Ficticio', nameEn: 'Dummy', quantityPerYear: 1, quotaMode: 'shared' })
         .returning({ id: membershipBenefits.id }),
     );
     const surConsultation = await consultationId(SUR.id, 'CONS-INICIAL');
@@ -113,12 +115,16 @@ describe('planes de membresía', () => {
     const plan = await planId(NORTE.id, 'EXTENDIDO');
     const included = (values: Partial<typeof membershipBenefits.$inferInsert>) =>
       db.withTenant(NORTE.id, (tx) =>
-        tx.insert(membershipBenefits).values({ organizationId: NORTE.id, planId: plan, type: 'included', nameEs: 'X', nameEn: 'X', quantityPerYear: 1, ...values }),
+        tx.insert(membershipBenefits).values({ organizationId: NORTE.id, planId: plan, type: 'included', nameEs: 'X', nameEn: 'X', quantityPerYear: 1, quotaMode: 'shared', ...values }),
       );
     await expectPgError(included({ category: 'lab' }), CHECK_VIOLATION);
     await expectPgError(included({ quantityPerYear: null }), CHECK_VIOLATION);
     await expectPgError(included({ quantityPerYear: 0 }), CHECK_VIOLATION);
     await expectPgError(included({ quantityPerYear: 100_001 }), CHECK_VIOLATION);
+    // Tipo de cupo (T-026b parte B): obligatorio en el incluido y prohibido en el descuento.
+    await expectPgError(included({ quotaMode: null }), CHECK_VIOLATION);
+    await expectPgError(included({ quotaMode: 'otro' }), CHECK_VIOLATION);
+    await expectPgError(discount(NORTE.id, plan, { quotaMode: 'shared' }), CHECK_VIOLATION);
     await expectPgError(discount(NORTE.id, plan, { category: 'lab', discountBp: 10_001 }), CHECK_VIOLATION);
     await expectPgError(discount(NORTE.id, plan, { category: 'otra' }), CHECK_VIOLATION);
     await expectPgError(discount(NORTE.id, plan, { nameEs: 'X' }), CHECK_VIOLATION);
@@ -139,7 +145,7 @@ describe('planes de membresía', () => {
     const [benefit] = await db.withTenant(NORTE.id, (tx) =>
       tx
         .insert(membershipBenefits)
-        .values({ organizationId: NORTE.id, planId: plan, type: 'included', nameEs: 'Ficticio 2', nameEn: 'Dummy 2', quantityPerYear: 2 })
+        .values({ organizationId: NORTE.id, planId: plan, type: 'included', nameEs: 'Ficticio 2', nameEn: 'Dummy 2', quantityPerYear: 2, quotaMode: 'package' })
         .returning({ id: membershipBenefits.id }),
     );
     const benefitId = benefit?.id ?? '';

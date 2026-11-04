@@ -24,6 +24,13 @@ import { appSchema, organizations } from './schema.ts';
 // Los valores permitidos son los de @clinic/shared (membership-plans.ts); una prueba los compara.
 
 export const MEMBERSHIP_BENEFIT_TYPE_VALUES = ['included', 'discount'] as const;
+/**
+ * Cómo se cuenta la cantidad por año de un incluido (decisión del 2026-11-04):
+ * «Paquete», cada servicio hasta la cantidad (el chequeo: 1 A1c y 1 TSH);
+ * «Cupo compartido», la cantidad es el total entre sus servicios (3 consultas
+ * de seguimiento o enfermedad).
+ */
+export const BENEFIT_QUOTA_MODE_VALUES = ['package', 'shared'] as const;
 /** Tope de una cuota: 100 000 USD, en centavos. */
 export const MEMBERSHIP_FEE_MAX_CENTS = 10_000_000;
 
@@ -115,6 +122,8 @@ export const membershipBenefits = appSchema.table(
     nameEn: text('name_en'),
     quantityPerYear: integer('quantity_per_year'),
     includesSameVisitLabs: boolean('includes_same_visit_labs').notNull().default(false),
+    /** Solo «Incluido» (T-026b parte B): «package» o «shared». */
+    quotaMode: text('quota_mode'),
     category: text('category'),
     discountBp: integer('discount_bp'),
     sortOrder: integer('sort_order'),
@@ -149,6 +158,7 @@ export const membershipBenefits = appSchema.table(
             and not ${t.includesSameVisitLabs}
           end`,
     ),
+    check('membership_benefits_quota_mode_check', sql`(${t.type} = 'included') = (${t.quotaMode} is not null) and ${t.quotaMode} in (${inList(BENEFIT_QUOTA_MODE_VALUES)})`),
     // Un solo descuento activo por categoría en cada plan.
     uniqueIndex('membership_benefits_active_discount_key')
       .on(t.organizationId, t.planId, t.category)

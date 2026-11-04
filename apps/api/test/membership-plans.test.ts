@@ -69,7 +69,8 @@ describe('T-026b planes de membresía y beneficios', () => {
   it('el Administrador ve los planes de la semilla con sus cuotas y sus beneficios', async () => {
     const { plans, generalToday } = await list();
     expect(generalToday).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(plans.map((p) => p.code)).toEqual(['ESENCIAL', 'EXTENDIDO', 'TOTAL', 'FAMILIAR']);
+    // Los de la semilla van primero (por su orden); otras pruebas crean planes sin orden, al final.
+    expect(plans.slice(0, 4).map((p) => p.code)).toEqual(['ESENCIAL', 'EXTENDIDO', 'TOTAL', 'FAMILIAR']);
     const familiar = plans.find((p) => p.code === 'FAMILIAR');
     expect(familiar).toMatchObject({
       nameEs: 'Plan Familiar',
@@ -81,7 +82,7 @@ describe('T-026b planes de membresía y beneficios', () => {
     });
     const total = await detail(plans.find((p) => p.code === 'TOTAL')?.id ?? '');
     const followUp = total.benefits.find((b) => b.nameEs === 'Consultas de seguimiento o enfermedad');
-    expect(followUp).toMatchObject({ type: 'included', quantityPerYear: 3, includesSameVisitLabs: true });
+    expect(followUp).toMatchObject({ type: 'included', quantityPerYear: 3, quotaMode: 'shared', includesSameVisitLabs: true });
     expect(followUp?.items.map((i) => [i.kind, i.code])).toEqual([['consultations', 'CONS-SEGUIMIENTO']]);
     const checkup = total.benefits.find((b) => b.nameEs === 'Chequeo general');
     expect(checkup?.items.map((i) => i.code)).toEqual(['LAB-A1C', 'LAB-TSH']);
@@ -185,6 +186,7 @@ describe('T-026b planes de membresía y beneficios', () => {
       nameEs: 'Consulta inicial ficticia',
       nameEn: 'Dummy initial visit',
       quantityPerYear: 1,
+      quotaMode: 'package',
       includesSameVisitLabs: false,
       items: [
         { kind: 'consultations', id: consult },
@@ -207,6 +209,7 @@ describe('T-026b planes de membresía y beneficios', () => {
       nameEs: 'X',
       nameEn: 'X',
       quantityPerYear: 1,
+      quotaMode: 'package',
       includesSameVisitLabs: false,
       items: [{ kind: 'procedures', id: consult }],
       sortOrder: null,
@@ -215,7 +218,7 @@ describe('T-026b planes de membresía y beneficios', () => {
     expect((await admin.post(`/api/admin/membership-plans/${planId}/benefits`, { type: 'discount', category: 'lab', discountBp: 10001, sortOrder: null })).statusCode).toBe(400);
     // Un incluido sin servicios, no.
     expect(
-      (await admin.post(`/api/admin/membership-plans/${planId}/benefits`, { type: 'included', nameEs: 'X', nameEn: 'X', quantityPerYear: 1, includesSameVisitLabs: false, items: [], sortOrder: null }))
+      (await admin.post(`/api/admin/membership-plans/${planId}/benefits`, { type: 'included', nameEs: 'X', nameEn: 'X', quantityPerYear: 1, quotaMode: 'shared', includesSameVisitLabs: false, items: [], sortOrder: null }))
         .statusCode,
     ).toBe(400);
 
@@ -230,6 +233,7 @@ describe('T-026b planes de membresía y beneficios', () => {
       nameEs: 'Consulta inicial ficticia',
       nameEn: 'Dummy initial visit',
       quantityPerYear: 2,
+      quotaMode: 'shared',
       includesSameVisitLabs: true,
       items: [{ kind: 'procedures', id: b12 }],
       sortOrder: null,
@@ -243,6 +247,7 @@ describe('T-026b planes de membresía y beneficios', () => {
       nameEs: 'X',
       nameEn: 'X',
       quantityPerYear: 1,
+      quotaMode: 'package',
       includesSameVisitLabs: false,
       items: [{ kind: 'procedures', id: b12 }],
       sortOrder: null,
@@ -258,7 +263,7 @@ describe('T-026b planes de membresía y beneficios', () => {
     });
     expect(percent.statusCode, percent.body).toBe(204);
     benefits = (await detail(planId)).benefits;
-    expect(benefits.find((b) => b.id === includedId)).toMatchObject({ quantityPerYear: 2, includesSameVisitLabs: true, items: [{ code: 'INJ-B12' }] });
+    expect(benefits.find((b) => b.id === includedId)).toMatchObject({ quantityPerYear: 2, quotaMode: 'shared', includesSameVisitLabs: true, items: [{ code: 'INJ-B12' }] });
     expect(benefits.find((b) => b.id === discountId)).toMatchObject({ discountBp: 3000, version: 2 });
 
     // Desactivar el descuento deja crear otro de la misma categoría; reactivar el primero, no.
@@ -272,16 +277,18 @@ describe('T-026b planes de membresía y beneficios', () => {
     // La auditoría guarda el antes y el después (importes, porcentajes y códigos del catálogo).
     const audit = await auditOf(`entity_id = $1`, [includedId]);
     expect(audit.map((a) => [a.action, a.metadata])).toEqual([
-      ['membership_benefit.created', { planId, type: 'included', newQuantity: 1, newSameVisitLabs: false, newItems: 'CONS-INICIAL,LAB-A1C' }],
+      ['membership_benefit.created', { planId, type: 'included', newQuantity: 1, newQuotaMode: 'package', newSameVisitLabs: false, newItems: 'CONS-INICIAL,LAB-A1C' }],
       [
         'membership_benefit.updated',
         {
           planId,
           type: 'included',
           previousQuantity: 1,
+          previousQuotaMode: 'package',
           previousSameVisitLabs: false,
           previousItems: 'CONS-INICIAL,LAB-A1C',
           newQuantity: 2,
+          newQuotaMode: 'shared',
           newSameVisitLabs: true,
           newItems: 'INJ-B12',
         },

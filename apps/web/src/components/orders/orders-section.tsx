@@ -160,6 +160,12 @@ function OrderRow({ order, timeZone, actions }: { order: OrderView; timeZone: st
           <span className="text-body-md text-on-surface-variant">
             Estimado <MoneyText cents={order.estimateCents} />
           </span>
+          {/* T-026b: lo que resta la membresía, calculado por el servidor. */}
+          {order.membershipDiscountCents > 0 ? (
+            <span className="flex items-center gap-space-xs text-body-md text-on-surface">
+              <SemanticChip tone="success" label="Membresía" /> −<MoneyText cents={order.membershipDiscountCents} />
+            </span>
+          ) : null}
         </div>
       </div>
       {actions}

@@ -1518,7 +1518,7 @@ Sin eventos en vivo.
 
 ### <a id="p-adm--s-adm-22--beneficios--plan"></a>S-ADM-22 Beneficios · {plan}
 
-> **Cambio en v3 (T-026b, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** ruta `/admin/catalogos/planes-de-membresia/<plan>`. Un «Descuento» elige su categoría en un selector (Consulta, Tratamiento, Laboratorio, Cirugía menor o procedimiento), no un código libre; un «Incluido» lleva su nombre en español e inglés y los **servicios del catálogo** que cuentan, y puede incluir sin costo los laboratorios de la misma visita (plan Total). El periodo es siempre el año de la membresía, por persona: no hay «Mes» ni «Vitalicio». Un solo descuento activo por categoría en cada plan.
+> **Cambio en v3 (T-026b, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** ruta `/admin/catalogos/planes-de-membresia/<plan>`. Un «Descuento» elige su categoría en un selector (Consulta, Tratamiento, Laboratorio, Cirugía menor o procedimiento), no un código libre; un «Incluido» lleva su nombre en español e inglés y los **servicios del catálogo** que cuentan, y puede incluir sin costo los laboratorios de la misma visita (plan Total). El periodo es siempre el año de la membresía, por persona: no hay «Mes» ni «Vitalicio». Un solo descuento activo por categoría en cada plan. Desde la parte B, cada «Incluido» tiene «Cómo se cuenta la cantidad»: **«Paquete»** (cada servicio hasta la cantidad por año, como el chequeo) o **«Cupo compartido»** (la cantidad es el total entre sus servicios, como las 3 consultas de seguimiento o enfermedad). En el plan Total, el laboratorio de la misma visita gasta antes el cupo del incluido.
 
 **Ruta:** `/admin/membership-plans/<planId>/benefits` · **Tipo:** página
 

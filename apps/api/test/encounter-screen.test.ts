@@ -354,10 +354,12 @@ describe('T-018 pantalla de la visita', () => {
     const insurance = { type: 'insurance', insurerName: 'Seguro Ficticio Tres', memberId: 'MBR-5555', term: 'copay', value: '15' };
     expect((await update(enfermeria, insurance, 1)).statusCode).toBe(403);
     expect((await update(recepcion, { ...insurance, value: '15,00' }, 1)).statusCode).toBe(400);
-    expect((await update(recepcion, { type: 'membership' }, 1)).statusCode).toBe(400);
+    // T-026b: «Membresía» exige una membresía que dé beneficios hoy.
+    const member = await update(recepcion, { type: 'membership' }, 1);
+    expect([member.statusCode, member.json<{ code: string }>().code]).toEqual([409, 'membership_not_active']);
     const saved = await update(recepcion, insurance, 1);
     expect(saved.statusCode, saved.body).toBe(200);
-    expect((await detail(enfermeria, id)).coverage).toEqual({ type: 'insurance', insurerName: 'Seguro Ficticio Tres', memberId: 'MBR-5555', term: 'copay', amountCents: 1500, coinsuranceBp: null, version: 2 });
+    expect((await detail(enfermeria, id)).coverage).toEqual({ type: 'insurance', insurerName: 'Seguro Ficticio Tres', memberId: 'MBR-5555', term: 'copay', amountCents: 1500, coinsuranceBp: null, membership: null, version: 2 });
     const [row] = await db().withTenant(NORTE.id, (tx) => tx.select().from(coverages).where(eq(coverages.encounterId, id)));
     expect(JSON.stringify(row)).not.toMatch(/Ficticio Tres|MBR-5555/);
     // Versión vieja: 409. Sin cambios: no escribe.

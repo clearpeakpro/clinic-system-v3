@@ -36,6 +36,7 @@ const MESSAGES: Record<string, string> = {
   encounter_already_open: REOPEN_BLOCKED_TEXT,
   encounter_not_found: 'No se encontró el registro solicitado.',
   coverage_not_found: 'No se encontró el registro solicitado.',
+  membership_not_active: 'El paciente no tiene una membresía activa hoy. Elija otra cobertura.',
   forbidden: 'No tiene permiso para realizar esta acción.',
   no_active_context: 'No está autorizado para esta sede.',
   invalid_request: 'Algunos campos no son válidos. Revíselos.',
@@ -131,11 +132,12 @@ export function coverageRows(c: EncounterCoverage): { label: string; value: stri
   if (c.memberId) rows.push({ label: 'ID de miembro', value: c.memberId });
   if (c.term === 'coinsurance' && c.coinsuranceBp !== null) rows.push({ label: INSURANCE_TERM_LABELS.coinsurance, value: `${basisPointsToPercent(c.coinsuranceBp)} %` });
   if (c.term && c.term !== 'coinsurance' && c.amountCents !== null) rows.push({ label: INSURANCE_TERM_LABELS[c.term], value: formatMoney(c.amountCents) });
+  if (c.membership) rows.push({ label: 'Plan de membresía', value: c.membership.planName }, { label: 'Membresía', value: c.membership.code });
   return rows;
 }
 
-/** Coberturas que se editan en la parte 3A (ADR 0034): «Membresía» llega con T-026b. */
-export type CoverageDraftType = 'self_pay' | 'insurance';
+/** Coberturas del diálogo. «Membresía» (T-026b) solo con una membresía activa hoy; el plan sale de ella. */
+export type CoverageDraftType = 'self_pay' | 'insurance' | 'membership';
 
 export interface CoverageDraft {
   type: CoverageDraftType;
@@ -147,6 +149,7 @@ export interface CoverageDraft {
 
 /** El borrador del diálogo a partir de la cobertura guardada (o «Pago directo» si no hay). */
 export function coverageDraft(c: EncounterCoverage | null): CoverageDraft {
+  if (c?.type === 'membership') return { type: 'membership', insurerName: '', memberId: '', term: 'copay', value: '' };
   if (c?.type !== 'insurance') return { type: 'self_pay', insurerName: '', memberId: '', term: 'copay', value: '' };
   const term = c.term ?? 'copay';
   const value = term === 'coinsurance' ? (c.coinsuranceBp !== null ? basisPointsToPercent(c.coinsuranceBp) : '') : c.amountCents !== null ? centsToDecimal(c.amountCents) : '';
@@ -171,6 +174,7 @@ export function coverageIssues(draft: CoverageDraft): { insurerName?: string; va
 /** Lo que se envía: solo los campos del tipo elegido. El servidor convierte a centavos. */
 export function coverageDraftInput(draft: CoverageDraft): ArrivalCoverageInput {
   if (draft.type === 'self_pay') return { type: 'self_pay' };
+  if (draft.type === 'membership') return { type: 'membership' };
   return { type: 'insurance', insurerName: draft.insurerName.trim(), memberId: draft.memberId.trim() || null, term: draft.term, value: draft.value.trim() };
 }
 

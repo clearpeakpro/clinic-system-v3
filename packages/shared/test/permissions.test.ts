@@ -90,7 +90,7 @@ describe('permisos', () => {
 
   it('destinos del menú según el manual', () => {
     expect([...permissionsFor(['recepcion'])].sort()).toEqual(
-      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
+      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'memberships.manage', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
     );
     expect([...permissionsFor(['enfermeria'])].sort()).toEqual(
       ['nursing.assessment', 'nursing.view', 'nursing.vitals', 'nursing_queue.access', 'orders.execute', 'orders_queue.access', 'panel.view', 'patients.access'],

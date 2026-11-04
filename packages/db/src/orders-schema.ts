@@ -4,6 +4,8 @@ import { v7 as uuidv7 } from 'uuid';
 import { labProviders, labTests, procedures } from './catalog-schema.ts';
 import { encounters } from './encounters-schema.ts';
 import { memberships } from './identity-schema.ts';
+import { membershipBenefits } from './membership-plans-schema.ts';
+import { patientMemberships } from './patient-memberships-schema.ts';
 import { appSchema, locations, organizations } from './schema.ts';
 
 // Órdenes con su cargo (T-025; S-CLI-17, 18 y 21). RLS, FORCE y GRANT en
@@ -181,6 +183,22 @@ export const charges = appSchema.table(
     voidReasonEnc: text('void_reason_enc'),
     voidedByMembershipId: uuid('voided_by_membership_id'),
     voidedAt: timestamp('voided_at', { withTimezone: true }),
+    // Beneficios de membresía (T-026b; ADR 0034), calculados por el servidor
+    // y guardados en el cargo. Mientras la visita está abierta se recalculan
+    // los de todos sus cargos activos en el orden en que se crearon; al
+    // completarse quedan fijos. El cupo usado de un incluido es la suma de
+    // `membership_included_quantity` de los cargos activos del mismo año de
+    // beneficios: anular el cargo (cancelar la orden) lo libera.
+    patientMembershipId: uuid('patient_membership_id'),
+    benefitYearStart: date('benefit_year_start'),
+    includedBenefitId: uuid('included_benefit_id'),
+    membershipIncludedQuantity: integer('membership_included_quantity').notNull().default(0),
+    /** Plan Total: laboratorio sin costo por una de las 3 consultas de la misma visita. */
+    sameVisitLabsBenefitId: uuid('same_visit_labs_benefit_id'),
+    discountBenefitId: uuid('discount_benefit_id'),
+    membershipDiscountBp: integer('membership_discount_bp'),
+    /** Lo que la membresía resta del cargo, en centavos (0 sin beneficios). */
+    membershipDiscountCents: integer('membership_discount_cents').notNull().default(0),
     version: integer('version').notNull().default(1),
   },
   (t) => [
@@ -201,6 +219,37 @@ export const charges = appSchema.table(
       columns: [t.organizationId, t.voidedByMembershipId],
       foreignColumns: [memberships.organizationId, memberships.id],
     }),
+    foreignKey({
+      name: 'charges_patient_membership_fk',
+      columns: [t.organizationId, t.patientMembershipId],
+      foreignColumns: [patientMemberships.organizationId, patientMemberships.id],
+    }),
+    foreignKey({
+      name: 'charges_included_benefit_fk',
+      columns: [t.organizationId, t.includedBenefitId],
+      foreignColumns: [membershipBenefits.organizationId, membershipBenefits.id],
+    }),
+    foreignKey({
+      name: 'charges_same_visit_labs_benefit_fk',
+      columns: [t.organizationId, t.sameVisitLabsBenefitId],
+      foreignColumns: [membershipBenefits.organizationId, membershipBenefits.id],
+    }),
+    foreignKey({
+      name: 'charges_discount_benefit_fk',
+      columns: [t.organizationId, t.discountBenefitId],
+      foreignColumns: [membershipBenefits.organizationId, membershipBenefits.id],
+    }),
+    // Sin membresía, ningún beneficio; con ella, el año de beneficios.
+    check(
+      'charges_membership_check',
+      sql`case when ${t.patientMembershipId} is null then
+            ${t.benefitYearStart} is null and ${t.includedBenefitId} is null and ${t.membershipIncludedQuantity} = 0
+            and ${t.sameVisitLabsBenefitId} is null and ${t.discountBenefitId} is null and ${t.membershipDiscountCents} = 0
+          else ${t.benefitYearStart} is not null end`,
+    ),
+    check('charges_included_check', sql`${t.membershipIncludedQuantity} between 0 and ${t.quantity} and (${t.includedBenefitId} is null) = (${t.membershipIncludedQuantity} = 0)`),
+    check('charges_discount_bp_check', sql`(${t.discountBenefitId} is null) = (${t.membershipDiscountBp} is null) and ${t.membershipDiscountBp} between 1 and 10000`),
+    check('charges_membership_discount_check', sql`${t.membershipDiscountCents} between 0 and ${t.amountCents}`),
     check('charges_source_check', sql`${t.source} in (${inList(CHARGE_SOURCE_VALUES)})`),
     check('charges_status_check', sql`${t.status} in (${inList(CHARGE_STATUS_VALUES)})`),
     check('charges_unit_price_check', sql`${t.unitPriceCents} >= 0`),
@@ -214,5 +263,7 @@ export const charges = appSchema.table(
     check('charges_version_check', sql`${t.version} >= 1`),
     index('charges_encounter_idx').on(t.organizationId, t.encounterId),
     index('charges_order_idx').on(t.organizationId, t.orderId),
+    // Cupo usado de los incluidos (por membresía, beneficio y año).
+    index('charges_included_benefit_idx').on(t.organizationId, t.patientMembershipId, t.includedBenefitId, t.benefitYearStart),
   ],
 );

@@ -19,6 +19,7 @@ import { NotificationService } from './notifications.ts';
 import { CatalogService } from './catalog.ts';
 import { LabProviderService } from './lab-providers.ts';
 import { MembershipPlanService } from './membership-plans.ts';
+import { PatientMembershipService } from './patient-memberships.ts';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { systemClock, type Clock } from './clock.ts';
@@ -66,6 +67,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     catalog: new CatalogService(tenantDb, audit),
     labProviders: new LabProviderService(tenantDb, audit),
     membershipPlans: new MembershipPlanService(tenantDb, audit),
+    patientMemberships: new PatientMembershipService(pool, tenantDb, audit, idempotency, clock),
     patients: new PatientService(tenantDb, audit, fieldCipher),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
     appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, idempotency, config.outboxKey),

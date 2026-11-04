@@ -72,7 +72,7 @@ describe('cronómetros (S-CLI-05)', () => {
 });
 
 describe('cobertura (S-CLI-11/12)', () => {
-  const insurance: EncounterCoverage = { type: 'insurance', insurerName: 'Seguro Ficticio', memberId: 'MBR-1', term: 'copay', amountCents: 2550, coinsuranceBp: null, version: 3 };
+  const insurance: EncounterCoverage = { type: 'insurance', insurerName: 'Seguro Ficticio', memberId: 'MBR-1', term: 'copay', amountCents: 2550, coinsuranceBp: null, membership: null, version: 3 };
 
   it('la tarjeta solo muestra lo informado, con formato de moneda o porcentaje', () => {
     expect(coverageRows(insurance)).toEqual([
@@ -84,7 +84,14 @@ describe('cobertura (S-CLI-11/12)', () => {
       { label: 'Aseguradora', value: 'Seguro Ficticio' },
       { label: 'Coaseguro', value: '20.5 %' },
     ]);
-    expect(coverageRows({ type: 'self_pay', insurerName: null, memberId: null, term: null, amountCents: null, coinsuranceBp: null, version: 1 })).toEqual([]);
+    expect(coverageRows({ type: 'self_pay', insurerName: null, memberId: null, term: null, amountCents: null, coinsuranceBp: null, membership: null, version: 1 })).toEqual([]);
+    // T-026b: con «Membresía», el plan y el código de la membresía.
+    const member: EncounterCoverage = { ...insurance, type: 'membership', insurerName: null, memberId: null, term: null, amountCents: null, membership: { code: 'NOR1-M-000001', planName: 'Plan Esencial', startDate: '2026-11-05' } };
+    expect(coverageRows(member)).toEqual([
+      { label: 'Plan de membresía', value: 'Plan Esencial' },
+      { label: 'Membresía', value: 'NOR1-M-000001' },
+    ]);
+    expect(coverageDraftInput(coverageDraft(member))).toEqual({ type: 'membership' });
   });
 
   it('el borrador parte de lo guardado; sin cambios no está sucio', () => {

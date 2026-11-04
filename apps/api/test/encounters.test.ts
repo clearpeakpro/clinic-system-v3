@@ -201,10 +201,12 @@ describe('T-017 llegada', () => {
     expect(await cipher.decrypt(coverage.memberIdEnc ?? '', { ...context2, column: 'member_id' })).toBe('MBR-778899');
   });
 
-  it('coaseguro en centésimas de punto; valores inválidos o membresía (3A) → 400 sin crear nada', async () => {
+  it('coaseguro en centésimas de punto; valores inválidos → 400 y «Membresía» sin membresía activa → 409, sin crear nada', async () => {
     const patientId = await newPatient();
+    // T-026b: «Membresía» exige una membresía que dé beneficios hoy.
+    const member = await arrive(recepcion, walkIn(patientId, { coverage: { type: 'membership' } }));
+    expect([member.statusCode, member.json<{ code: string }>().code]).toEqual([409, 'membership_not_active']);
     for (const coverage of [
-      { type: 'membership' },
       { type: 'insurance', insurerName: '', term: 'copay', value: '10' },
       { type: 'insurance', insurerName: 'Seguro', term: 'coinsurance', value: '101' },
       { type: 'insurance', insurerName: 'Seguro', term: 'deductible', value: '10,5' },

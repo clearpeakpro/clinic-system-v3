@@ -28,8 +28,8 @@ export const STEP_TITLES: Record<ArrivalStep, string> = {
   confirm: 'Confirmar',
 };
 
-/** Coberturas de la parte 3A (ADR 0034): «Membresía» llega con T-026b. */
-export type DraftCoverage = 'self_pay' | 'insurance';
+/** Coberturas de la llegada. «Membresía» (T-026b) solo si el paciente tiene una membresía activa hoy. */
+export type DraftCoverage = 'self_pay' | 'insurance' | 'membership';
 
 export interface ArrivalDraft {
   identityVerified: boolean;
@@ -59,9 +59,13 @@ export function emptyDraft(route: VisitRoute | null): ArrivalDraft {
   };
 }
 
-/** 5 pasos con Pago directo; 6 con Seguro (S-REC-20). */
+/**
+ * 5 pasos con Pago directo o Membresía; 6 con Seguro (S-REC-20). Con
+ * Membresía no hay «Datos del pagador»: el plan sale de la membresía del
+ * paciente (T-026b; el manual pedía elegirlo).
+ */
 export function arrivalSteps(draft: Pick<ArrivalDraft, 'coverage'>): ArrivalStep[] {
-  return draft.coverage === 'self_pay' ? ['patient', 'site', 'route', 'coverage', 'confirm'] : ['patient', 'site', 'route', 'coverage', 'payer', 'confirm'];
+  return draft.coverage === 'insurance' ? ['patient', 'site', 'route', 'coverage', 'payer', 'confirm'] : ['patient', 'site', 'route', 'coverage', 'confirm'];
 }
 
 /** Cambiar de término vacía el valor: en el manual se conservaba (20 de copago pasaba a ser 20 %). */
@@ -105,6 +109,7 @@ export function stepIssues(step: ArrivalStep, draft: ArrivalDraft, siteActive: b
 
 export function coverageInput(draft: ArrivalDraft): ArrivalCoverageInput {
   if (draft.coverage === 'self_pay') return { type: 'self_pay' };
+  if (draft.coverage === 'membership') return { type: 'membership' };
   return {
     type: 'insurance',
     insurerName: draft.insurerName.trim(),
@@ -172,6 +177,7 @@ const MESSAGES: Record<string, string> = {
   appointment_type_inactive: 'Ese tipo de cita ya no está activo. Elija otro.',
   appointment_type_not_found: 'Ese tipo de cita ya no está activo. Elija otro.',
   location_inactive: 'Esta sede está inactiva. No es posible registrar llegadas aquí.',
+  membership_not_active: 'El paciente ya no tiene una membresía activa hoy. Elija otra cobertura.',
   forbidden: 'No tiene permiso para realizar esta acción.',
   no_active_context: 'No está autorizado para esta sede.',
   invalid_request: 'Algunos campos no son válidos. Revíselos.',

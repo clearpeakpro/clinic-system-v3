@@ -16,6 +16,22 @@ export const MEMBERSHIP_BENEFIT_TYPES = ['included', 'discount'] as const;
 export type MembershipBenefitType = (typeof MEMBERSHIP_BENEFIT_TYPES)[number];
 export const MEMBERSHIP_BENEFIT_TYPE_LABELS: Record<MembershipBenefitType, string> = { included: 'Incluido', discount: 'Descuento' };
 
+/**
+ * Cómo se cuenta la cantidad por año de un incluido (decisión del dueño del
+ * 2026-11-04, ADR 0034). La elige el Administrador:
+ *  - «Paquete»: cada servicio del incluido hasta la cantidad (el chequeo
+ *    general, 1 al año: 1 A1c y 1 TSH);
+ *  - «Cupo compartido»: la cantidad es el total entre todos sus servicios
+ *    (las 3 consultas de seguimiento o enfermedad).
+ */
+export const BENEFIT_QUOTA_MODES = ['package', 'shared'] as const;
+export type BenefitQuotaMode = (typeof BENEFIT_QUOTA_MODES)[number];
+export const BENEFIT_QUOTA_MODE_LABELS: Record<BenefitQuotaMode, string> = { package: 'Paquete', shared: 'Cupo compartido' };
+export const BENEFIT_QUOTA_MODE_HELP: Record<BenefitQuotaMode, string> = {
+  package: 'Cada servicio, hasta la cantidad por año.',
+  shared: 'La cantidad por año es el total entre todos los servicios.',
+};
+
 /** Catálogos de los que sale un servicio incluido. */
 export const BENEFIT_ITEM_KINDS = ['consultations', 'procedures', 'lab-tests'] as const;
 export type BenefitItemKind = (typeof BENEFIT_ITEM_KINDS)[number];
@@ -63,6 +79,7 @@ const includedFields = {
   nameEs: name,
   nameEn: name,
   quantityPerYear: z.number().int().min(1).max(BENEFIT_QUANTITY_MAX),
+  quotaMode: z.enum(BENEFIT_QUOTA_MODES),
   /** Plan Total: sin costo los laboratorios de la misma visita (decisión 3). */
   includesSameVisitLabs: z.boolean(),
   items: z
@@ -135,6 +152,8 @@ export interface MembershipBenefit {
   nameEs: string | null;
   nameEn: string | null;
   quantityPerYear: number | null;
+  /** Solo «Incluido». */
+  quotaMode: BenefitQuotaMode | null;
   includesSameVisitLabs: boolean;
   category: MembershipCategory | null;
   discountBp: number | null;

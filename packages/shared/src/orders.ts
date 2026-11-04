@@ -273,6 +273,12 @@ export interface OrderView {
   items: OrderItemView[];
   /** «Estimado {importe}»: los cargos de la orden (anulados incluidos, si está cancelada). */
   estimateCents: number;
+  /**
+   * T-026b: lo que la membresía resta de los cargos activos de la orden
+   * (incluidos y descuento), calculado por el servidor; 0 sin beneficios o
+   * con la orden cancelada. «Membresía −{importe}».
+   */
+  membershipDiscountCents: number;
   orderedAt: string;
   orderedBy: { kind: 'me' | 'user'; name: string | null };
   assignedTo: AssignedRef | null;

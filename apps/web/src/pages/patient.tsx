@@ -32,6 +32,7 @@ import { useAfterAppointmentChange } from '../components/appointments/appointmen
 import { AppointmentFormDialog } from '../components/appointments/appointment-form-dialog.tsx';
 import { PatientAppointmentsTab, UpcomingAppointment, type PatientAppointmentsQuery } from '../components/patients/patient-appointments.tsx';
 import { LastEncounter, PatientEncountersTab, type PatientEncountersQuery } from '../components/patients/patient-encounters.tsx';
+import { PatientMembershipCardView } from '../components/patients/patient-membership.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { formatDay } from '../lib/catalog.ts';
 import { patientInitials } from '../lib/patients.ts';
@@ -50,6 +51,7 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // en caché. La pestaña no va en la URL: al volver, el perfil abre en Resumen.
 // T-014: la pestaña Citas (S-PAC-07) y la «Próxima cita» del Resumen, en solo
 // lectura; sin acceso a Citas (Enfermería, ADR 0027) no se muestran.
+// T-026b: la tarjeta «Membresía» (S-PAC-22) y «Inscribir en un plan» (S-PAC-23).
 
 type TabKey = 'resumen' | 'citas' | 'visitas' | 'saldos';
 
@@ -294,6 +296,8 @@ function Summary({
           </Detail>
         </dl>
       </Card>
+      {/* T-026b: S-PAC-22 tarjeta «Membresía». */}
+      <PatientMembershipCardView patientId={p.id} timeZone={timeZone} card={Card} />
     </div>
   );
 }

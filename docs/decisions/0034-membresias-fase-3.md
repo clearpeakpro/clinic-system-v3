@@ -82,6 +82,27 @@ Respuestas al paso 0 de T-026b. Los datos completos de los planes (nombres, cuot
 
 Las cuotas del paciente quedan como cuotas pendientes en T-026b y se cobran con los pagos de T-028.
 
+### Precisiones del 2026-11-04 (plan de la parte B)
+
+| # | Tema | Decisión |
+| --- | --- | --- |
+| 1 | Cantidad mayor que los incluidos que quedan | Se reparte **por unidad**: de una cantidad 2 con 1 incluido restante, 1 sale sin costo y la otra lleva el descuento de su categoría. |
+| 2 | Cuándo se calculan los beneficios | Mientras la visita está abierta, el servidor **recalcula los beneficios de todos sus cargos activos en el orden en que se crearon**; al completarse la visita quedan fijos. |
+| 3 | «Pendiente de pago» que nunca se paga | Se **cancela sola a los 30 días de la inscripción**. |
+| 4 | Cuotas pendientes al cancelarse sola en D+30 | Se **anulan, sin dejar deuda**. |
+| 5 | Volver después de una cancelación | Es una **inscripción nueva**, con cuota inicial y un año de beneficios nuevo. La suspendida vuelve al pagar, con el mismo año. |
+| 6 | Cambio de cuota del plan | Cada membresía **mantiene la cuota inicial y la mensualidad vigentes el día de su inscripción** («Monto fijo» del formulario firmado). Un cambio de cuota del plan aplica solo a las inscripciones nuevas. |
+| 7 | Cómo se cuenta la cantidad de un incluido con varios servicios | Cada incluido tiene un **tipo que elige el Administrador**: **«Paquete»** (como el Chequeo general): cada servicio del paquete hasta su cantidad por año; **«Cupo compartido»** (como las 3 consultas de seguimiento o enfermedad): la cantidad es el total entre todos sus servicios. En la semilla, el chequeo es Paquete y las consultas de seguimiento, Cupo compartido. |
+| 8 | Plan Total: laboratorio de la misma visita que también es un incluido | **Gasta cupo**: primero se usa el chequeo o el PSA como incluido; el laboratorio de la misma visita cubre lo que quede. |
+| 9 | Aviso de cancelación de una «Pendiente de pago» | Se **cancela en el momento** y se anula la cuota inicial, sin deuda. |
+| 10 | Mensualidad debida por un aviso con menos de 15 días que sigue sin pagar al final | Al cancelarse se **anula, sin deuda**, igual que en la cancelación sola en D+30. |
+| — | Fichas nuevas del manual | La tarjeta «Membresía» del perfil es **S-PAC-22** y el diálogo «Inscribir en un plan», **S-PAC-23** (S-PAC-21 ya era «Registro de exportación previo»). |
+
+Además, del plan aprobado:
+- cada mensualidad se crea **14 días antes de vencer** (cuando faltan menos de 15): desde ese momento un aviso de cancelación ya no la evita (decisión 7);
+- la fecha de inicio va de hoy a 30 días después;
+- el estado de la membresía se calcula con el reloj en la hora de la sede de inscripción, así que la suspensión y la cancelación valen a las 12:00 a. m. aunque el trabajo del worker todavía no lo haya guardado.
+
 ## Cómo quedó implementada la parte A (T-026b, 2026-11-04)
 
 - **Base de datos:** migraciones `0039` y `0040`.
@@ -101,3 +122,21 @@ Las cuotas del paciente quedan como cuotas pendientes en T-026b y se cobran con 
   - La pestaña «Planes de membresía» (S-ADM-21) va sin sede y con «Beneficios» en la fila.
   - La página `/admin/catalogos/planes-de-membresia/<plan>` (S-ADM-22) tiene un selector de categoría en lugar del código libre, los servicios del catálogo en cada incluido y el periodo fijo «por persona y año de la membresía».
 - **Semilla:** consultas ficticias con precio, la categoría de cada procedimiento y prueba, y los cuatro planes con nombres genéricos, sus cuotas, sus incluidos (consulta inicial, chequeo A1c + TSH, PSA y 3 de seguimiento) y sus descuentos, en las dos organizaciones. El catálogo ficticio no tiene ECG ni Papanicolaou.
+
+## Cómo quedó implementada la parte B (T-026b, 2026-11-04)
+
+- **Base de datos:** migraciones `0041` y `0042`.
+  - `patient_memberships`: plan, titular, sede de inscripción, código `NOR1-M-000012`, estado, fecha de inscripción, inicio, día de cobro, las cuotas con que se inscribió («Monto fijo»), «Identidad verificada» (quién y cuándo, nunca un número), aviso de cancelación (día, quién y último día con beneficios) y cancelación (día y motivo: aviso, mensualidad sin pagar o cuota inicial sin pagar). GRANT por columnas: plan, titular, inicio, día de cobro y cuotas no cambian.
+  - `patient_membership_members`: titular y afiliados con su alta y su baja; un índice único parcial impide que un paciente esté en dos membresías en curso.
+  - `patient_membership_events`: el historial (inscripción, activación, suspensión, reactivación, aviso, cancelación, afiliado añadido o quitado), con el actor «Sistema» en los pasos automáticos. Solo se inserta.
+  - `membership_fees`: cuota inicial y mensualidades como cuotas pendientes, con su periodo y su importe; se pagan (T-028) o se anulan, nunca se borran.
+  - `membership_benefits.quota_mode` («Paquete» o «Cupo compartido»), con la migración de los incluidos que ya existían.
+  - `coverages.patient_membership_id` y, en `charges`, el beneficio guardado en el cargo: membresía, año de beneficios, incluido y unidades sin costo, laboratorio de la misma visita, descuento (porcentaje) y lo que resta la membresía en centavos.
+  - RLS forzada y pruebas de aislamiento con `clinic_app` en `packages/db/test/patient-memberships.test.ts`.
+- **Estado y cuotas:** `settleMembership()` (`packages/db/src/patient-memberships.ts`) deja guardado el estado según el reloj: crea las mensualidades, suspende, reactiva, cancela, anula las cuotas pendientes y da de baja a las personas. La usan la API antes de leer o cambiar una membresía y el trabajo del worker `memberships-daily`, que corre cada hora (`apps/worker/src/memberships.ts`). Las reglas de fechas son funciones puras de `packages/shared/src/patient-memberships.ts`.
+- **Beneficios:** `applyMembershipBenefits()` (compartido, puro) y `recalculateVisitBenefits()` (`apps/api/src/membership-benefits.ts`). Se recalculan al crear y cancelar órdenes y al cambiar la cobertura; T-027 lo hará también con «Agregar cargo». Redondeo al centavo más cercano, la mitad hacia arriba, sin coma flotante.
+- **API:** `GET|POST /api/patients/:id/membership` (tarjeta e inscripción con Idempotency-Key), `GET /api/patient-memberships/enrollment-options`, `POST /api/patient-memberships/:id/members`, `…/members/:patientId/remove` y `…/cancel`. Permiso nuevo `memberships.manage` (Recepción). La llegada y la cobertura de la visita aceptan `{ type: 'membership' }` solo con una membresía que da beneficios hoy (`409 membership_not_active`).
+- **Web:** la tarjeta «Membresía» del perfil (S-PAC-22) con «Inscribir en un plan» (S-PAC-23), «Añadir afiliado», «Quitar» y «Registrar aviso de cancelación»; «Membresía activa: {plan} (desde {fecha})» y la opción «Membresía» en la llegada y en el diálogo Cobertura; «Membresía −{importe}» en la orden; «Cómo se cuenta la cantidad» en los incluidos de S-ADM-22.
+- **Semilla:** Paula Romero Aguilar (NOR1) e Iván Peña Villalobos (SUR1) con el plan Esencial activo, y Lucía y Mateo Hernández Díaz con el plan Familiar, desde el día en que se siembra (la cuota inicial, marcada como pagada hasta que llegue T-028).
+- **Pruebas:** `packages/shared/test/patient-memberships.test.ts`, `packages/db/test/patient-memberships.test.ts`, `apps/worker/test/memberships.test.ts` (reloj fijado justo antes y después de D+1 y de D+30), `apps/api/test/patient-memberships.test.ts` (primer y último día del año de beneficios, «Monto fijo», «Paquete» y «Cupo compartido») y la E2E `membresias.spec.ts`.
+- **Para T-027 y T-028:** T-027 suma lo que resta la membresía de cada cargo («Descuento total») y llama al recálculo al agregar un cargo de Caja y al abrir el estado de cuenta. T-028 marca la cuota como pagada y llama a `settleMembership()` en la misma transacción, que activa o reactiva la membresía.

@@ -77,8 +77,9 @@ describe('esquema de la llegada', () => {
     expect(JSON.stringify(badMoney.error)).toContain(COVERAGE_MESSAGES.money);
   });
 
-  it('en 3A no hay membresía (ADR 0034) ni rutas desconocidas', () => {
-    expect(withCoverage({ type: 'membership' }).success).toBe(false);
+  it('«Membresía» sin datos: el plan sale de la membresía del paciente (T-026b); sin rutas desconocidas', () => {
+    expect(withCoverage({ type: 'membership' }).success).toBe(true);
+    expect(withCoverage({ type: 'membership', planId: PATIENT }).data?.coverage).toEqual({ type: 'membership' });
     expect(arrivalSchema.safeParse({ source: 'appointment', appointmentId: APPOINTMENT, expectedVersion: 1, route: 'EXPRESS', coverage: { type: 'self_pay' } }).success).toBe(false);
     expect(arrivalSchema.safeParse({ source: 'kiosk', patientId: PATIENT, route: 'STANDARD', coverage: { type: 'self_pay' } }).success).toBe(false);
   });

@@ -7,6 +7,7 @@ import { deliverEvent } from './deliver.ts';
 import { log } from './log.ts';
 import type { Mailer } from './mailer.ts';
 import { maintainKioskCheckins, purgeIdempotencyKeys, purgeNotifications, verifyAuditChains } from './maintenance.ts';
+import { runMemberships } from './memberships.ts';
 
 // El worker (ADR 0020): proceso aparte, conectado como clinic_app, que nunca
 // corre dentro de la API. pg-boss no crea ni migra su esquema aquí: lo
@@ -21,6 +22,8 @@ import { maintainKioskCheckins, purgeIdempotencyKeys, purgeNotifications, verify
 //    de idempotencia vencidas y de las notificaciones de más de 30 días.
 //  - Cada hora (T-020): vencer y vaciar los registros del kiosco, con la hora
 //    del reloj inyectable (las pruebas lo fijan).
+//  - Cada hora (T-026b): membresías del paciente (mensualidades, suspensión y
+//    cancelación), con el mismo reloj.
 
 export interface RunningWorker {
   /** Revisa el outbox ahora (también lo hacen el aviso y el temporizador). */
@@ -67,6 +70,10 @@ export async function startWorker(config: WorkerConfig, mailer: Mailer, clock: C
     log('info', 'kiosco: registros vencidos y vaciados', await maintainKioskCheckins(pool, clock.now()));
   });
   await boss.schedule(QUEUES.kioskMaintenance, config.kioskMaintenanceCron, null, { tz: 'UTC' });
+  await boss.work(QUEUES.memberships, async () => {
+    log('info', 'membresías revisadas', { ...(await runMemberships(pool, tenantDb, clock.now())) });
+  });
+  await boss.schedule(QUEUES.memberships, config.membershipsCron, null, { tz: 'UTC' });
 
   let sweeping: Promise<number> | null = null;
   // Cuántas veces se pidió un barrido; si cambia durante uno, se repite.

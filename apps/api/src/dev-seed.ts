@@ -4,16 +4,25 @@ import {
   createLocalFieldCipher,
   createTenantDb,
   DEMO,
+  localDay,
   locations,
+  membershipFees,
+  membershipPlanFees,
+  membershipPlans,
   membershipRoles,
   memberships,
   nextAppointmentCode,
+  nextMembershipCode,
+  patientMembershipEvents,
+  patientMembershipMembers,
+  patientMemberships,
   user as userTable,
   type FieldCipher,
 } from '@clinic/db';
-import { systemClock, type AppointmentStatus, type Clock, type Role } from '@clinic/shared';
-import { eq, inArray, sql } from 'drizzle-orm';
+import { initialFeePeriod, systemClock, type AppointmentStatus, type Clock, type Role } from '@clinic/shared';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { v7 as uuidv7 } from 'uuid';
 import type { ClinicApp } from './app.ts';
 
 // Usuarios ficticios de desarrollo (T-003, T-004; completos en T-010): los
@@ -233,6 +242,106 @@ export async function seedDevAppointments(
           });
         }
       }
+    });
+  }
+}
+
+// --- Membresías ficticias (T-026b) --------------------------------------------
+//
+// Para la demo y la E2E: en cada organización, un paciente con el plan
+// Esencial ya activo (cuota inicial pagada) y, en Norte, la madre y el hijo
+// con el mismo teléfono en el plan Familiar. Empiezan hoy (día de la sede de
+// inscripción, según el reloj) y su día de cobro es el de hoy. La cuota
+// inicial se marca pagada aquí porque los pagos llegan con T-028.
+// Idempotente: un paciente que ya está en una membresía no se toca.
+
+export const DEMO_MEMBERSHIPS: readonly { org: Org; plan: string; holder: string; affiliates: string[]; site: 0 | 1; receptionist: string }[] = [
+  // Paula Romero Aguilar (NOR1), plan Esencial.
+  { org: DEMO.norte, plan: 'ESENCIAL', holder: '019a2000-0000-7000-8000-000000000119', affiliates: [], site: 0, receptionist: 'recepcion.norte@example.test' },
+  // Lucía y Mateo Hernández Díaz, plan Familiar.
+  {
+    org: DEMO.norte,
+    plan: 'FAMILIAR',
+    holder: '019a2000-0000-7000-8000-000000000105',
+    affiliates: ['019a2000-0000-7000-8000-000000000106'],
+    site: 0,
+    receptionist: 'recepcion.norte@example.test',
+  },
+  // Iván Peña Villalobos (SUR1), plan Esencial.
+  { org: DEMO.sur, plan: 'ESENCIAL', holder: '019a2000-0000-7000-8000-000000000219', affiliates: [], site: 0, receptionist: 'recepcion.sur@example.test' },
+];
+
+export async function seedDevMemberships(app: Pick<ClinicApp, 'pool'>, options: { clock?: Clock } = {}): Promise<void> {
+  const now = (options.clock ?? systemClock).now();
+  const plain = drizzle({ client: app.pool });
+  const tenantDb = createTenantDb(app.pool);
+  for (const demo of DEMO_MEMBERSHIPS) {
+    const [staff] = await plain.select({ id: userTable.id }).from(userTable).where(eq(userTable.email, demo.receptionist));
+    if (!staff) continue;
+    await tenantDb.withTenant(demo.org.id, async (tx) => {
+      const people = [demo.holder, ...demo.affiliates];
+      const taken = await tx
+        .select({ id: patientMembershipMembers.id })
+        .from(patientMembershipMembers)
+        .where(and(inArray(patientMembershipMembers.patientId, people), isNull(patientMembershipMembers.removedAt)));
+      if (taken.length > 0) return;
+      const [me] = await tx.select({ id: memberships.id }).from(memberships).where(eq(memberships.userId, staff.id));
+      const [plan] = await tx.select({ id: membershipPlans.id }).from(membershipPlans).where(eq(membershipPlans.code, demo.plan));
+      const site = demo.org.locations[demo.site];
+      const [location] = await tx.select({ timezone: locations.timezone }).from(locations).where(eq(locations.id, site.id));
+      if (!me || !plan || !location) return;
+      const today = localDay(now, location.timezone);
+      const [fee] = await tx
+        .select()
+        .from(membershipPlanFees)
+        .where(and(eq(membershipPlanFees.planId, plan.id), sql`${membershipPlanFees.effectiveFrom} <= ${today}::date`))
+        .orderBy(desc(membershipPlanFees.effectiveFrom), desc(membershipPlanFees.createdAt));
+      if (!fee) return;
+      const billingDay = Number(today.slice(8, 10));
+      const id = uuidv7();
+      await tx.insert(patientMemberships).values({
+        id,
+        organizationId: demo.org.id,
+        code: await nextMembershipCode(tx, demo.org.id, site),
+        planId: plan.id,
+        holderPatientId: demo.holder,
+        locationId: site.id,
+        status: 'active',
+        enrolledOn: today,
+        startDate: today,
+        billingDay,
+        initialFeeCents: fee.initialFeeCents,
+        monthlyFeeCents: fee.monthlyFeeCents,
+        enrolledByMembershipId: me.id,
+        identityVerifiedByMembershipId: me.id,
+        identityVerifiedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+      for (const [index, patientId] of people.entries()) {
+        await tx.insert(patientMembershipMembers).values({
+          organizationId: demo.org.id,
+          membershipId: id,
+          patientId,
+          role: index === 0 ? 'holder' : 'affiliate',
+          addedByMembershipId: me.id,
+          addedAt: now,
+        });
+      }
+      await tx.insert(membershipFees).values({
+        organizationId: demo.org.id,
+        membershipId: id,
+        kind: 'initial',
+        ...initialFeePeriod(today, billingDay),
+        amountCents: fee.initialFeeCents,
+        status: 'paid',
+        paidAt: now,
+        createdAt: now,
+      });
+      await tx.insert(patientMembershipEvents).values([
+        { organizationId: demo.org.id, membershipId: id, action: 'enrolled', fromStatus: null, toStatus: 'pending_payment', actorType: 'user', actorMembershipId: me.id, occurredAt: now },
+        { organizationId: demo.org.id, membershipId: id, action: 'activated', fromStatus: 'pending_payment', toStatus: 'active', actorType: 'system', actorMembershipId: null, occurredAt: now },
+      ]);
     });
   }
 }

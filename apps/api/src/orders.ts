@@ -74,6 +74,7 @@ import type { AuditService } from './audit.ts';
 import type { Clock } from './clock.ts';
 import { hasOpenOrders, lockEncounter, type EncounterService, type LockedEncounter } from './encounters.ts';
 import type { IdempotencyService } from './idempotency.ts';
+import { recalculateVisitBenefits } from './membership-benefits.ts';
 import type { Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
 
@@ -215,7 +216,13 @@ export class OrderService {
       const rows = await tx.select().from(orders).where(eq(orders.encounterId, encounterId)).orderBy(desc(orders.orderedAt), desc(orders.code));
       const ids = rows.map((r) => r.id);
       const items = ids.length > 0 ? await tx.select().from(orderItems).where(inArray(orderItems.orderId, ids)).orderBy(asc(orderItems.createdAt), asc(orderItems.id)) : [];
-      const charged = ids.length > 0 ? await tx.select({ orderId: charges.orderId, amountCents: charges.amountCents, status: charges.status }).from(charges).where(inArray(charges.orderId, ids)) : [];
+      const charged =
+        ids.length > 0
+          ? await tx
+              .select({ orderId: charges.orderId, amountCents: charges.amountCents, discountCents: charges.membershipDiscountCents, status: charges.status })
+              .from(charges)
+              .where(inArray(charges.orderId, ids))
+          : [];
       const labIds = [...new Set(rows.map((r) => r.labProviderId).filter((id): id is string => id !== null))];
       const labs = labIds.length > 0 ? await tx.select({ id: labProviders.id, name: labProviders.name }).from(labProviders).where(inArray(labProviders.id, labIds)) : [];
       const memberIds = [...new Set(rows.flatMap((r) => [r.orderedByMembershipId, r.assignedToMembershipId]).filter((id): id is string => id !== null))];
@@ -256,6 +263,7 @@ export class OrderService {
         version: r.version,
         items: items.filter((i) => i.orderId === r.id).map((i) => ({ code: i.itemCode, name: i.itemName, quantity: i.quantity })),
         estimateCents: counted.reduce((sum, c) => sum + c.amountCents, 0),
+        membershipDiscountCents: own.filter((c) => c.status === 'active').reduce((sum, c) => sum + c.discountCents, 0),
         orderedAt: r.orderedAt.toISOString(),
         orderedBy: person(r.orderedByMembershipId) ?? { kind: 'user', name: null },
         assignedTo: assigned(person, r.assignedToMembershipId),
@@ -535,6 +543,7 @@ export class OrderService {
           await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'order.created', ids: { order: orderId, encounter: encounterId }, status: 'PENDING' });
           created.push(orderId);
         }
+        await this.#applyBenefits(tx, actor, current, now, meta);
         await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'billing.changed', ids: { encounter: encounterId } });
         return { status: 201, resourceIds: created };
       },
@@ -602,6 +611,8 @@ export class OrderService {
           reason: input.reason,
           metadata: { code: order.code, encounterCode: current.code, from: order.status, to: 'CANCELLED', chargesVoided: active.length },
         });
+        // Cancelar libera el incluido: los beneficios de la visita se recalculan.
+        await this.#applyBenefits(tx, actor, current, now, meta);
         await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'order.changed', ids: { order: order.id, encounter: current.id }, status: 'CANCELLED' });
         await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'billing.changed', ids: { encounter: current.id } });
         await this.#afterResolved(tx, actor, current, me, now, meta);
@@ -757,6 +768,17 @@ export class OrderService {
   }
 
   // --- Ayudas ------------------------------------------------------------------
+
+  /** Recalcula los beneficios de membresía de la visita (T-026b) y audita cada cargo que cambia. */
+  async #applyBenefits(tx: Tx, actor: Principal, current: LockedEncounter, now: Date, meta: RequestMeta): Promise<void> {
+    for (const change of await recalculateVisitBenefits(tx, current.id, now)) {
+      await this.#audit.inTx(tx, current.organizationId, {
+        action: 'charge.membership_benefits',
+        ...auditBase(actor, current.locationId, 'charge', change.chargeId, meta),
+        metadata: { encounterCode: current.code, previousDiscountCents: change.previousDiscountCents, discountCents: change.discountCents, includedQuantity: change.includedQuantity },
+      });
+    }
+  }
 
   /**
    * Tras resolver una orden (cancelarla o completarla): si la

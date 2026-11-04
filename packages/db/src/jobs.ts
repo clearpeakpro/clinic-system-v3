@@ -21,6 +21,8 @@ export const QUEUES = {
   notificationsPurge: 'notifications-purge',
   /** Kiosco (T-020): vencer los registros al cierre del día de la sede y vaciarlos a las 24 h. Cada hora. */
   kioskMaintenance: 'kiosk-maintenance',
+  /** Membresías (T-026b): mensualidades, suspensión y cancelación con el reloj. Cada hora. */
+  memberships: 'memberships-daily',
 } as const;
 
 const QUEUE_OPTIONS: Record<string, { policy: string; retryLimit: number; retryDelay: number; retryBackoff: boolean; expireInSeconds: number }> = {
@@ -30,6 +32,7 @@ const QUEUE_OPTIONS: Record<string, { policy: string; retryLimit: number; retryD
   [QUEUES.idempotencyPurge]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 600 },
   [QUEUES.notificationsPurge]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 600 },
   [QUEUES.kioskMaintenance]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 600 },
+  [QUEUES.memberships]: { policy: 'singleton', retryLimit: 2, retryDelay: 60, retryBackoff: false, expireInSeconds: 1800 },
 };
 
 /** Instala o actualiza pg-boss y sus colas (lo llama migrate()). */
