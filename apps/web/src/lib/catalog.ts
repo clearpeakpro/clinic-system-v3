@@ -9,6 +9,7 @@ import { userActionMessage } from './users.ts';
 /** «Nuevo procedimiento», «Nueva prueba de laboratorio»… (botón y título del formulario). */
 export const NEW_LABELS: Record<CatalogKind, string> = {
   'appointment-types': 'Nuevo tipo de cita',
+  consultations: 'Nueva consulta',
   procedures: 'Nuevo procedimiento',
   'lab-tests': 'Nueva prueba de laboratorio',
   'referral-sources': 'Nueva fuente de referido',
@@ -16,6 +17,7 @@ export const NEW_LABELS: Record<CatalogKind, string> = {
 
 export const EDIT_LABELS: Record<CatalogKind, string> = {
   'appointment-types': 'Editar tipo de cita',
+  consultations: 'Editar consulta',
   procedures: 'Editar procedimiento',
   'lab-tests': 'Editar prueba de laboratorio',
   'referral-sources': 'Editar fuente de referido',
@@ -68,6 +70,12 @@ const MESSAGES: Record<string, string> = {
   lab_provider_inactive: 'Un laboratorio inactivo no se puede marcar. Actualice la lista.',
   invalid_lab_provider: 'Ese laboratorio ya no existe. Actualice la lista.',
   lab_not_assigned: 'Ese laboratorio no realiza esta prueba. Actualice la lista.',
+  // T-026b: planes de membresía y beneficios.
+  benefit_category_taken: 'Este plan ya tiene un descuento activo para esa categoría.',
+  benefit_type_immutable: 'El tipo de beneficio no se puede cambiar después de crearlo.',
+  invalid_benefit_item: 'Uno de los servicios ya no existe o está inactivo. Actualice la lista.',
+  membership_plan_not_found: 'Este plan ya no existe. Actualice la lista.',
+  membership_benefit_not_found: 'Este beneficio ya no existe. Actualice la lista.',
 };
 
 export function catalogMessage(error: unknown): string {

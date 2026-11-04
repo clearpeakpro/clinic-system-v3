@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { appointmentTypes, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from '../src/catalog-schema.ts';
+import { appointmentTypes, consultations, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from '../src/catalog-schema.ts';
 import { DEMO, DEMO_CATALOG, DEMO_LABS } from '../src/seed.ts';
 import { createTenantDb, type TenantDb } from '../src/with-tenant.ts';
 import { expectPgError, SQLSTATE } from './helpers.ts';
@@ -34,19 +34,26 @@ describe('catálogo', () => {
     for (const org of [NORTE, SUR]) {
       const rows = await db.withTenant(org.id, async (tx) => ({
         types: await tx.select().from(appointmentTypes),
+        consultations: await tx.select().from(consultations),
         procedures: await tx.select().from(procedures),
         labs: await tx.select().from(labTests),
         sources: await tx.select().from(referralSources),
         prices: await tx.select().from(prices),
       }));
       expect(rows.types.map((t) => t.code).sort()).toEqual(DEMO_CATALOG.appointmentTypes.map((t) => t.code).sort());
+      expect(rows.consultations.map((c) => c.code).sort()).toEqual(DEMO_CATALOG.consultations.map((c) => c.code).sort());
       expect(rows.procedures).toHaveLength(DEMO_CATALOG.procedures.length);
       expect(rows.labs).toHaveLength(DEMO_CATALOG.labTests.length);
       expect(rows.sources).toHaveLength(DEMO_CATALOG.referralSources.length);
-      // Todos los procedimientos y pruebas con precio general; en Norte, dos con excepción en NOR2.
-      expect(rows.prices.filter((p) => p.locationId === null)).toHaveLength(DEMO_CATALOG.procedures.length + DEMO_CATALOG.labTests.length);
+      // Todas las consultas, procedimientos y pruebas con precio general; en Norte, tres con excepción en NOR2.
+      expect(rows.prices.filter((p) => p.locationId === null)).toHaveLength(
+        DEMO_CATALOG.consultations.length + DEMO_CATALOG.procedures.length + DEMO_CATALOG.labTests.length,
+      );
       const exceptions = rows.prices.filter((p) => p.locationId !== null);
-      expect(exceptions.map((p) => p.locationId)).toEqual(org === NORTE ? [NORTE.locations[1].id, NORTE.locations[1].id] : []);
+      expect(exceptions.map((p) => p.locationId)).toEqual(org === NORTE ? [NORTE.locations[1].id, NORTE.locations[1].id, NORTE.locations[1].id] : []);
+      // T-026b: categoría de membresía en procedimientos y pruebas.
+      expect(rows.procedures.find((p) => p.code === 'INJ-B12')?.membershipCategory).toBe('treatment');
+      expect(rows.labs.every((l) => l.membershipCategory === 'lab')).toBe(true);
     }
   });
 
@@ -56,7 +63,7 @@ describe('catálogo', () => {
     expect(norte).not.toBe(sur);
     expect(await db.withTenant(SUR.id, (tx) => tx.select().from(procedures).where(eq(procedures.id, norte)))).toEqual([]);
     expect(await db.withTenant(SUR.id, (tx) => tx.select().from(prices).where(eq(prices.procedureId, norte)))).toEqual([]);
-    for (const table of ['appointment_types', 'procedures', 'lab_tests', 'referral_sources', 'prices']) {
+    for (const table of ['appointment_types', 'consultations', 'procedures', 'lab_tests', 'referral_sources', 'prices']) {
       expect((await pool.query(`select * from app.${table}`)).rows, table).toEqual([]);
     }
   });
@@ -109,6 +116,41 @@ describe('catálogo', () => {
       db.withTenant(NORTE.id, (tx) => tx.insert(procedures).values({ organizationId: NORTE.id, code: 'P-KIND', name: 'X', kind: 'otro' })),
       CHECK_VIOLATION,
     );
+    // T-026b: la categoría de membresía, solo de la lista o nula.
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.insert(procedures).values({ organizationId: NORTE.id, code: 'P-CAT', name: 'X', kind: 'procedure', membershipCategory: 'otra' })),
+      CHECK_VIOLATION,
+    );
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.insert(labTests).values({ organizationId: NORTE.id, code: 'L-CAT', name: 'X', membershipCategory: 'otra' })),
+      CHECK_VIOLATION,
+    );
+  });
+
+  it('T-026b: una consulta tiene precio por sede; un precio no puede ser de una consulta y otro ítem a la vez, ni de una consulta de otra organización', async () => {
+    const consultation = async (orgId: string) =>
+      (await db.withTenant(orgId, (tx) => tx.select({ id: consultations.id }).from(consultations).where(eq(consultations.code, 'CONS-INICIAL'))))[0]?.id ?? '';
+    const norte = await consultation(NORTE.id);
+    const sur = await consultation(SUR.id);
+    await db.withTenant(NORTE.id, (tx) =>
+      tx.insert(prices).values({ organizationId: NORTE.id, locationId: NORTE.locations[1].id, consultationId: norte, amountCents: 6500, effectiveFrom: '2026-06-01' }),
+    );
+    const injection = await procedureId(NORTE.id, 'INJ-B12');
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) =>
+        tx.insert(prices).values({ organizationId: NORTE.id, locationId: null, consultationId: norte, procedureId: injection, amountCents: 1, effectiveFrom: '2026-06-01' }),
+      ),
+      CHECK_VIOLATION,
+    );
+    await expectPgError(
+      db.withTenant(NORTE.id, (tx) => tx.insert(prices).values({ organizationId: NORTE.id, locationId: null, consultationId: sur, amountCents: 1, effectiveFrom: '2026-06-01' })),
+      SQLSTATE.foreignKeyViolation,
+    );
+    expect(await db.withTenant(SUR.id, (tx) => tx.select().from(consultations).where(eq(consultations.id, norte)))).toEqual([]);
+    await expectPgError(
+      db.withTenant(SUR.id, (tx) => tx.insert(consultations).values({ organizationId: NORTE.id, code: 'CONS-X', name: 'X' })),
+      SQLSTATE.insufficientPrivilege,
+    );
   });
 
   it('un precio general (sin sede) vale para la organización; una excepción no puede ser de una sede de otra', async () => {
@@ -149,7 +191,7 @@ describe('catálogo', () => {
   });
 
   it('los ítems se desactivan, no se borran', async () => {
-    for (const table of [appointmentTypes, procedures, labTests, referralSources]) {
+    for (const table of [appointmentTypes, consultations, procedures, labTests, referralSources]) {
       await expectPgError(db.withTenant(NORTE.id, (tx) => tx.delete(table)), SQLSTATE.insufficientPrivilege);
     }
     const [row] = await db.withTenant(NORTE.id, (tx) =>

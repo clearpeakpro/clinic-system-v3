@@ -2,6 +2,7 @@ import {
   AGENDA_COLOR_LABELS,
   CATALOG_KINDS,
   CATALOG_LABELS,
+  MEMBERSHIP_CATEGORY_LABELS,
   PRICED_KINDS,
   PROCEDURE_KIND_LABELS,
   VISIT_ROUTE_LABELS,
@@ -9,6 +10,7 @@ import {
   type CatalogKind,
   type CatalogList,
   type LabProvider,
+  type MembershipPlanList,
   type PriceTimeline,
   type ProcedureKind,
 } from '@clinic/shared';
@@ -38,6 +40,7 @@ import {
   CirclePause,
   CirclePlay,
   FlaskConical,
+  IdCard,
   Info,
   Microscope,
   Pencil,
@@ -45,6 +48,7 @@ import {
   RefreshCw,
   Search,
   Share2,
+  Stethoscope,
   Syringe,
   Undo2,
   type LucideIcon,
@@ -52,6 +56,7 @@ import {
 import { useState, type ReactNode } from 'react';
 import { AGENDA_STRIPE, CatalogDialog } from '../components/catalog/catalog-dialog.tsx';
 import { LabProvidersPanel } from '../components/catalog/lab-providers.tsx';
+import { MembershipPlansPanel } from '../components/catalog/membership-plans.tsx';
 import { api, ApiError } from '../lib/api.ts';
 import { catalogMessage, formatDay, hasNoLab, NEW_LABELS, nextPriceText, withAmount } from '../lib/catalog.ts';
 import { flatten, useActiveLocation, useLocations } from '../lib/session.ts';
@@ -73,20 +78,28 @@ import { isVersionConflict } from '../lib/users.ts';
 // captura (Tipos de cita, Pruebas, Fuentes) siguen el mismo patrón con las
 // columnas del manual. T-011b: quinta pestaña «Proveedores de laboratorio»
 // (S-ADM-17, como en el manual) y, en Pruebas, el aviso «Sin laboratorio
-// asignado» (ADR 0028).
+// asignado» (ADR 0028). T-026b: pestaña «Consultas» (ADR 0041), con precio por
+// sede; columna «Categoría de membresía» en Procedimientos y Pruebas; y la
+// pestaña «Planes de membresía» (S-ADM-21, el chip del selector de catálogos
+// del manual), sin sede: las cuotas valen en todas las sedes.
 
-/** Pestañas: los cuatro catálogos y los proveedores de laboratorio. */
-export type CatalogTab = CatalogKind | 'lab-providers';
-const TABS: readonly CatalogTab[] = [...CATALOG_KINDS, 'lab-providers'];
-const LAB_PROVIDERS_TAB = { title: 'Proveedores de laboratorio', segment: 'proveedores-de-laboratorio' };
-const tabLabel = (tab: CatalogTab) => (tab === 'lab-providers' ? LAB_PROVIDERS_TAB : CATALOG_LABELS[tab]);
+/** Pestañas: los cinco catálogos, los proveedores de laboratorio y los planes de membresía. */
+export type CatalogTab = CatalogKind | 'lab-providers' | 'membership-plans';
+const TABS: readonly CatalogTab[] = [...CATALOG_KINDS, 'lab-providers', 'membership-plans'];
+const EXTRA_TABS = {
+  'lab-providers': { title: 'Proveedores de laboratorio', segment: 'proveedores-de-laboratorio' },
+  'membership-plans': { title: 'Planes de membresía', segment: 'planes-de-membresia' },
+} as const;
+const tabLabel = (tab: CatalogTab) => (tab === 'lab-providers' || tab === 'membership-plans' ? EXTRA_TABS[tab] : CATALOG_LABELS[tab]);
 
 const TAB_ICONS: Record<CatalogTab, LucideIcon> = {
   'appointment-types': CalendarDays,
+  consultations: Stethoscope,
   procedures: BriefcaseMedical,
   'lab-tests': FlaskConical,
   'referral-sources': Share2,
   'lab-providers': Microscope,
+  'membership-plans': IdCard,
 };
 
 const KIND_ICONS: Record<ProcedureKind, LucideIcon> = { procedure: BriefcaseMedical, injection: Syringe };
@@ -111,18 +124,20 @@ export function AdminCatalogPage({ tab }: { tab: CatalogTab }) {
   const locations = useLocations();
   const sites = locations.data ? flatten(locations.data).filter((l) => l.organizationId === active?.organizationId) : [];
   const [siteId, setSiteId] = useState<string | null>(null);
-  // Los laboratorios no dependen de la sede: usan la activa.
-  const site = (tab === 'lab-providers' ? undefined : sites.find((l) => l.id === siteId)) ?? active;
+  // Los laboratorios y los planes no dependen de la sede: usan la activa.
+  const withoutSite = tab === 'lab-providers' || tab === 'membership-plans';
+  const site = (withoutSite ? undefined : sites.find((l) => l.id === siteId)) ?? active;
   const catalog = useQuery<CatalogList, ApiError>({
     queryKey: ['admin-catalog', site?.id],
     queryFn: () => api.adminCatalog(site?.id ?? ''),
     enabled: site !== undefined,
     staleTime: 0,
   });
+  const plans = useQuery<MembershipPlanList, ApiError>({ queryKey: ['membership-plans'], queryFn: () => api.membershipPlans(), staleTime: 0 });
   const [creating, setCreating] = useState(false);
 
   const reload = async () => {
-    await catalog.refetch();
+    await (tab === 'membership-plans' ? plans.refetch() : catalog.refetch());
   };
 
   return (
@@ -134,16 +149,21 @@ export function AdminCatalogPage({ tab }: { tab: CatalogTab }) {
               Catálogos y precios
             </h1>
             <p className="text-body-lg text-on-surface-variant">
-              Tipos de cita, procedimientos, pruebas de laboratorio y fuentes de referido, con sus precios por sede, y los laboratorios con los que trabaja.
+              Tipos de cita, consultas, procedimientos, pruebas de laboratorio y fuentes de referido, con sus precios por sede; los laboratorios con los que
+              trabaja y los planes de membresía.
             </p>
           </div>
           <Button className="shrink-0" onClick={() => { setCreating(true); }}>
-            <Plus aria-hidden className="size-5" /> {tab === 'lab-providers' ? 'Nuevo laboratorio' : NEW_LABELS[tab]}
+            <Plus aria-hidden className="size-5" /> {tab === 'lab-providers' ? 'Nuevo laboratorio' : tab === 'membership-plans' ? 'Nuevo plan' : NEW_LABELS[tab]}
           </Button>
         </div>
         {tab === 'lab-providers' ? (
           <p className="flex items-center gap-space-xs self-start rounded-md bg-primary/10 px-space-sm py-space-xs text-body-md text-primary">
             <Info aria-hidden className="size-4 shrink-0" /> El costo de cada prueba en cada laboratorio se escribe en Pruebas de laboratorio.
+          </p>
+        ) : tab === 'membership-plans' ? (
+          <p className="flex items-center gap-space-xs self-start rounded-md bg-primary/10 px-space-sm py-space-xs text-body-md text-primary">
+            <Info aria-hidden className="size-4 shrink-0" /> Las cuotas de cada plan valen en todas las sedes. Los beneficios se definen en cada plan.
           </p>
         ) : (
           <div className="flex flex-wrap items-end gap-space-md">
@@ -172,7 +192,8 @@ export function AdminCatalogPage({ tab }: { tab: CatalogTab }) {
         {TABS.map((t) => {
           const Icon = TAB_ICONS[t];
           const selected = t === tab;
-          const count = t === 'lab-providers' ? catalog.data?.labProviders?.length : catalog.data?.items[t].length;
+          const count =
+            t === 'lab-providers' ? catalog.data?.labProviders?.length : t === 'membership-plans' ? plans.data?.plans.length : catalog.data?.items[t].length;
           return (
             <Link
               key={t}
@@ -197,7 +218,9 @@ export function AdminCatalogPage({ tab }: { tab: CatalogTab }) {
       </nav>
 
       <div className="flex flex-col gap-space-md rounded-lg bg-surface-container-lowest p-space-md shadow-level-1 dark:bg-surface-container-low">
-        {tab === 'lab-providers' ? (
+        {tab === 'membership-plans' ? (
+          <MembershipPlansPanel plans={plans} creating={creating} onCloseCreate={() => { setCreating(false); }} onReload={reload} />
+        ) : tab === 'lab-providers' ? (
           <AsyncView
             source={catalog}
             loading="skeleton"
@@ -533,6 +556,11 @@ function columnsFor(
   };
   const order: Column<CatalogItem> = { key: 'order', header: 'Orden', align: 'end', cell: (r) => (r.sortOrder === null ? '—' : r.sortOrder) };
   const state: Column<CatalogItem> = { key: 'state', header: 'Estado', cell: (r) => <StateChip active={r.active} /> };
+  const category: Column<CatalogItem> = {
+    key: 'category',
+    header: 'Categoría de membresía',
+    cell: (r) => (r.membershipCategory ? MEMBERSHIP_CATEGORY_LABELS[r.membershipCategory] : <span className="text-on-surface-variant">Sin categoría</span>),
+  };
   const general: Column<CatalogItem> = {
     key: 'general',
     header: 'Precio general',
@@ -616,11 +644,14 @@ function columnsFor(
             );
           },
         },
+        category,
         general,
         site,
         state,
         acts,
       ];
+    case 'consultations':
+      return [code, name, general, site, state, acts];
     case 'lab-tests':
       return [
         code,
@@ -634,6 +665,7 @@ function columnsFor(
             </span>
           ),
         },
+        category,
         general,
         site,
         state,

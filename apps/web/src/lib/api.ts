@@ -59,6 +59,12 @@ import type {
   CatalogKind,
   CatalogList,
   CreateLabProviderInput,
+  CreateMembershipBenefitInput,
+  CreateMembershipPlanInput,
+  MembershipPlanDetail,
+  MembershipPlanList,
+  UpdateMembershipBenefitInput,
+  UpdateMembershipPlanInput,
   CreatedPatient,
   CreatePatientInput,
   OwnClinicalRolesInput,
@@ -323,6 +329,18 @@ export const api = {
   deactivateLabProvider: (id: string, reason: string, expectedVersion: number) =>
     request<null>('POST', `/api/admin/lab-providers/${id}/deactivate`, { reason, expectedVersion }),
   reactivateLabProvider: (id: string, expectedVersion: number) => request<null>('POST', `/api/admin/lab-providers/${id}/reactivate`, { expectedVersion }),
+  // Planes de membresía (S-ADM-21) y sus beneficios (S-ADM-22), T-026b parte A.
+  membershipPlans: () => request<MembershipPlanList>('GET', '/api/admin/membership-plans'),
+  membershipPlan: (id: string) => request<MembershipPlanDetail & { generalToday: string }>('GET', `/api/admin/membership-plans/${id}`),
+  createMembershipPlan: (input: CreateMembershipPlanInput) => request<{ id: string }>('POST', '/api/admin/membership-plans', input),
+  updateMembershipPlan: (id: string, input: UpdateMembershipPlanInput) => request<null>('POST', `/api/admin/membership-plans/${id}`, input),
+  setMembershipPlanActive: (id: string, active: boolean, expectedVersion: number, reason?: string) =>
+    request<null>('POST', `/api/admin/membership-plans/${id}/${active ? 'reactivate' : 'deactivate'}`, active ? { expectedVersion } : { reason, expectedVersion }),
+  createMembershipBenefit: (planId: string, input: CreateMembershipBenefitInput) =>
+    request<{ id: string }>('POST', `/api/admin/membership-plans/${planId}/benefits`, input),
+  updateMembershipBenefit: (id: string, input: UpdateMembershipBenefitInput) => request<null>('POST', `/api/admin/membership-plans/benefits/${id}`, input),
+  setMembershipBenefitActive: (id: string, active: boolean, expectedVersion: number, reason?: string) =>
+    request<null>('POST', `/api/admin/membership-plans/benefits/${id}/${active ? 'reactivate' : 'deactivate'}`, active ? { expectedVersion } : { reason, expectedVersion }),
 
   // Catálogo activo para el personal (T-011): fuentes de referido del alta de paciente.
   catalog: () => request<CatalogList>('GET', '/api/catalog'),

@@ -1,5 +1,5 @@
-import { AGENDA_COLOR_VALUES, CATALOG_CODE_PATTERN, createTenantDb, prices, PROCEDURE_KIND_VALUES, VISIT_ROUTE_VALUES } from '@clinic/db';
-import { AGENDA_COLORS, CATALOG_CODE_REGEX, PROCEDURE_KINDS, VISIT_ROUTES, type CatalogItem, type CatalogList } from '@clinic/shared';
+import { AGENDA_COLOR_VALUES, CATALOG_CODE_PATTERN, createTenantDb, MEMBERSHIP_CATEGORY_VALUES, prices, PROCEDURE_KIND_VALUES, VISIT_ROUTE_VALUES } from '@clinic/db';
+import { AGENDA_COLORS, CATALOG_CODE_REGEX, MEMBERSHIP_CATEGORIES, PROCEDURE_KINDS, VISIT_ROUTES, type CatalogItem, type CatalogList } from '@clinic/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createStaff, NORTE, readAudit, signedInWithContext, startApp, SUR, type Client, type TestApp } from './support.ts';
 
@@ -55,6 +55,7 @@ describe('T-011 catálogo y precios', () => {
     expect([...AGENDA_COLORS]).toEqual([...AGENDA_COLOR_VALUES]);
     expect([...PROCEDURE_KINDS]).toEqual([...PROCEDURE_KIND_VALUES]);
     expect([...VISIT_ROUTES]).toEqual([...VISIT_ROUTE_VALUES]);
+    expect([...MEMBERSHIP_CATEGORIES]).toEqual([...MEMBERSHIP_CATEGORY_VALUES]);
   });
 
   it('el Administrador ve los cuatro catálogos de la semilla con el precio de cada sede', async () => {
@@ -74,6 +75,51 @@ describe('T-011 catálogo y precios', () => {
     expect(nor2?.general.current).toEqual(generalB12);
     expect(find(nor1, 'PROC-LAVOT')?.price?.effective?.amountCents).toBe(3000);
     expect(nor1.items['referral-sources'][0]).not.toHaveProperty('price');
+    // T-026b: las consultas, con precio por sede; la categoría de membresía, en procedimientos y pruebas.
+    expect(nor1.items.consultations.map((c) => c.code)).toEqual(['CONS-INICIAL', 'CONS-SEGUIMIENTO']);
+    expect(find(nor1, 'CONS-SEGUIMIENTO')?.price?.effective?.amountCents).toBe(4500);
+    expect(find(await list(admin, NOR2), 'CONS-SEGUIMIENTO')?.price?.effective?.amountCents).toBe(5000);
+    expect(find(nor1, 'CONS-INICIAL')).not.toHaveProperty('membershipCategory');
+    expect(find(nor1, 'INJ-B12')?.membershipCategory).toBe('treatment');
+    expect(find(nor1, 'LAB-A1C')?.membershipCategory).toBe('lab');
+  });
+
+  it('T-026b: crea una consulta con su precio y cambia la categoría de membresía de un procedimiento, auditado', async () => {
+    const { generalToday } = await list(admin);
+    const created = await admin.post('/api/admin/catalog/consultations', {
+      code: 'CONS-URGENCIA',
+      name: 'Consulta de urgencia ficticia',
+      sortOrder: null,
+      generalPrice: { amountCents: 7000, effectiveFrom: generalToday },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const { id } = created.json<{ id: string }>();
+    const consultation = find(await list(admin), 'CONS-URGENCIA');
+    expect(consultation?.price?.effective).toEqual({ amountCents: 7000, effectiveFrom: generalToday });
+    expect(find((await recepcion.get('/api/catalog')).json<CatalogList>(), 'CONS-URGENCIA')?.price?.effective?.amountCents).toBe(7000);
+    // En la misma transacción `created_at` empata: se ordena por id (uuidv7).
+    const audit = ((await readAudit(`entity_id = $1`, [id])) as unknown as { id: string; action: string; metadata: unknown }[]).sort((a, b) => a.id.localeCompare(b.id));
+    expect(audit.map((a) => [a.action, a.metadata])).toEqual([
+      ['catalog.created', { code: 'CONS-URGENCIA' }],
+      ['catalog.price_set', { priceLocationId: 'general', effectiveFrom: generalToday, previousCents: 'none', newCents: 7000 }],
+    ]);
+
+    const lavot = find(await list(admin), 'PROC-LAVOT');
+    const base = { name: 'Lavado ótico', sortOrder: 20, kind: 'procedure', expectedVersion: lavot?.version };
+    // Sin la categoría en la petición, no cambia.
+    expect((await admin.post(`/api/admin/catalog/procedures/${lavot?.id ?? ''}`, { ...base, name: 'Lavado ótico bilateral' })).statusCode).toBe(204);
+    const same = find(await list(admin), 'PROC-LAVOT');
+    expect(same?.membershipCategory).toBe('minor_procedure');
+    const save = await admin.post(`/api/admin/catalog/procedures/${lavot?.id ?? ''}`, { ...base, name: 'Lavado ótico bilateral', expectedVersion: same?.version, membershipCategory: null });
+    expect(save.statusCode, save.body).toBe(204);
+    expect(find(await list(admin), 'PROC-LAVOT')?.membershipCategory).toBeNull();
+    const bad = await admin.post(`/api/admin/catalog/procedures/${lavot?.id ?? ''}`, { ...base, expectedVersion: (same?.version ?? 0) + 1, membershipCategory: 'otra' });
+    expect(bad.statusCode).toBe(400);
+    const updated = await readAudit(`action = 'catalog.updated' and entity_id = $1`, [lavot?.id]);
+    expect(updated.map((a) => a.metadata)).toEqual([{ fields: 'name' }, { fields: 'membershipCategory' }]);
+    // Se deja como estaba para el resto de las pruebas.
+    const restore = find(await list(admin), 'PROC-LAVOT');
+    await admin.post(`/api/admin/catalog/procedures/${lavot?.id ?? ''}`, { ...base, expectedVersion: restore?.version, membershipCategory: 'minor_procedure' });
   });
 
   it('crea un procedimiento con precio general y uno propio en NOR2; los cambios «desde mañana» no alteran el de hoy', async () => {

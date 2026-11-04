@@ -4,6 +4,9 @@ import {
   APPOINTMENT_DURATION_MAX,
   APPOINTMENT_DURATION_MIN,
   CATALOG_CODE_REGEX,
+  CATEGORIZED_KINDS,
+  MEMBERSHIP_CATEGORIES,
+  MEMBERSHIP_CATEGORY_LABELS,
   PRICED_KINDS,
   PROCEDURE_KIND_LABELS,
   PROCEDURE_KINDS,
@@ -34,7 +37,9 @@ import { catalogMessage, EDIT_LABELS, formatDay, NEW_LABELS, nextLabCostText, wi
 // fuera y, con cambios, pregunta antes de descartarlos. En Pruebas (T-011b,
 // ADR 0028; S-ADM-16): «Laboratorios que la realizan», cada laboratorio
 // activo con su costo para la clínica y su fecha de vigencia; desmarcarlo es
-// «No la realiza desde {fecha}».
+// «No la realiza desde {fecha}». T-026b (ADR 0034): en Procedimientos y
+// Pruebas, la «Categoría de membresía» sobre la que se aplica el descuento
+// del plan; las Consultas son siempre «Consulta» (ADR 0041).
 
 interface Values {
   code: string;
@@ -44,6 +49,8 @@ interface Values {
   route: string;
   color: AgendaColor;
   procedureKind: ProcedureKind;
+  /** Vacío: sin categoría de membresía. */
+  membershipCategory: string;
   generalPrice: string;
   generalFrom: string;
   locationPrice: string;
@@ -114,6 +121,7 @@ export function CatalogDialog({
     route: item?.suggestedRoute ?? '',
     color: item?.color ?? 'teal',
     procedureKind: item?.kind ?? 'procedure',
+    membershipCategory: item ? (item.membershipCategory ?? '') : kind === 'lab-tests' ? 'lab' : '',
     generalPrice: general ? formatMoneyInput(general.amountCents) : '',
     generalFrom: generalToday,
     locationPrice: own ? formatMoneyInput(own.amountCents) : '',
@@ -209,6 +217,7 @@ export function CatalogDialog({
       fields.color = values.color;
     }
     if (kind === 'procedures') fields.kind = values.procedureKind;
+    if (CATEGORIZED_KINDS.includes(kind)) fields.membershipCategory = values.membershipCategory === '' ? null : values.membershipCategory;
     const prices: Record<string, unknown> = {};
     if (priced && generalCents !== null && changed('generalPrice', 'generalFrom')) {
       prices.generalPrice = { amountCents: generalCents, effectiveFrom: values.generalFrom };
@@ -292,6 +301,22 @@ export function CatalogDialog({
               {PROCEDURE_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {PROCEDURE_KIND_LABELS[k]}
+                </option>
+              ))}
+            </SelectField>
+          ) : null}
+
+          {CATEGORIZED_KINDS.includes(kind) ? (
+            <SelectField
+              label="Categoría de membresía (opcional)"
+              value={values.membershipCategory}
+              disabled={busy}
+              onChange={(e) => { set('membershipCategory', e.target.value); }}
+            >
+              <option value="">Sin categoría (sin descuento de membresía)</option>
+              {MEMBERSHIP_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {MEMBERSHIP_CATEGORY_LABELS[c]}
                 </option>
               ))}
             </SelectField>

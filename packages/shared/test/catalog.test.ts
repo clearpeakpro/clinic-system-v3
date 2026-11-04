@@ -50,7 +50,7 @@ describe('catálogo', () => {
     expect(update.safeParse({ name: 'L', sortOrder: 3, expectedVersion: 1, locationPrice }).success).toBe(true);
     // Las fuentes de referido no tienen precio.
     expect(createCatalogItemSchema('referral-sources').safeParse({ code: 'R-1', name: 'R', sortOrder: null, generalPrice }).data).not.toHaveProperty('generalPrice');
-    expect(CATALOG_KINDS).toHaveLength(4);
+    expect(CATALOG_KINDS).toHaveLength(5);
   });
 
   it('solo Propietario y Administrador gestionan el catálogo', () => {

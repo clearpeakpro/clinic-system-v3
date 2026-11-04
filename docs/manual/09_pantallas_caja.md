@@ -493,6 +493,8 @@ No aplica.
 
 ### <a id="p-caj--s-caj-07--tarjeta-estado-de-cuenta-lineas-cobertura-totales"></a>S-CAJ-07 Tarjeta «Estado de cuenta» (líneas, cobertura, totales)
 
+> **Cambio en v3 (2026-11-04, [ADR 0041](../decisions/0041-sin-descuento-manual-caja.md) y [ADR 0034](../decisions/0034-membresias-fase-3.md)):** Caja **no aplica descuentos manuales**: no hay «Aplicar descuento» ni insignia «Manual», y los únicos descuentos son los beneficios de membresía, automáticos, calculados por el servidor en centavos sobre el precio vigente de la sede. Todo cargo sale del catálogo (consulta, procedimiento o prueba), también los que se agregan en Caja, y recibe los beneficios de membresía. «Descuento total» = descuentos de membresía; la parte del seguro va aparte como «A cargo del seguro» ([ADR 0035](../decisions/0035-reparto-importe-seguro.md)). Mandan estas decisiones sobre el texto de esta ficha.
+
 **Ruta:** componente de `/app/<código>/checkout/<encounterId>` · **Tipo:** panel
 
 **Propósito**
@@ -558,7 +560,7 @@ Se vuelve a leer con `billing.changed.v1` (por ejemplo, un cargo creado al orden
 
 - Un estado de cuenta por visita, recalculado a partir de los cargos ACTIVOS y los pagos REGISTRADOS; la app nunca suma.
 - «Descuento total» = descuentos de línea + ajuste del seguro (copago o coaseguro).
-- Beneficios de membresía: solo con cobertura Membresía y una membresía ACTIVA el día de la visita; solo afectan a cargos de origen «Orden» sin descuento manual. Un descuento manual siempre prevalece y la membresía ya no vuelve a tocar esa línea.
+- Beneficios de membresía: solo con cobertura Membresía y una membresía ACTIVA el día de la visita. ~~Solo afectan a cargos de origen «Orden» sin descuento manual. Un descuento manual siempre prevalece y la membresía ya no vuelve a tocar esa línea.~~ En v3 no hay descuentos manuales (ADR 0041): los beneficios se aplican a todo cargo del catálogo, primero los servicios incluidos y después el descuento de su categoría (ADR 0034).
 - Los cargos de órdenes solo se anulan cancelando la orden ([S-CLI-21](08_pantallas_clinicas.md#p-cli--s-cli-21--dialogo-cancelar-orden)).
 - Las descripciones de cargo son códigos, nunca texto libre (sin PHI).
 - Nada se borra: los cargos anulados se conservan con su motivo (cifrado en reposo).
@@ -580,6 +582,8 @@ Se vuelve a leer con `billing.changed.v1` (por ejemplo, un cargo creado al orden
 ---
 
 ### <a id="p-caj--s-caj-08--dialogo-agregar-cargo-manual"></a>S-CAJ-08 Diálogo «Agregar cargo manual»
+
+> **Cambio en v3 (2026-11-04, [ADR 0041](../decisions/0041-sin-descuento-manual-caja.md)):** se elimina el cargo de precio libre. «Agregar cargo» elige un **servicio del catálogo** (consulta, procedimiento o prueba) y la cantidad; el precio lo pone el servidor (el vigente de la sede ese día). No hay «Código de descripción» libre, «Precio unitario» ni «Descuento (USD)», y el cargo sí recibe los beneficios de membresía. Mandan estas decisiones sobre el texto de esta ficha.
 
 **Ruta:** diálogo sobre `/app/<código>/checkout/<encounterId>` · **Tipo:** diálogo
 
@@ -652,6 +656,8 @@ No aplica; el alta genera `billing.changed.v1` para los demás usuarios.
 ---
 
 ### <a id="p-caj--s-caj-09--dialogo-aplicar-descuento"></a>S-CAJ-09 Diálogo «Aplicar descuento»
+
+> **No se construye en v3 (2026-11-04, [ADR 0041](../decisions/0041-sin-descuento-manual-caja.md)):** Caja no aplica descuentos manuales. Los únicos descuentos son los de la membresía, automáticos.
 
 **Ruta:** diálogo sobre `/app/<código>/checkout/<encounterId>` · **Tipo:** diálogo
 

@@ -5,6 +5,7 @@ import { IdleGuard } from './components/idle-guard.tsx';
 import { useMe } from './lib/session.ts';
 import { AcceptInvitationPage } from './pages/accept-invitation.tsx';
 import { AdminCatalogPage, catalogTabOf } from './pages/admin-catalog.tsx';
+import { AdminMembershipBenefitsPage } from './pages/admin-membership-benefits.tsx';
 import { AdminLocationsPage } from './pages/admin-locations.tsx';
 import { AdminUsersPage } from './pages/admin-users.tsx';
 import { AppointmentsPage } from './pages/appointments.tsx';
@@ -375,6 +376,18 @@ const adminCatalogRoute = createRoute({
   },
 });
 
+// T-026b: /admin/catalogos/planes-de-membresia/<plan> (S-ADM-22, beneficios del plan).
+const adminMembershipBenefitsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: 'catalogos/planes-de-membresia/$planId',
+  component: function AdminMembershipBenefits() {
+    const me = useMe();
+    const { planId } = adminMembershipBenefitsRoute.useParams();
+    if (me.data && !me.data.permissions.includes('catalog.manage')) return <NotFoundPage />;
+    return <AdminMembershipBenefitsPage key={planId} planId={planId} />;
+  },
+});
+
 const adminDestinationRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: '$destino',
@@ -413,7 +426,7 @@ const routeTree = rootRoute.addChildren([
     appEncounterRoute,
     appDestinationRoute,
   ]),
-  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminCatalogIndexRoute, adminCatalogRoute, adminDestinationRoute]),
+  adminRoute.addChildren([adminIndexRoute, adminUsersRoute, adminLocationsRoute, adminCatalogIndexRoute, adminCatalogRoute, adminMembershipBenefitsRoute, adminDestinationRoute]),
   ...devRoutes,
 ]);
 

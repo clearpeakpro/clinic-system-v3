@@ -1452,6 +1452,8 @@ No aplica.
 
 ### <a id="p-adm--s-adm-21--planes-de-membresia"></a>S-ADM-21 Planes de membresía
 
+> **Cambio en v3 (T-026b, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** la pestaña «Planes de membresía» de Catálogos (`/admin/catalogos/planes-de-membresia`), sin sede: las cuotas valen en todas las sedes y tienen vigencia, como los precios ([ADR 0029](../decisions/0029-precio-general-excepcion-sede.md)). «Beneficios» va en la fila, no en el menú ⋮. Se añade una descripción en español e inglés.
+
 **Ruta:** `/admin/membership-plans` · **Tipo:** página
 
 **Propósito**
@@ -1515,6 +1517,8 @@ Sin eventos en vivo.
 ---
 
 ### <a id="p-adm--s-adm-22--beneficios--plan"></a>S-ADM-22 Beneficios · {plan}
+
+> **Cambio en v3 (T-026b, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** ruta `/admin/catalogos/planes-de-membresia/<plan>`. Un «Descuento» elige su categoría en un selector (Consulta, Tratamiento, Laboratorio, Cirugía menor o procedimiento), no un código libre; un «Incluido» lleva su nombre en español e inglés y los **servicios del catálogo** que cuentan, y puede incluir sin costo los laboratorios de la misma visita (plan Total). El periodo es siempre el año de la membresía, por persona: no hay «Mes» ni «Vitalicio». Un solo descuento activo por categoría en cada plan.
 
 **Ruta:** `/admin/membership-plans/<planId>/benefits` · **Tipo:** página
 

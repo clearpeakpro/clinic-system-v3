@@ -69,15 +69,15 @@ Las de `CLAUDE.md` y las de la fase 2, más estas:
 | T-024 — Cierre de 3A: semilla, guion y demo | 3A | 1–2 días | T-017 a T-023 | — |
 | T-025 — Órdenes con cargo y laboratorio sugerido | 3B | 4 días | T-024 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
 | T-026 — Ejecutar órdenes y cola de órdenes | 3B | 3 días | T-025 | — |
-| T-026b — Planes de membresía y beneficios | 3B | 3–4 días | T-026 | [0034](../decisions/0034-membresias-fase-3.md) |
-| T-027 — Caja: cola y estado de cuenta | 3B | 4 días | T-026b | [0034](../decisions/0034-membresias-fase-3.md), [0035](../decisions/0035-reparto-importe-seguro.md) |
+| T-026b — Planes de membresía y beneficios (partes A y B) | 3B | 5–6 días | T-026 | [0034](../decisions/0034-membresias-fase-3.md), [0041](../decisions/0041-sin-descuento-manual-caja.md) |
+| T-027 — Caja: cola y estado de cuenta | 3B | 4 días | T-026b | [0034](../decisions/0034-membresias-fase-3.md), [0035](../decisions/0035-reparto-importe-seguro.md), [0041](../decisions/0041-sin-descuento-manual-caja.md) |
 | T-028 — Pagos, anulaciones y saldos | 3B | 3 días | T-027 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
 | T-029 — Recibos | 3B | 2–3 días | T-028 | [0037](../decisions/0037-recibo-80mm-es-en.md) |
 | T-030 — Fusionar pacientes | 3B | 2–3 días | T-028 | [0032](../decisions/0032-fusionar-pacientes.md) |
 | T-031 — Reporte diario de la sede | 3B | 2–3 días | T-029 | [0038](../decisions/0038-reporte-diario-antes-piloto.md) |
 | T-032 — Cierre de 3B: semilla, guion y demo | 3B | 1–2 días | T-025 a T-031 | — |
 
-Todas las decisiones de la fase están tomadas (2026-11-01). Ver el resumen al final.
+Todas las decisiones de la fase están tomadas (2026-11-01; las de membresías, el 2026-11-03 y el 2026-11-04). Ver el resumen al final.
 
 ---
 
@@ -531,60 +531,101 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 
 ## T-026b — Planes de membresía y beneficios
 
-**Decisiones (resueltas el 2026-11-01):** P-18 ([ADR 0034](../decisions/0034-membresias-fase-3.md)). Lancaster ya vende membresías: entran completas en 3B. Esta tarea añade «Membresía» al paso Cobertura de la llegada y sus beneficios en Caja.
+**Decisiones:**
+- P-18 ([ADR 0034](../decisions/0034-membresias-fase-3.md), 2026-11-01): Lancaster ya vende membresías, así que entran completas en 3B. Esta tarea añade «Membresía» al paso Cobertura de la llegada y sus beneficios en Caja.
+- Paso 0 (decisiones del dueño del 2026-11-03 y 2026-11-04): los datos de los planes y las reglas están en [T-026b-membresias-datos.md](T-026b-membresias-datos.md) y en el [ADR 0034](../decisions/0034-membresias-fase-3.md).
+- Decisión 11 ([ADR 0041](../decisions/0041-sin-descuento-manual-caja.md)): **Caja no aplica descuentos manuales** y todo cargo sale del catálogo. Los únicos descuentos son los de la membresía, automáticos. Reemplaza a la regla anterior «un descuento manual siempre prevalece».
 
-**Paso 0, antes de programar:** la tarea empieza con un documento corto para el dueño del producto, con dos partes.
+**Objetivo:** el Administrador define los planes y sus beneficios. Recepción inscribe al paciente y elige «Membresía» al registrar la llegada, y el servidor aplica los beneficios del plan a los cargos.
 
-1. **Datos de los planes que hay que conseguir en la clínica.** Solo datos de los planes, **nunca de pacientes**:
-   - nombre de cada plan, en español y en inglés;
-   - precio: cuota inicial y cuota mensual o anual;
-   - qué incluye: qué servicios y cuántos por periodo (mes, año o sin límite);
-   - descuentos: sobre qué servicios y de qué porcentaje;
-   - vigencia: desde cuándo vale y cuánto dura;
-   - renovación: automática o manual, y qué pasa si el paciente no paga;
-   - cuántas personas cubre un plan (máximo de miembros);
-   - si el precio cambia según la sede.
-2. **Preguntas sobre un hueco del manual:** el manual define los planes (S-ADM-21) y sus beneficios (S-ADM-22), pero **no tiene ninguna pantalla para dar de alta la membresía de un paciente**. No dice quién la vende, desde qué pantalla, cómo se cobran las cuotas ni cómo vence. La tarea se detiene a preguntar antes de inventarlo (`CLAUDE.md`), y las respuestas se escriben como ADR.
+**Se hace en dos PR:**
+- **Parte A:** planes, cuotas del plan, beneficios, categorías de membresía y el catálogo «Consultas».
+- **Parte B:** inscripción en Recepción, cuotas del paciente, trabajo del worker, cobertura «Membresía» y aplicación de los beneficios.
 
-**Objetivo:** el Administrador define los planes y sus beneficios; Recepción elige «Membresía» al registrar la llegada, y la Caja aplica los beneficios del plan.
+**Pantallas:**
+- Parte A: S-ADM-21 y S-ADM-22.
+- Parte B:
+  - S-REC-24 y S-REC-25 (se añade «Membresía») y S-CLI-12 (cobertura de la visita);
+  - el cálculo de los beneficios de S-CAJ-07 (la tarjeta la construye T-027);
+  - la tarjeta «Membresía» del perfil y el diálogo «Inscribir en un plan» (S-PAC-21 y S-PAC-22, fichas nuevas del manual).
 
-**Pantallas:** S-ADM-21, S-ADM-22; S-REC-24 y S-REC-25 (se añade «Membresía»); S-CLI-12 (cobertura de la visita); S-CAJ-07 (beneficios). Más la pantalla de alta de la membresía del paciente que salga del paso 0.
+**ADR:** [0029](../decisions/0029-precio-general-excepcion-sede.md), [0034](../decisions/0034-membresias-fase-3.md), [0041](../decisions/0041-sin-descuento-manual-caja.md).
 
-**ADR:** [0029](../decisions/0029-precio-general-excepcion-sede.md), [0034](../decisions/0034-membresias-fase-3.md) y el que salga del paso 0.
-
-**Incluye**
-1. Planes y beneficios por organización, con vigencia y `version`, que se desactivan y no se borran (como los precios del ADR 0029).
-2. La membresía del paciente, según las respuestas del paso 0.
-3. «Membresía» en el paso Cobertura, con el aviso «Membresía activa: {plan} (desde {fecha})» y el plan en «Datos del pagador».
-4. Beneficios calculados en el servidor solo con cobertura Membresía y una membresía activa el día de la visita en la sede, sobre los cargos de orden sin descuento manual (S-CAJ-07). Un descuento manual siempre prevalece.
+**Incluye — parte A**
+1. Planes por organización: nombre en español e inglés, descripción y máximo de personas. Valen en todas las sedes (decisión 9). Se desactivan y no se borran.
+2. Cuotas del plan (inicial y mensual) con vigencia: nunca se modifican; un cambio es un registro nuevo, como los precios del ADR 0029.
+3. Beneficios con `version`, que se desactivan y no se borran:
+   - «Incluido»: servicios del catálogo y cantidad por persona y año;
+   - «Descuento»: porcentaje por categoría.
+4. Categoría de membresía en procedimientos y pruebas, y el catálogo «Consultas» con precio por sede (ADR 0041).
 5. RLS, pruebas de aislamiento y auditoría con el antes y el después.
 
-**No incluye:** «Reglas de bono» (S-ADM-23) ni la cifra «Bono» de los reportes, que siguen en la fase 5.
+**Incluye — parte B**
+1. La membresía del paciente:
+   - plan, titular, sede de inscripción, fecha de inicio y día de cobro;
+   - afiliados, hasta el máximo del plan, que deben ser pacientes registrados; un paciente solo puede estar en una membresía activa;
+   - estados «Pendiente de pago», «Activa», «Suspendida» y «Cancelada», cada cambio en su historial.
+2. Las cuotas del paciente: la inicial al inscribir y cada mensualidad en su fecha (decisiones 2 y 5).
+   - Quedan como **cuotas pendientes**, con su importe en centavos tomado de las cuotas vigentes del plan, sin borrar nada.
+   - Se cobran en Caja con los pagos de **T-028**, que las marca como pagadas y activa o reactiva la membresía en la misma transacción.
+3. Trabajo diario del worker con el reloj inyectable `Clock`:
+   - crea las mensualidades;
+   - suspende al vencer una mensualidad sin pagar (12:00 a. m. del día siguiente en la sede);
+   - cancela a los 30 días;
+   - aplica el fin de beneficios de una cancelación avisada (decisiones 6 y 7).
+4. «Membresía» en el paso Cobertura:
+   - el aviso «Membresía activa: {plan} (desde {fecha})»;
+   - solo se puede elegir con una membresía activa;
+   - el plan se toma de la membresía del paciente.
+5. Beneficios calculados en el servidor, en centavos, sobre el precio vigente de la sede. Solo se aplican con cobertura Membresía y una membresía activa el día de la visita en la sede.
+   - Primero los incluidos (por persona y año de aniversario) y después el descuento de la categoría.
+   - Se guardan en el cargo. Cancelar la orden libera el uso del incluido.
+6. Nunca se guardan datos de tarjeta ni números de ID.
+
+**No incluye:**
+- «Reglas de bono» (S-ADM-23) ni la cifra «Bono» de los reportes, que siguen en la fase 5;
+- la inscripción en línea (etapa 2, P-24 de [PENDIENTES.md](../decisions/PENDIENTES.md)).
 
 **Terminada cuando:**
-- un plan ficticio con un descuento y un servicio incluido aplica bien sus beneficios en el cálculo del estado de cuenta (pruebas con reloj fijado en el primer y el último día de la vigencia);
-- un descuento manual prevalece sobre la membresía;
-- E2E `membresias.spec.ts`.
+- **Parte A:** los planes y sus beneficios se gestionan desde Catálogos, con aislamiento y auditoría probados (E2E `catalog.spec.ts`).
+- **Parte B:**
+  - un plan ficticio con un descuento y un servicio incluido aplica bien sus beneficios a los cargos (pruebas con reloj fijado en el primer y el último día del año de beneficios);
+  - el trabajo del worker se prueba con el reloj fijado justo antes y justo después del vencimiento y de los 30 días;
+  - E2E `membresias.spec.ts`.
+
+**Cómo quedó implementada la parte A (2026-11-04):** ver el [ADR 0034](../decisions/0034-membresias-fase-3.md#cómo-quedó-implementada-la-parte-a-t-026b-2026-11-04).
+- Migraciones `0039` y `0040`.
+- API `apps/api/src/membership-plans.ts`; las consultas van por las rutas del catálogo.
+- Web: las pestañas «Consultas» y «Planes de membresía» de Catálogos y la página de beneficios `apps/web/src/pages/admin-membership-benefits.tsx`.
+- Pruebas: `packages/db/test/membership-plans.test.ts`, `apps/api/test/membership-plans.test.ts`, `packages/shared/test/membership-plans.test.ts` y la E2E `catalog.spec.ts`, que crece.
 
 ## T-027 — Caja: cola y estado de cuenta
 
 **Decisiones (resueltas el 2026-11-01):**
 - P-19 ([ADR 0035](../decisions/0035-reparto-importe-seguro.md)): con seguro, el paciente paga el copago (una vez por visita y como máximo el total) o el coaseguro (% del total); con deducible, el monto completo. El resto se muestra aparte como **«A cargo del seguro»** y **no** cuenta como descuento.
 - P-18 ([ADR 0034](../decisions/0034-membresias-fase-3.md)): los beneficios de membresía de T-026b se aplican aquí.
+- Decisión 11 del dueño y su ampliación del 2026-11-04 ([ADR 0041](../decisions/0041-sin-descuento-manual-caja.md)):
+  - **Caja no aplica descuentos manuales**: no se construye «Aplicar descuento» (S-CAJ-09);
+  - **se elimina el cargo manual de precio libre**: todo cargo sale del catálogo, al precio vigente de la sede;
+  - los únicos descuentos son los de la membresía, automáticos.
 
-**Objetivo:** Recepción ve en Caja las visitas listas, abre su estado de cuenta, ajusta cargos y descuentos, y completa la visita.
+**Objetivo:** Recepción ve en Caja las visitas listas, abre su estado de cuenta, agrega cargos del catálogo (por ejemplo, la consulta) y completa la visita.
 
-**Pantallas:** S-CAJ-01, S-CAJ-02, S-CAJ-03, S-CAJ-04, S-CAJ-05, S-CAJ-06, S-CAJ-07, S-CAJ-08, S-CAJ-09, S-CAJ-16; S-CLI-23.
+**Pantallas:** S-CAJ-01, S-CAJ-02, S-CAJ-03, S-CAJ-04, S-CAJ-05, S-CAJ-06, S-CAJ-07, S-CAJ-08 («Agregar cargo», desde el catálogo), S-CAJ-16; S-CLI-23. S-CAJ-09 no se construye (ADR 0041).
 
-**ADR:** [0004](../decisions/0004-cobro-tras-completar.md), [0012](../decisions/0012-accesos-faltantes.md) (búsqueda en Caja), [0015](../decisions/0015-terminologia.md) («Caja», no «Checkout»), [0019](../decisions/0019-operaciones-criticas.md), [0029](../decisions/0029-precio-general-excepcion-sede.md), [0034](../decisions/0034-membresias-fase-3.md), [0035](../decisions/0035-reparto-importe-seguro.md).
+**ADR:** [0004](../decisions/0004-cobro-tras-completar.md), [0012](../decisions/0012-accesos-faltantes.md) (búsqueda en Caja), [0015](../decisions/0015-terminologia.md) («Caja», no «Checkout»), [0019](../decisions/0019-operaciones-criticas.md), [0029](../decisions/0029-precio-general-excepcion-sede.md), [0034](../decisions/0034-membresias-fase-3.md), [0035](../decisions/0035-reparto-importe-seguro.md), [0041](../decisions/0041-sin-descuento-manual-caja.md).
 
 **Incluye**
 1. Estado de cuenta por visita, con `version`, calculado **solo en el servidor** a partir de los cargos activos y los pagos registrados.
    - Reparto con seguro del ADR 0035, beneficios de membresía de T-026b y reglas de redondeo en centavos, escritas y probadas.
-   - Filas: «Subtotal», «Descuento total», «A cargo del seguro», «Total a pagar», «Pagado» y «Saldo».
+   - Filas: «Subtotal», «Descuento total» (solo los beneficios de membresía), «A cargo del seguro», «Total a pagar», «Pagado» y «Saldo».
+   - La columna «Descuento» lleva solo la insignia «Membresía»; ya no hay insignia «Manual».
 2. Cola de Caja (S-CAJ-01/02) con búsqueda. «Iniciar caja» (el manual decía «Iniciar checkout») se bloquea con órdenes abiertas (S-CAJ-06).
 3. Página de Caja de la visita (S-CAJ-03/04) y «Completar visita», con confirmación si queda saldo (S-CAJ-05).
-4. Cargo manual (S-CAJ-08: código sin texto libre, precio, cantidad y descuento) y descuento de línea (S-CAJ-09), auditados con el antes y el después.
+4. «Agregar cargo» (S-CAJ-08), auditado.
+   - Se elige un servicio del catálogo (consulta, procedimiento o prueba) y la cantidad; el precio lo pone el servidor, el vigente de la sede ese día.
+   - No hay precio libre, campo de descuento ni descuento de línea (ADR 0041).
+   - El cargo recibe los beneficios de membresía, igual que los de orden.
 5. Sección Facturación de la visita (S-CAJ-16 / S-CLI-23): totales para todos, e «Ir a Caja» para Recepción. Se puede cobrar por adelantado desde cualquier estado abierto.
 6. Evento en vivo `billing.changed` (id de la visita), que refresca el estado de cuenta.
 
@@ -593,6 +634,7 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 **Terminada cuando:**
 - con pago directo, seguro con copago, seguro con coaseguro, seguro con deducible y membresía, los totales coinciden con casos calculados a mano en pruebas unitarias;
 - un copago mayor que el total deja «Total a pagar» igual al total;
+- un cargo agregado en Caja lleva el precio vigente de la sede y no acepta un precio ni un descuento enviados por la web;
 - la web no hace ninguna suma (revisión y prueba);
 - «Iniciar caja» con órdenes abiertas se rechaza;
 - completar con saldo pide confirmación;
@@ -616,6 +658,7 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 3. Anular pago (S-CAJ-13) y anular cargo manual (S-CAJ-10), como filas inversas, con motivo e `Idempotency-Key`. Los cargos de orden se anulan solo cancelando la orden.
 4. Un saldo negativo se muestra como «Crédito a favor», no en rojo de error. En V1 no hay reembolsos.
 5. Pestaña Saldos del perfil (S-CAJ-17 / S-PAC-10) y cobro de saldos de visitas completadas (ADR 0004).
+6. Cobro de las cuotas de membresía pendientes de T-026b, con `Idempotency-Key` y la misma terminal (efectivo o tarjeta; el sistema solo registra el pago y nunca guarda datos de tarjeta). En la misma transacción, pagar la cuota inicial activa la membresía, y pagar una mensualidad vencida la reactiva. Anular ese pago devuelve la cuota a pendiente ([ADR 0034](../decisions/0034-membresias-fase-3.md)).
 
 **Terminada cuando:**
 - dos pulsaciones, o un reintento de red con la misma clave, registran un solo pago;
@@ -623,6 +666,7 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - una anulación no borra nada y queda auditada con el antes y el después;
 - Recepción no puede anular, y un Administrador sin rol clínico tampoco;
 - el saldo de una visita completada se cobra desde Saldos;
+- pagar la cuota inicial activa la membresía y pagar una mensualidad vencida la reactiva (reloj fijado);
 - E2E `pagos.spec.ts`.
 
 ## T-029 — Recibos
@@ -738,11 +782,13 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 | P-20 | Valoración: qué es del paciente y qué de la visita | Alergias, antecedentes, cirugías, estilo de vida e historia reproductiva, del paciente; síntomas y notas, de la visita | [0036](../decisions/0036-valoracion-paciente-visita.md) | T-022 |
 | P-21 | Formato e idioma del recibo | Rollo de 80 mm desde el navegador, sin PDF; español e inglés | [0037](../decisions/0037-recibo-80mm-es-en.md) | T-029 |
 | P-22 | Reporte diario antes del piloto | Solo la pestaña «Diario» de la sede, en 3B | [0038](../decisions/0038-reporte-diario-antes-piloto.md) | T-031 |
+| — | Membresías: planes, beneficios e inscripción (paso 0 de T-026b, 2026-11-03 y 2026-11-04) | Cuatro planes; incluidos por persona y año de aniversario; descuento por categoría; inscripción en Recepción; «Pendiente de pago» hasta la cuota inicial; suspensión al vencer y cancelación a los 30 días; las cuotas se cobran en T-028 | [0034](../decisions/0034-membresias-fase-3.md) | T-026b, T-028 |
+| — | Caja sin descuentos manuales ni precio libre (decisión 11) | Los únicos descuentos son los de la membresía; todo cargo sale del catálogo, con el nuevo catálogo «Consultas» | [0041](../decisions/0041-sin-descuento-manual-caja.md) | T-026b, T-027 |
 | — | Alergias (al planificar T-022) | «Sin alergias conocidas» es un estado explícito, distinto de «no registradas»; el encabezado muestra los tres casos | [0040](../decisions/0040-alergias-sin-alergias-conocidas.md) | T-022 |
 | — | Alertas de espera del Panel (al planificar T-019) | «Alerta» a los 5 min y «Crítico» a los 10 min en Registrado, Esperando enfermería y Esperando proveedor, desde el estado actual; minutos por organización; también en la Cola de enfermería (T-022) y en la de proveedor (T-023) | [0039](../decisions/0039-alertas-espera-panel.md) | T-019, T-022, T-023 |
 | — | «Iniciar consulta» (al planificar T-023) | Se autoasigna sin proveedor, desde la cola y desde la barra; en la visita de otro proveedor se rechaza | — | T-023 |
 
-**Decisiones pendientes:** ninguna bloquea la fase 3. Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, que son de las fases 4 a 6, y P-23 (pantalla para los minutos del ADR 0039), sin fecha ([`PENDIENTES.md`](../decisions/PENDIENTES.md)). T-026b abrirá las suyas en su paso 0 (alta de la membresía del paciente).
+**Decisiones pendientes:** ninguna bloquea la fase 3. Siguen abiertas P-03, P-05, P-07, P-08, P-09, P-10, P-12 y P-13, que son de las fases 4 a 6, P-23 (pantalla para los minutos del ADR 0039), sin fecha, y P-24 (inscripción en línea de membresías), después del despliegue ([`PENDIENTES.md`](../decisions/PENDIENTES.md)). El paso 0 de T-026b quedó resuelto el 2026-11-04 (ADR 0034 y 0041); la inscripción en línea de membresías es P-24, para después del despliegue.
 
 ## Fuera de la fase 3
 

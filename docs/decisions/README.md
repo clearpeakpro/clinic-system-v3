@@ -44,3 +44,4 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0038. Reporte diario de la sede antes del piloto](0038-reporte-diario-antes-piloto.md) | Aceptada |
 | [0039. Alertas de espera en el Panel («Alerta» y «Crítico»)](0039-alertas-espera-panel.md) | Aceptada |
 | [0040. Alergias: «Sin alergias conocidas» como estado explícito](0040-alergias-sin-alergias-conocidas.md) | Aceptada |
+| [0041. Caja sin descuentos manuales ni cargos de precio libre](0041-sin-descuento-manual-caja.md) | Aceptada |

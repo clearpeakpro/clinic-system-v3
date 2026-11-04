@@ -28,6 +28,8 @@ import {
   updateAppointmentSchema,
   createCatalogItemSchema,
   createLabProviderSchema,
+  createMembershipBenefitSchema,
+  createMembershipPlanSchema,
   createPatientSchema,
   ownClinicalRolesSchema,
   patientStatusChangeSchema,
@@ -35,6 +37,8 @@ import {
   searchPatientsSchema,
   updatePatientSchema,
   deactivateCatalogItemSchema,
+  updateMembershipBenefitSchema,
+  updateMembershipPlanSchema,
   deactivateLabProviderSchema,
   reactivateLabProviderSchema,
   updateLabProviderSchema,
@@ -97,6 +101,7 @@ import { CatalogService } from './catalog.ts';
 import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
 import { LabProviderService } from './lab-providers.ts';
+import { MembershipPlanService } from './membership-plans.ts';
 import { PatientService } from './patients.ts';
 import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
@@ -590,6 +595,85 @@ export class AdminLabProvidersController {
   @RequirePermission('catalog.manage')
   async reactivate(@Req() request: FastifyRequest, @Param('id') providerId: string, @Body() body: unknown) {
     await this.#labs.setActive(principalOf(request), id(providerId), true, parse(reactivateLabProviderSchema, body), metaOf(request));
+  }
+}
+
+/**
+ * Administración › Catálogos › Planes de membresía (S-ADM-21) y sus
+ * beneficios (S-ADM-22), T-026b parte A (ADR 0034). Como el catálogo, solo
+ * con catalog.manage.
+ */
+@Controller('admin/membership-plans')
+export class AdminMembershipPlansController {
+  readonly #plans: MembershipPlanService;
+  constructor(@Inject(MembershipPlanService) plans: MembershipPlanService) {
+    this.#plans = plans;
+  }
+
+  @Get()
+  @RequirePermission('catalog.manage')
+  list(@Req() request: FastifyRequest) {
+    return this.#plans.list(principalOf(request));
+  }
+
+  @Post()
+  @RequirePermission('catalog.manage')
+  create(@Req() request: FastifyRequest, @Body() body: unknown) {
+    return this.#plans.createPlan(principalOf(request), parse(createMembershipPlanSchema, body), metaOf(request));
+  }
+
+  @Get(':id')
+  @RequirePermission('catalog.manage')
+  detail(@Req() request: FastifyRequest, @Param('id') planId: string) {
+    return this.#plans.detail(principalOf(request), id(planId));
+  }
+
+  @Post(':id')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async update(@Req() request: FastifyRequest, @Param('id') planId: string, @Body() body: unknown) {
+    await this.#plans.updatePlan(principalOf(request), id(planId), parse(updateMembershipPlanSchema, body), metaOf(request));
+  }
+
+  @Post(':id/deactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async deactivate(@Req() request: FastifyRequest, @Param('id') planId: string, @Body() body: unknown) {
+    await this.#plans.setPlanActive(principalOf(request), id(planId), false, parse(deactivateCatalogItemSchema, body), metaOf(request));
+  }
+
+  @Post(':id/reactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async reactivate(@Req() request: FastifyRequest, @Param('id') planId: string, @Body() body: unknown) {
+    await this.#plans.setPlanActive(principalOf(request), id(planId), true, parse(reactivateCatalogItemSchema, body), metaOf(request));
+  }
+
+  @Post(':id/benefits')
+  @RequirePermission('catalog.manage')
+  createBenefit(@Req() request: FastifyRequest, @Param('id') planId: string, @Body() body: unknown) {
+    return this.#plans.createBenefit(principalOf(request), id(planId), parse(createMembershipBenefitSchema, body), metaOf(request));
+  }
+
+  @Post('benefits/:benefitId')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async updateBenefit(@Req() request: FastifyRequest, @Param('benefitId') benefitId: string, @Body() body: unknown) {
+    await this.#plans.updateBenefit(principalOf(request), id(benefitId), parse(updateMembershipBenefitSchema, body), metaOf(request));
+  }
+
+  @Post('benefits/:benefitId/deactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async deactivateBenefit(@Req() request: FastifyRequest, @Param('benefitId') benefitId: string, @Body() body: unknown) {
+    await this.#plans.setBenefitActive(principalOf(request), id(benefitId), false, parse(deactivateCatalogItemSchema, body), metaOf(request));
+  }
+
+  @Post('benefits/:benefitId/reactivate')
+  @HttpCode(204)
+  @RequirePermission('catalog.manage')
+  async reactivateBenefit(@Req() request: FastifyRequest, @Param('benefitId') benefitId: string, @Body() body: unknown) {
+    await this.#plans.setBenefitActive(principalOf(request), id(benefitId), true, parse(reactivateCatalogItemSchema, body), metaOf(request));
   }
 }
 
@@ -1242,6 +1326,7 @@ export interface ApiProviders {
   notifications: NotificationService;
   catalog: CatalogService;
   labProviders: LabProviderService;
+  membershipPlans: MembershipPlanService;
   patients: PatientService;
   appointments: AppointmentService;
   appointmentCommands: AppointmentCommands;
@@ -1271,6 +1356,7 @@ export function createApiModule(providers: ApiProviders) {
       NotificationsController,
       AdminCatalogController,
       AdminLabProvidersController,
+      AdminMembershipPlansController,
       CatalogController,
       PatientsController,
       AppointmentsController,
@@ -1295,6 +1381,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: NotificationService, useValue: providers.notifications },
       { provide: CatalogService, useValue: providers.catalog },
       { provide: LabProviderService, useValue: providers.labProviders },
+      { provide: MembershipPlanService, useValue: providers.membershipPlans },
       { provide: PatientService, useValue: providers.patients },
       { provide: AppointmentService, useValue: providers.appointments },
       { provide: AppointmentCommands, useValue: providers.appointmentCommands },

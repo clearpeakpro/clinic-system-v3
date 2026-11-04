@@ -274,6 +274,20 @@
       "when": 1793683383014,
       "tag": "0038_orders_execution",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793760369903,
+      "tag": "0039_membership_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793760394152,
+      "tag": "0040_membership_plans_rls",
+      "breakpoints": true
     }
   ]
 }

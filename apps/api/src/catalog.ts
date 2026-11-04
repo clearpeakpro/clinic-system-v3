@@ -1,4 +1,4 @@
-import { appointmentTypes, labProviders, labTestCosts, labTests, locations, procedures, referralSources, prices, type TenantDb, type Tx } from '@clinic/db';
+import { appointmentTypes, consultations, labProviders, labTestCosts, labTests, locations, procedures, referralSources, prices, type TenantDb, type Tx } from '@clinic/db';
 import {
   CATALOG_KINDS,
   compareLabProviders,
@@ -36,9 +36,13 @@ import { HttpError, requireContext, type RequestMeta } from './services.ts';
 // costo para la clínica en cada laboratorio. Como los precios, un costo es
 // una fila nueva con su vigencia; desmarcar es una fila sin importe. Los
 // costos solo salen en la lista de Administración (`withLabCosts`).
+// T-026b (ADR 0041): las consultas, con precio por sede como los
+// procedimientos y las pruebas; y la categoría de membresía de procedimientos
+// y pruebas (ADR 0034).
 
 const TABLES = {
   'appointment-types': appointmentTypes,
+  consultations,
   procedures,
   'lab-tests': labTests,
   'referral-sources': referralSources,
@@ -47,10 +51,25 @@ const TABLES = {
 /** Nombre de la entidad en la auditoría. */
 const ENTITY: Record<CatalogKind, string> = {
   'appointment-types': 'appointment_type',
+  consultations: 'consultation',
   procedures: 'procedure',
   'lab-tests': 'lab_test',
   'referral-sources': 'referral_source',
 };
+
+/** Columna del ítem en `prices` y su propiedad en Drizzle, por catálogo con precio. */
+type PriceColumn = 'procedure_id' | 'lab_test_id' | 'consultation_id';
+const PRICE_COLUMN: Partial<Record<CatalogKind, { column: PriceColumn; property: 'procedureId' | 'labTestId' | 'consultationId' }>> = {
+  consultations: { column: 'consultation_id', property: 'consultationId' },
+  procedures: { column: 'procedure_id', property: 'procedureId' },
+  'lab-tests': { column: 'lab_test_id', property: 'labTestId' },
+};
+
+function priceColumn(kind: CatalogKind): { column: PriceColumn; property: 'procedureId' | 'labTestId' | 'consultationId' } {
+  const entry = PRICE_COLUMN[kind];
+  if (!entry) throw new HttpError(404, 'catalog_not_found');
+  return entry;
+}
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -77,6 +96,7 @@ function toItem(kind: CatalogKind, row: Record<string, unknown>): CatalogItem {
     item.color = row.color as NonNullable<CatalogItem['color']>;
   }
   if (kind === 'procedures') item.kind = row.kind as NonNullable<CatalogItem['kind']>;
+  if (kind === 'procedures' || kind === 'lab-tests') item.membershipCategory = row.membershipCategory as NonNullable<CatalogItem['membershipCategory']> | null;
   return item;
 }
 
@@ -114,7 +134,7 @@ export class CatalogService {
         items[kind] = rows.map((row) => toItem(kind, row as Record<string, unknown>));
       }
       for (const kind of PRICED_KINDS) {
-        const column = kind === 'procedures' ? 'procedure_id' : 'lab_test_id';
+        const { column } = priceColumn(kind);
         const timeline = async (scope: string | null) => {
           const current = await this.#prices(tx, column, scope, today, 'current');
           const next = await this.#prices(tx, column, scope, today, 'next');
@@ -332,7 +352,7 @@ export class CatalogService {
    * Por ítem, el precio que rige `today` (`current`) o el próximo programado
    * (`next`): los generales (`scope` nulo) o los propios de una sede.
    */
-  async #prices(tx: Tx, column: 'procedure_id' | 'lab_test_id', scope: string | null, today: string, which: 'current' | 'next') {
+  async #prices(tx: Tx, column: PriceColumn, scope: string | null, today: string, which: 'current' | 'next') {
     const item = sql.raw(`"${column}"`);
     const rows = await tx.execute<{ item_id: string; amount_cents: number | null; effective_from: string }>(sql`
       select distinct on (${item}) ${item} as item_id, amount_cents, effective_from::text as effective_from
@@ -379,12 +399,12 @@ export class CatalogService {
       minimum = site.today;
     }
     if (price.effectiveFrom < minimum) throw new HttpError(400, 'effective_from_past');
-    const column = kind === 'procedures' ? 'procedure_id' : 'lab_test_id';
+    const { column, property } = priceColumn(kind);
     const before = await this.#priceOn(tx, column, itemId, price.locationId, price.effectiveFrom);
     await tx.insert(prices).values({
       organizationId: ctx.organizationId,
       locationId: price.locationId,
-      ...(kind === 'procedures' ? { procedureId: itemId } : { labTestId: itemId }),
+      [property]: itemId,
       amountCents: price.amountCents,
       effectiveFrom: price.effectiveFrom,
     });
@@ -411,7 +431,7 @@ export class CatalogService {
    * en una sede, su propio precio si la última fila de la sede tiene importe;
    * si no tiene o es «Usa el precio general», el general.
    */
-  async #priceOn(tx: Tx, column: 'procedure_id' | 'lab_test_id', itemId: string, locationId: string | null, date: string): Promise<number | undefined> {
+  async #priceOn(tx: Tx, column: PriceColumn, itemId: string, locationId: string | null, date: string): Promise<number | undefined> {
     const item = sql.raw(`"${column}"`);
     const scopes = locationId === null ? [null] : [locationId, null];
     for (const scope of scopes) {
@@ -443,7 +463,7 @@ export class CatalogService {
       if (!site) throw new HttpError(400, 'invalid_location');
       if (!site.active) throw new HttpError(400, 'location_inactive');
       if (input.effectiveFrom < site.today) throw new HttpError(400, 'effective_from_past');
-      const column = kind === 'procedures' ? 'procedure_id' : 'lab_test_id';
+      const { column, property } = priceColumn(kind);
       const item = sql.raw(`"${column}"`);
       const own = await tx.execute<{ n: number }>(sql`
         select count(*)::int as n from app.prices
@@ -453,7 +473,7 @@ export class CatalogService {
       await tx.insert(prices).values({
         organizationId: ctx.organizationId,
         locationId: input.locationId,
-        ...(kind === 'procedures' ? { procedureId: itemId } : { labTestId: itemId }),
+        [property]: itemId,
         amountCents: null,
         effectiveFrom: input.effectiveFrom,
       });

@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import pg from 'pg';
-import { appointmentTypes, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
+import { appointmentTypes, consultations, labProviders, labTestCosts, labTests, prices, procedures, referralSources } from './catalog-schema.ts';
+import { membershipBenefitItems, membershipBenefits, membershipPlanFees, membershipPlans } from './membership-plans-schema.ts';
 import { patients } from './patients-schema.ts';
 import { locations, organizations } from './schema.ts';
 import { nextCode } from './codes.ts';
@@ -106,22 +107,28 @@ export const DEMO = {
  * Catálogo básico ficticio (T-011), el mismo en las dos organizaciones. Cada
  * ítem con precio tiene su precio general (en centavos, vigente desde el 1 de
  * enero de 2026); en Norte, algunos tienen además una excepción en NOR2.
+ * T-026b: las consultas y la categoría de membresía de cada procedimiento y
+ * prueba.
  */
 export const DEMO_CATALOG = {
   appointmentTypes: [
     { code: 'CONSULTA', name: 'Consulta general', defaultDurationMinutes: 20, suggestedRoute: 'STANDARD', color: 'teal', sortOrder: 10 },
     { code: 'SEGUIMIENTO', name: 'Seguimiento', defaultDurationMinutes: 15, suggestedRoute: 'STANDARD', color: 'blue', sortOrder: 20 },
   ],
+  consultations: [
+    { code: 'CONS-INICIAL', name: 'Consulta médica inicial', sortOrder: 10 },
+    { code: 'CONS-SEGUIMIENTO', name: 'Consulta de seguimiento o enfermedad', sortOrder: 20 },
+  ],
   procedures: [
-    { code: 'INJ-B12', name: 'Inyección de vitamina B12', kind: 'injection', sortOrder: 10 },
-    { code: 'PROC-LAVOT', name: 'Lavado ótico', kind: 'procedure', sortOrder: 20 },
+    { code: 'INJ-B12', name: 'Inyección de vitamina B12', kind: 'injection', membershipCategory: 'treatment', sortOrder: 10 },
+    { code: 'PROC-LAVOT', name: 'Lavado ótico', kind: 'procedure', membershipCategory: 'minor_procedure', sortOrder: 20 },
   ],
   labTests: [
-    { code: 'LAB-STREP', name: 'Prueba rápida de estreptococo', sortOrder: 10 },
+    { code: 'LAB-STREP', name: 'Prueba rápida de estreptococo', membershipCategory: 'lab', sortOrder: 10 },
     // T-011b: las tres del ejemplo de la sugerencia de laboratorio (ADR 0028).
-    { code: 'LAB-A1C', name: 'Hemoglobina A1c', sortOrder: 20 },
-    { code: 'LAB-TSH', name: 'Perfil tiroideo (TSH)', sortOrder: 30 },
-    { code: 'LAB-PSA', name: 'Antígeno prostático (PSA)', sortOrder: 40 },
+    { code: 'LAB-A1C', name: 'Hemoglobina A1c', membershipCategory: 'lab', sortOrder: 20 },
+    { code: 'LAB-TSH', name: 'Perfil tiroideo (TSH)', membershipCategory: 'lab', sortOrder: 30 },
+    { code: 'LAB-PSA', name: 'Antígeno prostático (PSA)', membershipCategory: 'lab', sortOrder: 40 },
   ],
   referralSources: [
     { code: 'RECOMENDACION', name: 'Recomendación de un conocido', sortOrder: 10 },
@@ -131,6 +138,8 @@ export const DEMO_CATALOG = {
   /** Por organización y código de ítem: `general` y, opcional, la excepción por código de sede. */
   prices: {
     norte: {
+      'CONS-INICIAL': { general: 6000 },
+      'CONS-SEGUIMIENTO': { general: 4500, NOR2: 5000 },
       'INJ-B12': { general: 2000, NOR2: 2200 },
       'PROC-LAVOT': { general: 3000 },
       'LAB-STREP': { general: 2800, NOR2: 3000 },
@@ -139,6 +148,8 @@ export const DEMO_CATALOG = {
       'LAB-PSA': { general: 5000 },
     },
     sur: {
+      'CONS-INICIAL': { general: 5500 },
+      'CONS-SEGUIMIENTO': { general: 4000 },
       'INJ-B12': { general: 1800 },
       'PROC-LAVOT': { general: 2800 },
       'LAB-STREP': { general: 2500 },
@@ -149,6 +160,143 @@ export const DEMO_CATALOG = {
   } as Record<'norte' | 'sur', Record<string, Record<string, number>>>,
   pricesEffectiveFrom: '2026-01-01',
 } as const;
+
+type DemoCategory = 'consultation' | 'treatment' | 'lab' | 'minor_procedure';
+interface DemoPlan {
+  code: string;
+  nameEs: string;
+  nameEn: string;
+  descriptionEs: string;
+  maxMembers: number;
+  initialFeeCents: number;
+  monthlyFeeCents: number;
+  /** Plan Total: las consultas de seguimiento incluyen los laboratorios de la misma visita (decisión 3). */
+  sameVisitLabs: boolean;
+  /** Descuentos por categoría, en centésimas de punto. */
+  discounts: Partial<Record<DemoCategory, number>>;
+}
+
+/**
+ * Planes de membresía ficticios (T-026b parte A, ADR 0034), los mismos en las
+ * dos organizaciones: la estructura y las cuotas de los planes que entregó el
+ * dueño, con nombres genéricos. Servicios incluidos, por persona y año:
+ * consulta inicial, chequeo (A1c y TSH), PSA y 3 consultas de seguimiento.
+ * El ECG y el Papanicolaou no tienen servicio en el catálogo ficticio.
+ */
+export const DEMO_MEMBERSHIP_PLANS: { plans: readonly DemoPlan[]; effectiveFrom: string } = {
+  plans: [
+    {
+      code: 'ESENCIAL',
+      nameEs: 'Plan Esencial',
+      nameEn: 'Essential Plan',
+      descriptionEs: 'Atención básica con consultas esenciales, chequeo anual y descuentos en tratamientos y procedimientos.',
+      maxMembers: 1,
+      initialFeeCents: 10000,
+      monthlyFeeCents: 3900,
+      sameVisitLabs: false,
+      discounts: { consultation: 3500, treatment: 0, lab: 2500, minor_procedure: 1500 },
+    },
+    {
+      code: 'EXTENDIDO',
+      nameEs: 'Plan Extendido',
+      nameEn: 'Extended Plan',
+      descriptionEs: 'Atención individual ampliada con más visitas, exámenes preventivos y mayores descuentos.',
+      maxMembers: 1,
+      initialFeeCents: 15000,
+      monthlyFeeCents: 5900,
+      sameVisitLabs: false,
+      discounts: { consultation: 5000, treatment: 2500, lab: 5000, minor_procedure: 2500 },
+    },
+    {
+      code: 'TOTAL',
+      nameEs: 'Plan Total',
+      nameEn: 'Total Plan',
+      descriptionEs: 'Atención individual con visitas ilimitadas, exámenes preventivos y máximos descuentos.',
+      maxMembers: 1,
+      initialFeeCents: 17500,
+      monthlyFeeCents: 8900,
+      sameVisitLabs: true,
+      discounts: { consultation: 10000, treatment: 5000, lab: 5000, minor_procedure: 5000 },
+    },
+    {
+      code: 'FAMILIAR',
+      nameEs: 'Plan Familiar',
+      nameEn: 'Family Plan',
+      descriptionEs: 'Atención para familias de hasta 4 personas, con los beneficios por persona.',
+      maxMembers: 4,
+      initialFeeCents: 25000,
+      monthlyFeeCents: 9900,
+      sameVisitLabs: false,
+      discounts: { consultation: 3500, treatment: 2500, lab: 2000, minor_procedure: 1500 },
+    },
+  ],
+  effectiveFrom: '2026-01-01',
+};
+
+/** Los servicios incluidos de todos los planes: nombre, cantidad por año y códigos del catálogo. */
+const DEMO_INCLUDED: readonly { nameEs: string; nameEn: string; quantity: number; consultations: string[]; labTests: string[]; followUp: boolean }[] = [
+  { nameEs: 'Consulta médica inicial', nameEn: 'Initial medical visit', quantity: 1, consultations: ['CONS-INICIAL'], labTests: [], followUp: false },
+  { nameEs: 'Chequeo general', nameEn: 'General checkup', quantity: 1, consultations: [], labTests: ['LAB-A1C', 'LAB-TSH'], followUp: false },
+  { nameEs: 'Prueba de PSA', nameEn: 'PSA test', quantity: 1, consultations: [], labTests: ['LAB-PSA'], followUp: false },
+  { nameEs: 'Consultas de seguimiento o enfermedad', nameEn: 'Follow-up or sick visits', quantity: 3, consultations: ['CONS-SEGUIMIENTO'], labTests: [], followUp: true },
+];
+
+/** Planes, cuotas y beneficios de una organización (idempotente: un plan que ya existe no se toca). */
+async function seedMembershipPlans(tx: Tx, organizationId: string): Promise<void> {
+  const existing = new Set((await tx.select({ code: membershipPlans.code }).from(membershipPlans)).map((p) => p.code));
+  const consultationIds = new Map((await tx.select({ id: consultations.id, code: consultations.code }).from(consultations)).map((c) => [c.code, c.id]));
+  const labIds = new Map((await tx.select({ id: labTests.id, code: labTests.code }).from(labTests)).map((l) => [l.code, l.id]));
+  let order = 0;
+  for (const plan of DEMO_MEMBERSHIP_PLANS.plans) {
+    order += 10;
+    if (existing.has(plan.code)) continue;
+    const [row] = await tx
+      .insert(membershipPlans)
+      .values({ organizationId, code: plan.code, nameEs: plan.nameEs, nameEn: plan.nameEn, descriptionEs: plan.descriptionEs, maxMembers: plan.maxMembers, sortOrder: order })
+      .returning({ id: membershipPlans.id });
+    if (!row) continue;
+    await tx.insert(membershipPlanFees).values({
+      organizationId,
+      planId: row.id,
+      initialFeeCents: plan.initialFeeCents,
+      monthlyFeeCents: plan.monthlyFeeCents,
+      effectiveFrom: DEMO_MEMBERSHIP_PLANS.effectiveFrom,
+    });
+    let benefitOrder = 0;
+    for (const included of DEMO_INCLUDED) {
+      benefitOrder += 10;
+      const [benefit] = await tx
+        .insert(membershipBenefits)
+        .values({
+          organizationId,
+          planId: row.id,
+          type: 'included',
+          nameEs: included.nameEs,
+          nameEn: included.nameEn,
+          quantityPerYear: included.quantity,
+          includesSameVisitLabs: included.followUp && plan.sameVisitLabs,
+          sortOrder: benefitOrder,
+        })
+        .returning({ id: membershipBenefits.id });
+      if (!benefit) continue;
+      const items = [
+        ...included.consultations.flatMap((code) => {
+          const id = consultationIds.get(code);
+          return id ? [{ consultationId: id }] : [];
+        }),
+        ...included.labTests.flatMap((code) => {
+          const id = labIds.get(code);
+          return id ? [{ labTestId: id }] : [];
+        }),
+      ];
+      if (items.length > 0) await tx.insert(membershipBenefitItems).values(items.map((item) => ({ organizationId, benefitId: benefit.id, ...item })));
+    }
+    for (const [category, discountBp] of Object.entries(plan.discounts)) {
+      benefitOrder += 10;
+      await tx.insert(membershipBenefits).values({ organizationId, planId: row.id, type: 'discount', category, discountBp, sortOrder: benefitOrder });
+    }
+  }
+}
 
 /**
  * Laboratorios ficticios (T-011b, ADR 0028) y su costo para la clínica, en
@@ -217,15 +365,17 @@ async function seedCatalog(
 ): Promise<void> {
   const c = DEMO_CATALOG;
   await tx.insert(appointmentTypes).values(c.appointmentTypes.map((a) => ({ ...a, organizationId }))).onConflictDoNothing();
+  await tx.insert(consultations).values(c.consultations.map((x) => ({ ...x, organizationId }))).onConflictDoNothing();
   await tx.insert(procedures).values(c.procedures.map((p) => ({ ...p, organizationId }))).onConflictDoNothing();
   await tx.insert(labTests).values(c.labTests.map((l) => ({ ...l, organizationId }))).onConflictDoNothing();
   await tx.insert(referralSources).values(c.referralSources.map((r) => ({ ...r, organizationId }))).onConflictDoNothing();
   const items = [
+    ...(await tx.select({ id: consultations.id, code: consultations.code }).from(consultations)).map((x) => ({ ...x, column: 'consultationId' as const })),
     ...(await tx.select({ id: procedures.id, code: procedures.code }).from(procedures)).map((p) => ({ ...p, column: 'procedureId' as const })),
     ...(await tx.select({ id: labTests.id, code: labTests.code }).from(labTests)).map((l) => ({ ...l, column: 'labTestId' as const })),
   ];
   for (const item of items) {
-    const itemColumn = item.column === 'procedureId' ? prices.procedureId : prices.labTestId;
+    const itemColumn = prices[item.column];
     // null: precio general; con sede: excepción.
     const targets = [{ id: null, code: 'general' }, ...sites];
     for (const target of targets) {
@@ -321,6 +471,7 @@ export async function seed(
         const key = org.id === DEMO.norte.id ? 'norte' : 'sur';
         await seedCatalog(tx, org.id, org.locations, DEMO_CATALOG.prices[key]);
         await seedLabs(tx, org.id, DEMO_LABS.costs[key]);
+        await seedMembershipPlans(tx, org.id);
         await seedPatients(tx, org.id, org.patients, options.fieldKey ? createLocalFieldCipher(options.fieldKey) : null);
       });
     }

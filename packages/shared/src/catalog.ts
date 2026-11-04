@@ -5,21 +5,41 @@ import { VISIT_ROUTES } from './visit.ts';
 
 // Catálogo mínimo y precios por sede (T-011; S-ADM-13 a 20). Los valores
 // permitidos son los mismos que exige la base de datos (packages/db,
-// catalog-schema.ts); una prueba lo comprueba.
+// catalog-schema.ts); una prueba lo comprueba. T-026b (ADR 0034 y 0041): el
+// catálogo «Consultas», con precio por sede, y la categoría de membresía de
+// cada procedimiento y prueba (las consultas son siempre «Consulta»).
 
-/** Los cuatro catálogos, en el orden de las pestañas. */
-export const CATALOG_KINDS = ['appointment-types', 'procedures', 'lab-tests', 'referral-sources'] as const;
+/** Los cinco catálogos, en el orden de las pestañas. */
+export const CATALOG_KINDS = ['appointment-types', 'consultations', 'procedures', 'lab-tests', 'referral-sources'] as const;
 export type CatalogKind = (typeof CATALOG_KINDS)[number];
 
 export const CATALOG_LABELS: Record<CatalogKind, { title: string; singular: string; segment: string }> = {
   'appointment-types': { title: 'Tipos de cita', singular: 'tipo de cita', segment: 'tipos-de-cita' },
+  consultations: { title: 'Consultas', singular: 'consulta', segment: 'consultas' },
   procedures: { title: 'Procedimientos', singular: 'procedimiento', segment: 'procedimientos' },
   'lab-tests': { title: 'Pruebas de laboratorio', singular: 'prueba de laboratorio', segment: 'pruebas-de-laboratorio' },
   'referral-sources': { title: 'Fuentes de referido', singular: 'fuente de referido', segment: 'fuentes-de-referido' },
 };
 
 /** Catálogos con precio por sede. */
-export const PRICED_KINDS: readonly CatalogKind[] = ['procedures', 'lab-tests'];
+export const PRICED_KINDS: readonly CatalogKind[] = ['consultations', 'procedures', 'lab-tests'];
+
+/**
+ * Categoría de membresía (T-026b, ADR 0034): el descuento del plan se aplica
+ * por categoría. El Administrador marca cada procedimiento y prueba; las
+ * consultas son siempre «Consulta». Sin categoría, ningún descuento.
+ */
+export const MEMBERSHIP_CATEGORIES = ['consultation', 'treatment', 'lab', 'minor_procedure'] as const;
+export type MembershipCategory = (typeof MEMBERSHIP_CATEGORIES)[number];
+export const MEMBERSHIP_CATEGORY_LABELS: Record<MembershipCategory, string> = {
+  consultation: 'Consulta',
+  treatment: 'Tratamiento',
+  lab: 'Laboratorio',
+  minor_procedure: 'Cirugía menor o procedimiento',
+};
+
+/** Catálogos cuyos ítems llevan categoría de membresía editable. */
+export const CATEGORIZED_KINDS: readonly CatalogKind[] = ['procedures', 'lab-tests'];
 
 export function isCatalogKind(value: string): value is CatalogKind {
   return (CATALOG_KINDS as readonly string[]).includes(value);
@@ -63,6 +83,8 @@ const expectedVersion = z.number().int().positive();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const amountCents = z.number().int().min(0).max(PRICE_MAX_CENTS);
+/** Opcional: al editar, si no viene, no cambia. */
+const membershipCategory = z.enum(MEMBERSHIP_CATEGORIES).nullable().optional();
 
 /**
  * Precio de venta nuevo (lo que paga el paciente), con su fecha de vigencia:
@@ -85,8 +107,9 @@ const FIELDS = {
     suggestedRoute: z.enum(VISIT_ROUTES).nullable(),
     color: z.enum(AGENDA_COLORS),
   },
-  procedures: { name, sortOrder, kind: z.enum(PROCEDURE_KINDS) },
-  'lab-tests': { name, sortOrder },
+  consultations: { name, sortOrder },
+  procedures: { name, sortOrder, kind: z.enum(PROCEDURE_KINDS), membershipCategory },
+  'lab-tests': { name, sortOrder, membershipCategory },
   'referral-sources': { name, sortOrder },
 } as const;
 
@@ -143,8 +166,10 @@ export interface CatalogItem {
   suggestedRoute?: (typeof VISIT_ROUTES)[number] | null;
   color?: AgendaColor;
   kind?: ProcedureKind;
+  /** Procedimientos y pruebas (T-026b): categoría de membresía; nula, sin categoría. */
+  membershipCategory?: MembershipCategory | null;
   /**
-   * Procedimientos y pruebas, en la sede consultada: el precio general, el
+   * Consultas, procedimientos y pruebas, en la sede consultada: el precio general, el
    * propio de la sede (sin `current` ni `next`: «Usa el precio general») y el
    * que rige hoy (el propio si hay; si no, el general).
    */
