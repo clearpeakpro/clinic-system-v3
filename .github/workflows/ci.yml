@@ -28,6 +28,10 @@ jobs:
       # configuración de Better Auth (ADR 0023, condición 4: apps/api/test/config.test.ts).
       - run: pnpm test
 
+  # La E2E va en dos trabajos que corren a la vez, cada uno en su máquina:
+  # «e2e» (los flujos de rol y la accesibilidad) y «e2e-demos» (los guiones de
+  # las demos, cada uno con su base). Localmente, `pnpm test:e2e` sigue
+  # corriendo todo.
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -41,9 +45,7 @@ jobs:
       - name: Navegador de Playwright
         run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
       # Flujos de rol de T-004: Postgres (Testcontainers) + API real + web compilada.
-      # Después, los guiones de las demos de las fases 1, 2 y 3A (T-010, T-016 y T-024), cada
-      # uno con su base preparada con pnpm demo:reset.
-      - run: pnpm test:e2e
+      - run: pnpm --filter @clinic/web test:e2e:general
       # Accesibilidad de /dev/ui (T-005): axe con el servidor de desarrollo de Vite.
       - run: pnpm --filter @clinic/web test:a11y
       - uses: actions/upload-artifact@v4
@@ -53,6 +55,28 @@ jobs:
           path: |
             apps/web/playwright-report/
             apps/web/playwright-report-a11y/
+          retention-days: 7
+
+  e2e-demos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Navegador de Playwright
+        run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
+      # Los guiones de las demos de las fases 1, 2 y 3A (T-010, T-016 y T-024),
+      # cada uno con su base preparada con pnpm demo:reset.
+      - run: pnpm --filter @clinic/web test:e2e:demos
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-demos
+          path: |
             apps/web/playwright-report-demo/
             apps/web/playwright-report-demo2/
             apps/web/playwright-report-demo3a/

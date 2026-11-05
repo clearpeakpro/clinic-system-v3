@@ -7,6 +7,8 @@
 - `playwright.demo2.config.ts`: el guion de la demo de la fase 2 (`demo-fase-2.spec.ts`, ver `docs/DEMO-FASE-2.md`);
 - `playwright.demo3a.config.ts`: el guion de la demo de la fase 3A (`demo-fase-3a.spec.ts`, ver `docs/DEMO-FASE-3A.md`). Comprueba «Alerta» y «Crítico» al principio, porque las esperas de la semilla corren desde el `demo:reset`.
 
+En la CI van en dos trabajos que corren a la vez: `e2e` (`pnpm --filter @clinic/web test:e2e:general`, los flujos de rol, más la accesibilidad de `/dev/ui`) y `e2e-demos` (`test:e2e:demos`, las tres demos).
+
 Los guiones comparten sus ayudantes (`demo-helpers.ts`: ventanas, inicio y cierre de sesión, MFA).
 
 ## Base de datos desechable
