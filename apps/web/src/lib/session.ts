@@ -71,6 +71,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
         // T-027: el estado de cuenta de esa visita y la cola de Caja.
         invalidate(['statement', encounterId]);
         invalidate(['checkout-queue']);
+        // T-028: la pestaña Saldos de los perfiles abiertos.
+        invalidate(['patient-balances']);
       }, delay);
       return;
     }
@@ -102,6 +104,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       if (ids.encounters.size > 0) invalidate(['orders-queue']);
       // T-027: la cola de Caja.
       if (ids.encounters.size > 0) invalidate(['checkout-queue']);
+      // T-028: cerrar o completar una visita cambia la pestaña Saldos.
+      if (ids.encounters.size > 0) invalidate(['patient-balances']);
       for (const encounterId of ids.encounters) {
         invalidate(['encounter', encounterId]);
         invalidate(['nursing', encounterId]);

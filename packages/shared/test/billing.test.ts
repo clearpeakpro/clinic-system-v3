@@ -4,6 +4,12 @@ import {
   applyMembershipBenefits,
   computeStatement,
   patientShareCents,
+  payMembershipFeeSchema,
+  recordPaymentSchema,
+  referenceLast4,
+  visitTransition,
+  voidCancelsMembership,
+  voidSchema,
   type BenefitLine,
   type BenefitRules,
   type StatementCoverage,
@@ -32,6 +38,7 @@ describe('estado de cuenta', () => {
       totalDueCents: 13000,
       paidCents: 0,
       balanceCents: 13000,
+      creditCents: 0,
       status: 'open',
       rule: 'self_pay',
     });
@@ -44,6 +51,7 @@ describe('estado de cuenta', () => {
       insuranceCents: 10500,
       totalDueCents: 2500,
       balanceCents: 2500,
+      creditCents: 0,
       rule: 'insurance_copay',
     });
   });
@@ -201,5 +209,77 @@ describe('«Agregar cargo» (S-CAJ-08)', () => {
     }
     expect(addChargeSchema.safeParse({ item: { ...item, unitPriceCents: 0 }, quantity: 1, expectedVersion: 1 }).success).toBe(false);
     expect(addChargeSchema.safeParse({ item: { kind: 'manual', id: item.id }, quantity: 1, expectedVersion: 1 }).success).toBe(false);
+  });
+});
+
+// T-028: pagos, crédito a favor, «Anulado» y la regla de «Cancelada».
+describe('pagos y saldos (T-028)', () => {
+  it('un pago mayor que lo debido (tras anular un cargo) deja «Crédito a favor», no un saldo de error', () => {
+    // Pagó $130.00 y después se anuló la consulta de $60.00: debe $70.00, pagó $130.00.
+    expect(computeStatement({ lines: [line(7000)], coverage: SELF_PAY, paidCents: 13000 })).toMatchObject({
+      totalDueCents: 7000,
+      balanceCents: -6000,
+      creditCents: 6000,
+      status: 'paid',
+    });
+  });
+
+  it('«Cancelada»: el estado de cuenta queda «Anulado», sin nada que pagar, y lo pagado es crédito a favor', () => {
+    expect(computeStatement({ lines: VISIT, coverage: SELF_PAY, paidCents: 0, voided: true })).toMatchObject({
+      subtotalCents: 13000,
+      totalDueCents: 0,
+      balanceCents: 0,
+      creditCents: 0,
+      status: 'voided',
+    });
+    expect(computeStatement({ lines: VISIT, coverage: copay(2500), paidCents: 2500, voided: true })).toMatchObject({
+      totalDueCents: 0,
+      balanceCents: -2500,
+      creditCents: 2500,
+      status: 'voided',
+    });
+  });
+
+  it('de la referencia solo quedan los últimos 4 caracteres', () => {
+    expect(referenceLast4(' AUTH-987654 ')).toBe('7654');
+    expect(referenceLast4('12')).toBe('12');
+    expect(referenceLast4('   ')).toBeNull();
+    expect(referenceLast4(undefined)).toBeNull();
+  });
+
+  it('los esquemas son estrictos: sin campos de más, monto entero positivo y motivo obligatorio', () => {
+    expect(recordPaymentSchema.safeParse({ method: 'cash', amountCents: 4500, expectedVersion: 1 }).success).toBe(true);
+    expect(recordPaymentSchema.safeParse({ method: 'cash', amountCents: 45.5, expectedVersion: 1 }).success).toBe(false);
+    expect(recordPaymentSchema.safeParse({ method: 'cash', amountCents: 0, expectedVersion: 1 }).success).toBe(false);
+    expect(recordPaymentSchema.safeParse({ method: 'check', amountCents: 100, expectedVersion: 1 }).success).toBe(false);
+    expect(recordPaymentSchema.safeParse({ method: 'cash', amountCents: 100, expectedVersion: 1, cardNumber: '4111' }).success).toBe(false);
+    expect(recordPaymentSchema.safeParse({ method: 'cash', amountCents: 100, expectedVersion: 1, reference: 'x'.repeat(65) }).success).toBe(false);
+    expect(payMembershipFeeSchema.safeParse({ method: 'cash', amountCents: 100, expectedVersion: 1 }).success).toBe(false);
+    expect(voidSchema.safeParse({ reason: '   ', expectedVersion: 1 }).success).toBe(false);
+    expect(voidSchema.safeParse({ reason: 'x'.repeat(201), expectedVersion: 1 }).success).toBe(false);
+    expect(voidSchema.parse({ reason: ' Cobro duplicado ', expectedVersion: 2 })).toEqual({ reason: 'Cobro duplicado', expectedVersion: 2 });
+  });
+
+  it('una visita con órdenes completadas no se cierra como «Cancelada», solo como «Se retiró»', () => {
+    const ctx = { route: 'STANDARD' as const, roles: ['recepcion' as const], hasCompletedOrders: true };
+    expect(visitTransition('WITH_PROVIDER', 'close_cancelled', ctx)).toEqual({ ok: false, reason: 'completed_orders' });
+    expect(visitTransition('WITH_PROVIDER', 'close_left_early', ctx)).toMatchObject({ ok: true, to: 'LEFT_EARLY' });
+    expect(visitTransition('WITH_PROVIDER', 'close_cancelled', { ...ctx, hasCompletedOrders: false })).toMatchObject({ ok: true, to: 'CANCELLED' });
+  });
+
+  it('anular el pago de una cuota avisa si cancelaría la membresía', () => {
+    const fees = [
+      { kind: 'initial' as const, dueDate: '2026-10-01', status: 'paid' as const },
+      { kind: 'monthly' as const, dueDate: '2026-11-01', status: 'paid' as const },
+    ];
+    const m = { status: 'active' as const, enrolledOn: '2026-10-01', benefitsEndDate: null, fees };
+    // Inscrita el 1 de octubre: el 5 de noviembre ya pasaron los 30 días, y sin la cuota inicial se cancela.
+    expect(voidCancelsMembership(m, 0, '2026-11-05')).toBe(true);
+    // El 20 de octubre todavía no: vuelve a «Pendiente de pago».
+    expect(voidCancelsMembership(m, 0, '2026-10-20')).toBe(false);
+    // La mensualidad del 1 de noviembre, el 5: suspendida, no cancelada.
+    expect(voidCancelsMembership(m, 1, '2026-11-05')).toBe(false);
+    // Ya cancelada: no cambia nada (la cuota queda anulada, sin deuda).
+    expect(voidCancelsMembership({ ...m, status: 'cancelled' }, 0, '2026-11-05')).toBe(false);
   });
 });

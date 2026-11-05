@@ -12,6 +12,7 @@ import {
   patients,
   settleMembership,
   user as userTable,
+  type FieldCipher,
   type TenantDb,
   type Tx,
 } from '@clinic/db';
@@ -37,6 +38,7 @@ import {
   type PatientMembershipCard,
   type PatientMembershipStatus,
   type PatientMembershipView,
+  voidCancelsMembership,
 } from '@clinic/shared';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -46,6 +48,7 @@ import type { AuditService } from './audit.ts';
 import type { Clock } from './clock.ts';
 import type { IdempotencyService } from './idempotency.ts';
 import { eligibleMembership } from './membership-benefits.ts';
+import { loadPayments, paymentViews, type LoadedPayment } from './payments.ts';
 import type { Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
 
@@ -122,13 +125,15 @@ export class PatientMembershipService {
   readonly #tenantDb: TenantDb;
   readonly #plain;
   readonly #audit: AuditService;
+  readonly #cipher: FieldCipher;
   readonly #idempotency: IdempotencyService;
   readonly #clock: Clock;
 
-  constructor(pool: pg.Pool, tenantDb: TenantDb, audit: AuditService, idempotency: IdempotencyService, clock: Clock) {
+  constructor(pool: pg.Pool, tenantDb: TenantDb, audit: AuditService, cipher: FieldCipher, idempotency: IdempotencyService, clock: Clock) {
     this.#tenantDb = tenantDb;
     this.#plain = drizzle({ client: pool });
     this.#audit = audit;
+    this.#cipher = cipher;
     this.#idempotency = idempotency;
     this.#clock = clock;
   }
@@ -171,6 +176,8 @@ export class PatientMembershipService {
             .limit(1);
       const shownId = inCourse ?? lastCancelled?.id ?? null;
       const view = shownId ? await loadMembership(tx, shownId, now) : null;
+      // T-028: el pago de cada cuota (con su anulación), para cobrar y anular desde la tarjeta.
+      const feePayments = view ? await loadPayments(tx, this.#cipher, { feeIds: view.fees.map((f) => f.id) }) : { rows: [], userIds: [] };
       await this.#audit.inTx(tx, ctx.organizationId, {
         action: 'patient.membership_view',
         actorType: 'user',
@@ -181,9 +188,9 @@ export class PatientMembershipService {
         ...meta,
       });
       const me = await this.#myMembership(tx, actor.userId);
-      return { patient, today, view, me, inCourse };
+      return { patient, today, view, me, inCourse, feePayments };
     });
-    const membership = data.view ? await this.#view(actor, data.view, patientId, data.me) : null;
+    const membership = data.view ? await this.#view(actor, data.view, patientId, data.me, data.feePayments) : null;
     const manage = actor.permissions.has('memberships.manage');
     return {
       membership,
@@ -483,9 +490,26 @@ export class PatientMembershipService {
     });
   }
 
-  async #view(actor: Principal, data: LoadedMembership, patientId: string, me: string): Promise<PatientMembershipView> {
+  async #view(
+    actor: Principal,
+    data: LoadedMembership,
+    patientId: string,
+    me: string,
+    feePayments: { rows: LoadedPayment[]; userIds: string[] },
+  ): Promise<PatientMembershipView> {
     const { membership: m, plan, location, people, fees, events, today } = data;
-    const names = await this.#names([...events.flatMap((e) => (e.actorUserId ? [e.actorUserId] : [])), ...(data.verifierUserId ? [data.verifierUserId] : [])]);
+    const names = await this.#names([
+      ...events.flatMap((e) => (e.actorUserId ? [e.actorUserId] : [])),
+      ...(data.verifierUserId ? [data.verifierUserId] : []),
+      ...feePayments.userIds,
+    ]);
+    const views = paymentViews(feePayments.rows, names, me);
+    const standingInput = {
+      status: m.status as PatientMembershipStatus,
+      enrolledOn: m.enrolledOn,
+      benefitsEndDate: m.benefitsEndDate,
+      fees: fees.map((f) => ({ kind: f.kind as MembershipFeeKind, dueDate: f.dueDate, status: f.status as MembershipFeeStatus })),
+    };
     const status = m.status as PatientMembershipStatus;
     const cancelled = status === 'cancelled';
     // En curso: los que siguen; cancelada: los que estaban al cancelarse (dados de baja por la cancelación).
@@ -533,7 +557,7 @@ export class PatientMembershipService {
         role: p.member.role as MembershipMemberRole,
         addedAt: p.member.addedAt.toISOString(),
       })),
-      fees: fees.map((f) => ({
+      fees: fees.map((f, index) => ({
         id: f.id,
         kind: f.kind as MembershipFeeKind,
         dueDate: f.dueDate,
@@ -541,6 +565,9 @@ export class PatientMembershipService {
         periodEnd: f.periodEnd,
         amountCents: f.amountCents,
         status: f.status as MembershipFeeStatus,
+        version: f.version,
+        payment: f.status === 'paid' ? (views.find((p) => !p.voided && feePayments.rows.some((r) => r.payment.id === p.id && r.payment.membershipFeeId === f.id)) ?? null) : null,
+        voidCancelsMembership: voidCancelsMembership(standingInput, index, today),
       })),
       history,
       hasBenefitsToday: status === 'active' && today >= m.startDate && current.some((p) => p.member.patientId === patientId),
@@ -550,6 +577,8 @@ export class PatientMembershipService {
         addMember: manage && current.length < plan.maxMembers,
         removeMember: manage && current.some((p) => p.member.role === 'affiliate'),
         cancel: manage && m.cancelNoticeOn === null,
+        payFee: actor.permissions.has('checkout.access') && !cancelled,
+        voidFeePayment: actor.permissions.has('billing.void') && actor.permissions.has('patients.access'),
       },
     };
   }

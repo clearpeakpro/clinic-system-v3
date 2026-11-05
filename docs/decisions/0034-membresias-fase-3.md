@@ -140,3 +140,17 @@ Además, del plan aprobado:
 - **Semilla:** Paula Romero Aguilar (NOR1) e Iván Peña Villalobos (SUR1) con el plan Esencial activo, y Lucía y Mateo Hernández Díaz con el plan Familiar, desde el día en que se siembra (la cuota inicial, marcada como pagada hasta que llegue T-028).
 - **Pruebas:** `packages/shared/test/patient-memberships.test.ts`, `packages/db/test/patient-memberships.test.ts`, `apps/worker/test/memberships.test.ts` (reloj fijado justo antes y después de D+1 y de D+30), `apps/api/test/patient-memberships.test.ts` (primer y último día del año de beneficios, «Monto fijo», «Paquete» y «Cupo compartido») y la E2E `membresias.spec.ts`.
 - **Para T-027 y T-028:** T-027 suma lo que resta la membresía de cada cargo («Descuento total») y llama al recálculo al agregar un cargo de Caja y al abrir el estado de cuenta. T-028 marca la cuota como pagada y llama a `settleMembership()` en la misma transacción, que activa o reactiva la membresía.
+
+## Cómo quedó el cobro de las cuotas (T-028, 2026-11-05)
+
+- **Cobro:**
+  - lo hace Recepción, desde la tarjeta «Membresía» del perfil («Cobrar») o desde la pestaña Saldos, donde aparecen las cuotas pendientes del titular;
+  - la cuota se cobra completa, un pago por cuota: el monto lo pone el servidor ([ADR 0042](0042-pagos-saldos-visitas-cerradas.md));
+  - lleva `Idempotency-Key`, el método y, si se escribe, los últimos 4 caracteres de la referencia. Nunca datos de tarjeta.
+- **En la misma transacción:** el pago, la cuota marcada como pagada y `settleMembership()`, que activa la membresía (cuota inicial) o la reactiva (mensualidad vencida). Una cuota anulada por la cancelación no se cobra (`409 fee_not_pending`).
+- **Anular el pago** (Propietario o Administrador con un rol clínico, ADR 0033):
+  - la cuota vuelve a pendiente y el estado se recalcula: «Pendiente de pago», «Suspendida» o «Cancelada»;
+  - si la anulación cancelaría la membresía, el diálogo lo avisa antes («Esto cancelará la membresía»);
+  - con la membresía ya cancelada, la cuota queda «Anulada», sin deuda.
+- **Semilla de desarrollo:** la cuota inicial de las membresías ficticias tiene su pago en efectivo.
+- **Pruebas:** `apps/api/test/payments.test.ts`, con el reloj fijado, prueba la activación, la vuelta a pendiente dentro de los 30 días, la reactivación de una mensualidad vencida y la cancelación al anular pasados los 30 días. También `packages/shared/test/billing.test.ts` (`voidCancelsMembership`).

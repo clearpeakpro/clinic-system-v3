@@ -105,6 +105,12 @@ export interface VisitTransition {
   blockedByOpenOrders?: boolean;
   /** Motivo obligatorio (máx. 500). */
   requiresReason?: boolean;
+  /**
+   * Se bloquea si la visita tiene órdenes completadas (decisión del dueño del
+   * 2026-11-05, ADR 0042): una visita con servicios dados no se cancela; se
+   * cierra como «Se retiró» y su saldo se sigue debiendo.
+   */
+  blockedByCompletedOrders?: boolean;
 }
 
 const OPEN_STATUSES = VISIT_STATUSES.filter(isOpenVisitStatus);
@@ -124,7 +130,7 @@ export const VISIT_TRANSITIONS: readonly VisitTransition[] = [
   { action: 'complete', from: 'CHECKOUT', to: 'COMPLETED', roles: ['recepcion'] },
   ...OPEN_STATUSES.flatMap((from): VisitTransition[] => [
     { action: 'close_left_early', from, to: 'LEFT_EARLY', roles: ['recepcion'], requiresReason: true },
-    { action: 'close_cancelled', from, to: 'CANCELLED', roles: ['recepcion'], requiresReason: true },
+    { action: 'close_cancelled', from, to: 'CANCELLED', roles: ['recepcion'], requiresReason: true, blockedByCompletedOrders: true },
   ]),
 ];
 
@@ -134,6 +140,8 @@ export interface VisitTransitionContext {
   roles: readonly Role[];
   /** ¿Hay órdenes pendientes o en curso? (Desde T-025 lo calcula la API con las órdenes de la visita.) */
   hasOpenOrders?: boolean;
+  /** ¿Hay órdenes completadas? (T-028: lo calcula la API.) */
+  hasCompletedOrders?: boolean;
   /**
    * Excepción administrativa (ADR 0033): quien actúa no necesita el rol dueño
    * del paso (p. ej. «Enviar con excepción…» del Propietario o el
@@ -149,9 +157,10 @@ export type VisitTransitionResult =
    * - `invalid_transition`: la acción no existe desde ese estado o no vale para la ruta
    *   («Esta transición no está permitida en el estado actual.»);
    * - `forbidden`: el paso es de otro rol;
-   * - `open_orders`: bloqueado por órdenes abiertas.
+   * - `open_orders`: bloqueado por órdenes abiertas;
+   * - `completed_orders`: «Cancelada» con órdenes completadas (solo «Se retiró»).
    */
-  | { ok: false; reason: 'invalid_transition' | 'forbidden' | 'open_orders' };
+  | { ok: false; reason: 'invalid_transition' | 'forbidden' | 'open_orders' | 'completed_orders' };
 
 const routeMatches = (transition: VisitTransition, route: VisitRoute) =>
   transition.route === undefined || (transition.route === 'direct') === isDirectRoute(route);
@@ -162,6 +171,7 @@ export function visitTransition(from: VisitStatus | null, action: VisitAction, c
   if (!transition) return { ok: false, reason: 'invalid_transition' };
   if (!ctx.asOwner && !transition.roles.some((role) => ctx.roles.includes(role))) return { ok: false, reason: 'forbidden' };
   if (transition.blockedByOpenOrders && ctx.hasOpenOrders) return { ok: false, reason: 'open_orders' };
+  if (transition.blockedByCompletedOrders && ctx.hasCompletedOrders) return { ok: false, reason: 'completed_orders' };
   return { ok: true, to: transition.to, transition };
 }
 
@@ -278,6 +288,8 @@ export interface EncounterAbilities {
   actions: VisitAction[];
   /** «Cerrar visita…» (S-CLI-09). */
   close: boolean;
+  /** Con órdenes completadas, «Cancelada» no se ofrece: solo «Se retiró» (T-028, ADR 0042). */
+  cancelBlocked: boolean;
   /** Destinos de «Forzar estado…» (S-CLI-10); vacío si no puede forzar. */
   forceTargets: VisitStatus[];
   /** «Asignar proveedor» / «Cambiar proveedor» (S-CLI-05/06). */
@@ -303,12 +315,15 @@ export function encounterAbilities(input: {
   isMine: boolean;
   /** La visita tiene otro proveedor asignado: «Iniciar consulta» no se ofrece (T-023). */
   assignedToOther?: boolean;
+  /** La visita tiene órdenes completadas (T-028). */
+  hasCompletedOrders?: boolean;
 }): EncounterAbilities {
   const open = isOpenVisitStatus(input.status);
   const all = visitActions(input.status, { route: input.route, roles: input.roles });
   return {
     actions: all.filter((a) => !isCloseAction(a) && a !== 'send_to_provider' && !(a === 'start_consult' && input.assignedToOther === true)),
     close: all.some(isCloseAction),
+    cancelBlocked: all.includes('close_cancelled') && input.hasCompletedOrders === true,
     forceTargets: input.canForce ? forceTargets(input.status, input.route) : [],
     assignProvider: open && input.canManage,
     assignSelf: open && input.roles.includes('proveedor') && !input.isMine,

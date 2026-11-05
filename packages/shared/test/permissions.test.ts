@@ -69,6 +69,8 @@ describe('permisos', () => {
       // visita y la excepción de «Enviar al proveedor» (ADR 0033) solo sirven junto a patients.access, que exige un rol clínico (ADR 0027).
       expect([...permissionsFor([role])].sort(), role).toEqual([
         'admin.access',
+        // Anular cargos de Caja y pagos (T-028, ADR 0033): también solo con un rol clínico.
+        'billing.void',
         'catalog.manage',
         'kiosks.manage',
         'locations.manage',
@@ -90,7 +92,7 @@ describe('permisos', () => {
 
   it('destinos del menú según el manual', () => {
     expect([...permissionsFor(['recepcion'])].sort()).toEqual(
-      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'checkout.access', 'memberships.manage', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
+      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'balances.view', 'checkout.access', 'memberships.manage', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
     );
     expect([...permissionsFor(['enfermeria'])].sort()).toEqual(
       ['nursing.assessment', 'nursing.view', 'nursing.vitals', 'nursing_queue.access', 'orders.execute', 'orders_queue.access', 'panel.view', 'patients.access'],
@@ -99,6 +101,7 @@ describe('permisos', () => {
       [
         'appointments.access',
         'appointments.manage',
+        'balances.view',
         'nursing.view',
         'nursing.vitals',
         'nursing_queue.access',

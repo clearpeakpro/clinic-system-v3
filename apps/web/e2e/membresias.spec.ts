@@ -81,7 +81,7 @@ test('Recepción inscribe a una paciente en el plan Familiar con un afiliado: qu
   await expectAccessible(page);
   await dialog.screenshot({ path: 'test-results/membresia-inscribir.png' });
   await dialog.getByRole('button', { name: 'Inscribir' }).click();
-  await expect(page.getByText('Paciente inscrito. Cobre la cuota inicial en Caja para activar la membresía.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Paciente inscrito. Cobre la cuota inicial para activar la membresía.', { exact: true })).toBeVisible();
   await expect(dialog).toHaveCount(0);
 
   await expect(main(page)).toContainText('Plan Familiar');

@@ -13,12 +13,14 @@ import { CoverageRule, StatementTotalsView } from './statement-totals.tsx';
 //    lectura con su vista.
 //  - «Ir a Caja» (el manual decía «Ir a checkout») solo para quien cobra
 //    (checkout.access), en cualquier estado de la visita: se puede cobrar por
-//    adelantado (ADR 0004).
+//    adelantado (ADR 0004). T-028: también para quien anula con un rol
+//    clínico (ADR 0033), que en Caja ve el estado de cuenta completo.
 //  - Se relee con `billing.changed` y `encounter.changed` de la visita.
 
 export function BillingSection({ encounterId, sede }: { encounterId: string; sede: string }) {
   const me = useMe();
-  const canCheckout = me.data?.permissions.includes('checkout.access') === true;
+  const permissions = me.data?.permissions ?? [];
+  const canCheckout = permissions.includes('checkout.access') || (permissions.includes('billing.void') && permissions.includes('patients.access'));
   const statement = useQuery<BillingStatement, ApiError>({
     queryKey: ['statement', encounterId],
     queryFn: () => api.statement(encounterId),

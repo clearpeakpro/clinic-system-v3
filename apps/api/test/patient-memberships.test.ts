@@ -193,7 +193,7 @@ describe('T-026b membresías del paciente', () => {
     expect(view.membership?.code).toMatch(/^NOR1-M-\d{6}$/);
     // Enfermería ve la tarjeta, sin acciones.
     const nurse = await card(patientId, enfermeria);
-    expect(nurse.membership?.abilities).toEqual({ addMember: false, removeMember: false, cancel: false });
+    expect(nurse.membership?.abilities).toEqual({ addMember: false, removeMember: false, cancel: false, payFee: false, voidFeePayment: false });
     expect(nurse.canEnroll).toBe(false);
     // Otra organización no la ve.
     expect((await recepcionSur.get(`/api/patients/${patientId}/membership`)).statusCode).toBe(404);

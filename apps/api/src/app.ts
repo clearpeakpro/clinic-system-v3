@@ -24,6 +24,7 @@ import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { systemClock, type Clock } from './clock.ts';
 import { BillingService } from './billing.ts';
+import { PaymentService } from './payments.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
 import { OrderService } from './orders.ts';
@@ -68,7 +69,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     catalog: new CatalogService(tenantDb, audit),
     labProviders: new LabProviderService(tenantDb, audit),
     membershipPlans: new MembershipPlanService(tenantDb, audit),
-    patientMemberships: new PatientMembershipService(pool, tenantDb, audit, idempotency, clock),
+    patientMemberships: new PatientMembershipService(pool, tenantDb, audit, fieldCipher, idempotency, clock),
     patients: new PatientService(tenantDb, audit, fieldCipher),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
     appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, idempotency, config.outboxKey),
@@ -78,6 +79,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
     orders: new OrderService(pool, tenantDb, audit, fieldCipher, idempotency, clock, encounters, config.outboxKey),
     billing: new BillingService(pool, tenantDb, audit, fieldCipher, idempotency, clock),
+    payments: new PaymentService(pool, tenantDb, audit, fieldCipher, idempotency, clock),
     kiosk: new KioskService(pool, tenantDb, audit, fieldCipher, idempotency, clock, kioskLimits),
     kioskAdmin: new KioskAdminService(tenantDb, audit, clock),
     kioskArrivals: new KioskArrivalService(tenantDb, audit, fieldCipher, clock),

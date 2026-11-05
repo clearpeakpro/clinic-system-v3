@@ -174,6 +174,7 @@ describe('máquina de estados de la visita', () => {
     expect(encounterAbilities({ ...base, status: 'CHECKED_IN', roles: ['recepcion'], canManage: true })).toEqual({
       actions: ['send_to_nurse'],
       close: true,
+      cancelBlocked: false,
       forceTargets: [],
       assignProvider: true,
       assignSelf: false,
@@ -183,11 +184,14 @@ describe('máquina de estados de la visita', () => {
     expect(encounterAbilities({ ...base, status: 'CHECKED_IN', roles: ['enfermeria'] })).toEqual({
       actions: [],
       close: false,
+      cancelBlocked: false,
       forceTargets: [],
       assignProvider: false,
       assignSelf: false,
       editCoverage: false,
     });
+    // T-028: con órdenes completadas, «Cancelada» no se ofrece (solo «Se retiró»).
+    expect(encounterAbilities({ ...base, status: 'WITH_PROVIDER', roles: ['recepcion'], hasCompletedOrders: true })).toMatchObject({ close: true, cancelBlocked: true });
     // Proveedor: «Asignarme» si no es suya; no si ya lo es.
     expect(encounterAbilities({ ...base, status: 'WAITING_FOR_PROVIDER', roles: ['proveedor'] })).toMatchObject({ actions: ['start_consult'], assignSelf: true });
     expect(encounterAbilities({ ...base, status: 'WAITING_FOR_PROVIDER', roles: ['proveedor'], isMine: true }).assignSelf).toBe(false);

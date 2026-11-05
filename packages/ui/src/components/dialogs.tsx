@@ -17,7 +17,8 @@ export interface ConfirmDialogProps {
   destructive?: boolean;
   icon?: ReactNode;
   /** Pide un motivo obligatorio (regla 6 de CLAUDE.md), con su etiqueta y una ayuda opcional. */
-  reason?: { label: string; hint?: string; placeholder?: string };
+  /** `max`: tope del motivo (500 si no se indica; «Anular cargo» y «Anular pago» usan 200, S-CAJ-10 y 13). */
+  reason?: { label: string; hint?: string; placeholder?: string; max?: number };
   /** Contenido extra entre el texto y el motivo. */
   children?: ReactNode;
   /** false: no se cierra tocando fuera ni con Esc (formularios con motivo de S-ADM-09). */
@@ -66,8 +67,8 @@ export function ConfirmDialog({
     let value: string | undefined;
     if (reason) {
       const parsed = reasonSchema.safeParse(text);
-      if (!parsed.success) {
-        setError('Se requiere un motivo.');
+      if (!parsed.success || (reason.max !== undefined && parsed.data.length > reason.max)) {
+        setError(parsed.success ? `El motivo no puede superar ${String(reason.max)} caracteres.` : 'Se requiere un motivo.');
         return;
       }
       value = parsed.data;
@@ -110,7 +111,7 @@ export function ConfirmDialog({
           hint={reason.hint}
           {...(reason.placeholder ? { placeholder: reason.placeholder } : {})}
           required
-          maxLength={500}
+          maxLength={reason.max ?? 500}
           value={text}
           disabled={busy}
           error={error}

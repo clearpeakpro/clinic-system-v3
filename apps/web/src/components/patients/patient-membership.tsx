@@ -6,7 +6,9 @@ import {
   MEMBERSHIP_MEMBER_ROLE_LABELS,
   parsePatientQuery,
   PATIENT_QUERY_ERRORS,
+  PAYMENT_METHOD_LABELS,
   type EnrollablePlan,
+  type MembershipFeeView,
   type MembershipFeeStatus,
   type PatientMembershipCard,
   type PatientMembershipView,
@@ -31,13 +33,16 @@ import {
   useSnackbar,
 } from '@clinic/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, CalendarClock, IdCard, Search, ShieldCheck, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { Ban, BadgeCheck, CalendarClock, IdCard, Search, ShieldCheck, UserMinus, UserPlus, Users, Wallet, X } from 'lucide-react';
 import { useRef, useState, type ComponentType, type ReactNode, type SubmitEvent } from 'react';
 import { api, type ApiError } from '../../lib/api.ts';
 import { newIdempotencyKey } from '../../lib/appointments.ts';
+import { billingMessage, maskedReference, VOID_CANCELS_MEMBERSHIP_TEXT, VOID_PAYMENT_RECEIPTS_TEXT } from '../../lib/billing.ts';
 import { formatDay } from '../../lib/catalog.ts';
 import { firstDueText, MEMBERSHIP_STATUS_TONES, membershipMessage, membershipStatusDetail, membershipStatusLabel } from '../../lib/memberships.ts';
 import { useUnsavedChanges } from '../../lib/unsaved.ts';
+import { PayFeeDialog } from '../billing/pay-fee-dialog.tsx';
+import { VoidDialog } from '../billing/void-dialog.tsx';
 
 // S-PAC-22 Tarjeta «Membresía» del perfil y S-PAC-23 «Inscribir en un plan»
 // (T-026b parte B; ADR 0034). Fichas nuevas del manual: Stitch no tiene
@@ -47,8 +52,11 @@ import { useUnsavedChanges } from '../../lib/unsaved.ts';
 //    afiliados y registran el aviso de cancelación quienes tienen
 //    memberships.manage (Recepción). Lo decide el servidor (`abilities`).
 //  - Estado con icono + texto + color, calculado por el servidor con el reloj.
-//  - Las cuotas, en centavos del servidor: aquí solo se les da formato. Se
-//    cobran en Caja (T-028).
+//  - Las cuotas, en centavos del servidor: aquí solo se les da formato.
+//  - T-028: «Cobrar» cada cuota pendiente (Recepción, completa) y «Anular
+//    pago» (Propietario o Administrador con un rol clínico, ADR 0033). Si
+//    anular cancelaría la membresía, el diálogo lo avisa antes (decisión del
+//    2026-11-05).
 //  - «Identidad verificada» es obligatoria: Recepción mira el documento; el
 //    sistema no guarda números de ID ni datos de tarjeta.
 //  - Afiliados (plan Familiar): pacientes ya registrados, buscados como en
@@ -70,9 +78,12 @@ export function PatientMembershipCardView({ patientId, timeZone, card: Card }: {
     retry: false,
   });
   const [dialog, setDialog] = useState<null | 'enroll' | 'add' | 'cancel' | { remove: { patientId: string; name: string } }>(null);
+  const [paying, setPaying] = useState<MembershipFeeView | null>(null);
+  const [voiding, setVoiding] = useState<MembershipFeeView | null>(null);
   const reload = async (message?: string) => {
     setDialog(null);
     await queryClient.invalidateQueries({ queryKey: ['patient-membership'] });
+    void queryClient.invalidateQueries({ queryKey: ['patient-balances'] });
     if (message) snackbar({ message });
   };
   const fail = (error: unknown) => {
@@ -98,6 +109,8 @@ export function PatientMembershipCardView({ patientId, timeZone, card: Card }: {
                 onAdd={() => { setDialog('add'); }}
                 onCancel={() => { setDialog('cancel'); }}
                 onRemove={(p) => { setDialog({ remove: p }); }}
+                onPayFee={setPaying}
+                onVoidFeePayment={setVoiding}
               />
             ) : (
               <EmptyState icon={BadgeCheck} title="Sin membresía." description="Este paciente no está inscrito en ningún plan." />
@@ -105,7 +118,43 @@ export function PatientMembershipCardView({ patientId, timeZone, card: Card }: {
           }
         </AsyncView>
       </Card>
-      {dialog === 'enroll' ? <EnrollDialog patientId={patientId} onClose={() => { setDialog(null); }} onSaved={() => void reload('Paciente inscrito. Cobre la cuota inicial en Caja para activar la membresía.')} /> : null}
+      {dialog === 'enroll' ? <EnrollDialog patientId={patientId} onClose={() => { setDialog(null); }} onSaved={() => void reload('Paciente inscrito. Cobre la cuota inicial para activar la membresía.')} /> : null}
+      {paying ? (
+        <PayFeeDialog
+          fee={paying}
+          onClose={() => { setPaying(null); }}
+          onPaid={() => {
+            setPaying(null);
+            void reload('Cuota pagada.');
+          }}
+        />
+      ) : null}
+      {voiding?.payment ? (
+        <VoidDialog
+          title="Anular pago"
+          summary={
+            <p className="flex items-center justify-between gap-space-sm text-body-lg text-on-surface">
+              {`${MEMBERSHIP_FEE_KIND_LABELS[voiding.kind]} · ${PAYMENT_METHOD_LABELS[voiding.payment.method]}`}
+              <MoneyText cents={voiding.payment.amountCents} className="font-bold" />
+            </p>
+          }
+          danger={voiding.voidCancelsMembership ? VOID_CANCELS_MEMBERSHIP_TEXT : null}
+          warnings={['La cuota vuelve a quedar pendiente y el estado de la membresía se recalcula.', VOID_PAYMENT_RECEIPTS_TEXT]}
+          onClose={() => { setVoiding(null); }}
+          onConfirm={async (reason, key) => {
+            const target = voiding;
+            try {
+              await api.voidPayment(target.payment?.id ?? '', { reason, expectedVersion: target.version }, key);
+              setVoiding(null);
+              await reload('Pago anulado.');
+            } catch (error) {
+              setVoiding(null);
+              snackbar({ message: billingMessage(error) });
+              void query.refetch();
+            }
+          }}
+        />
+      ) : null}
       {dialog === 'add' && m ? <AddAffiliateDialog membership={m} onClose={() => { setDialog(null); }} onSaved={() => void reload('Afiliado añadido.')} /> : null}
       {m && dialog === 'cancel' ? (
         <ConfirmDialog
@@ -163,12 +212,16 @@ function MembershipBody({
   onAdd,
   onCancel,
   onRemove,
+  onPayFee,
+  onVoidFeePayment,
 }: {
   membership: PatientMembershipView;
   timeZone: string;
   onAdd: () => void;
   onCancel: () => void;
   onRemove: (person: { patientId: string; name: string }) => void;
+  onPayFee: (fee: MembershipFeeView) => void;
+  onVoidFeePayment: (fee: MembershipFeeView) => void;
 }) {
   const detail = membershipStatusDetail(m);
   return (
@@ -230,19 +283,36 @@ function MembershipBody({
         <h3 className="flex items-center gap-space-xs text-body-lg-medium text-on-surface">
           <CalendarClock aria-hidden className="size-5 text-primary" /> Cuotas
         </h3>
-        <p className="text-caption text-on-surface-variant">Se cobran en Caja con la terminal de la clínica. El sistema no guarda datos de tarjeta.</p>
+        <p className="text-caption text-on-surface-variant">Se cobran completas con la terminal de la clínica. El sistema no guarda datos de tarjeta.</p>
         <ul className="flex flex-col divide-y divide-outline-variant rounded-md bg-surface-container-low dark:bg-surface-container">
           {m.fees.map((f) => (
-            <li key={f.id} className="flex flex-wrap items-center justify-between gap-space-sm px-space-md py-space-sm">
+            <li key={f.id} className="flex flex-wrap items-center justify-between gap-space-sm px-space-md py-space-sm" data-testid="membership-fee" data-kind={f.kind} data-status={f.status}>
               <span className="flex flex-col">
                 <span className="text-body-md-medium text-on-surface">{MEMBERSHIP_FEE_KIND_LABELS[f.kind]}</span>
                 <span className="text-caption text-on-surface-variant">
                   Vence {formatDay(f.dueDate)} · cubre del {formatDay(f.periodStart)} al {formatDay(f.periodEnd)}
                 </span>
+                {f.payment ? (
+                  <span className="text-caption text-on-surface-variant">
+                    {`Pagada: ${PAYMENT_METHOD_LABELS[f.payment.method]} · `}
+                    <DateTimeText value={f.payment.recordedAt} timeZone={timeZone} />
+                    {f.payment.referenceLast4 ? ` · ${maskedReference(f.payment.referenceLast4) ?? ''}` : ''}
+                  </span>
+                ) : null}
               </span>
-              <span className="flex items-center gap-space-sm">
+              <span className="flex flex-wrap items-center gap-space-sm">
                 <MoneyText cents={f.amountCents} />
                 <SemanticChip tone={FEE_TONES[f.status]} label={MEMBERSHIP_FEE_STATUS_LABELS[f.status]} />
+                {f.status === 'pending' && m.abilities.payFee ? (
+                  <Button variant="tonal" onClick={() => { onPayFee(f); }}>
+                    <Wallet aria-hidden className="size-5" /> Cobrar
+                  </Button>
+                ) : null}
+                {f.payment && m.abilities.voidFeePayment ? (
+                  <Button variant="text" aria-label="Anular pago" title="Anular pago" onClick={() => { onVoidFeePayment(f); }}>
+                    <Ban aria-hidden className="size-5 text-error" />
+                  </Button>
+                ) : null}
               </span>
             </li>
           ))}

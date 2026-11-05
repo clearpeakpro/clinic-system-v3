@@ -1,4 +1,4 @@
-import { charges, coverages, ensureStatement, orders, touchStatement, type FieldCipher, type Tx } from '@clinic/db';
+import { charges, coverages, encounters, ensureStatement, orders, payments, touchStatement, type FieldCipher, type Tx } from '@clinic/db';
 import {
   computeStatement,
   isOpenVisitStatus,
@@ -12,7 +12,7 @@ import {
   type StatementVoidedLine,
   type VisitStatus,
 } from '@clinic/shared';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { recalculateVisitBenefits, type BenefitChange } from './membership-benefits.ts';
 
 // El estado de cuenta de una visita (T-027), leído y calculado en el servidor.
@@ -25,11 +25,10 @@ import { recalculateVisitBenefits, type BenefitChange } from './membership-benef
 //    del estado de cuenta. Con la visita cerrada no toca nada: los beneficios
 //    quedan fijos al completarse.
 //  - readStatement(): cargos activos y anulados, cobertura y totales con
-//    computeStatement() de @clinic/shared. Los pagos llegan con T-028: hasta
-//    entonces «Pagado» es $0.00.
-
-/** Lo pagado en la visita. T-028 lo leerá de `payments`. */
-const PAID_CENTS_UNTIL_PAYMENTS = 0;
+//    computeStatement() de @clinic/shared.
+//  - «Pagado» (T-028): la suma de las filas de `payments` de la visita (los
+//    pagos y, en negativo, sus anulaciones).
+//  - Visita «Cancelada» (ADR 0042): estado de cuenta «Anulado».
 
 export interface VisitKey {
   id: string;
@@ -58,11 +57,7 @@ export async function prepareStatement(tx: Tx, visit: VisitKey, now: Date): Prom
 
 /** Totales de la visita (sin líneas): lo que necesita «Completar visita» y la cola. */
 export async function statementTotals(tx: Tx, encounterId: string): Promise<StatementTotals> {
-  const active = await tx
-    .select({ amountCents: charges.amountCents, membershipDiscountCents: charges.membershipDiscountCents })
-    .from(charges)
-    .where(and(eq(charges.encounterId, encounterId), eq(charges.status, 'active')));
-  return computeStatement({ lines: active, coverage: await statementCoverage(tx, encounterId), paidCents: PAID_CENTS_UNTIL_PAYMENTS });
+  return (await totalsByVisit(tx, [encounterId])).get(encounterId) ?? computeStatement({ lines: [], coverage: null, paidCents: 0 });
 }
 
 /** Totales de varias visitas a la vez (la cola de Caja), con lo guardado en sus cargos. */
@@ -76,6 +71,8 @@ export async function totalsByVisit(tx: Tx, encounterIds: string[]): Promise<Map
     .select({ encounterId: coverages.encounterId, type: coverages.type, term: coverages.term, amountCents: coverages.amountCents, coinsuranceBp: coverages.coinsuranceBp })
     .from(coverages)
     .where(inArray(coverages.encounterId, encounterIds));
+  const paid = await paidByVisit(tx, encounterIds);
+  const statuses = await tx.select({ id: encounters.id, status: encounters.status }).from(encounters).where(inArray(encounters.id, encounterIds));
   const result = new Map<string, StatementTotals>();
   for (const id of encounterIds) {
     const cov = covs.find((c) => c.encounterId === id);
@@ -84,7 +81,8 @@ export async function totalsByVisit(tx: Tx, encounterIds: string[]): Promise<Map
       computeStatement({
         lines: rows.filter((r) => r.encounterId === id),
         coverage: cov ? toCoverage(cov) : null,
-        paidCents: PAID_CENTS_UNTIL_PAYMENTS,
+        paidCents: paid.get(id) ?? 0,
+        voided: statuses.find((s) => s.id === id)?.status === 'CANCELLED',
       }),
     );
   }
@@ -121,6 +119,7 @@ export async function readStatement(tx: Tx, cipher: FieldCipher, visit: VisitKey
       .filter((r) => r.charge.status === 'voided')
       .map(async ({ charge }) => ({
         id: charge.id,
+        quantity: charge.quantity,
         source: charge.source as ChargeSource,
         itemCode: charge.itemCode,
         itemName: charge.itemName,
@@ -131,9 +130,21 @@ export async function readStatement(tx: Tx, cipher: FieldCipher, visit: VisitKey
   const totals = computeStatement({
     lines: active.map((r) => ({ amountCents: r.charge.amountCents, membershipDiscountCents: r.charge.membershipDiscountCents })),
     coverage,
-    paidCents: PAID_CENTS_UNTIL_PAYMENTS,
+    paidCents: (await paidByVisit(tx, [visit.id])).get(visit.id) ?? 0,
+    voided: visit.status === 'CANCELLED',
   });
   return { version, coverage, totals, lines, voided };
+}
+
+/** Lo pagado en cada visita: pagos menos anulaciones (las filas inversas ya son negativas). */
+export async function paidByVisit(tx: Tx, encounterIds: string[]): Promise<Map<string, number>> {
+  if (encounterIds.length === 0) return new Map();
+  const rows = await tx
+    .select({ encounterId: payments.encounterId, paidCents: sql<string>`coalesce(sum(${payments.amountCents}), 0)` })
+    .from(payments)
+    .where(inArray(payments.encounterId, encounterIds))
+    .groupBy(payments.encounterId);
+  return new Map(rows.map((r) => [r.encounterId ?? '', Number(r.paidCents)]));
 }
 
 async function statementCoverage(tx: Tx, encounterId: string): Promise<StatementCoverage | null> {

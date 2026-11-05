@@ -1,11 +1,14 @@
 import { COVERAGE_TYPE_LABELS, INSURANCE_TERM_LABELS, STATEMENT_RULE_TEXT, STATEMENT_STATUS_LABELS, type BillingStatement, type StatementTotals } from '@clinic/shared';
 import { cn, MoneyText, SemanticChip } from '@clinic/ui';
-import { BadgePercent, Info, ShieldCheck, Wallet } from 'lucide-react';
+import { BadgePercent, HandCoins, Info, ShieldCheck, Wallet } from 'lucide-react';
 import { STATEMENT_STATUS_TONE, totalRows } from '../../lib/billing.ts';
 
 // Totales del estado de cuenta (S-CAJ-07 y S-CAJ-16 / S-CLI-23), tal como los
 // calcula el servidor: la web no suma ni resta nada (CLAUDE.md, regla 4).
 // «A cargo del seguro» va en su propia fila y no es un descuento (ADR 0035).
+// T-028: un saldo negativo se muestra como «Crédito a favor» (el servidor
+// manda su valor en positivo), sin el rojo de un error; en V1 no hay
+// reembolsos.
 
 /** Chip de la cobertura («Seguro · Copago») y la frase de la regla. */
 export function CoverageRule({ coverage, totals }: { coverage: BillingStatement['coverage']; totals: StatementTotals }) {
@@ -45,12 +48,18 @@ export function StatementTotalsView({ totals, className }: { totals: StatementTo
         ))}
       </dl>
       <div className="flex flex-wrap items-center justify-between gap-space-sm border-t border-outline-variant/60 pt-space-sm" data-testid="total-balance">
-        <span className="flex items-center gap-space-xs text-title-md text-on-surface">
-          <Wallet aria-hidden className="size-5 text-primary" /> Saldo
-        </span>
+        {totals.creditCents > 0 ? (
+          <span className="flex items-center gap-space-xs text-title-md text-on-surface">
+            <HandCoins aria-hidden className="size-5 text-primary" /> Crédito a favor
+          </span>
+        ) : (
+          <span className="flex items-center gap-space-xs text-title-md text-on-surface">
+            <Wallet aria-hidden className="size-5 text-primary" /> Saldo
+          </span>
+        )}
         <span className="flex flex-wrap items-center gap-space-sm">
           <SemanticChip tone={STATEMENT_STATUS_TONE[totals.status]} label={STATEMENT_STATUS_LABELS[totals.status]} />
-          <MoneyText cents={totals.balanceCents} className="text-headline-md font-bold text-on-surface" />
+          <MoneyText cents={totals.creditCents > 0 ? totals.creditCents : totals.balanceCents} className="text-headline-md font-bold text-on-surface" />
         </span>
       </div>
     </div>

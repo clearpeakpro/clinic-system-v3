@@ -1,5 +1,5 @@
 import { ageLabel, ageOn, canSchedule, formatPhone, shortAppointmentCode, type PatientAppointments, type PatientEncounters, type PatientProfile } from '@clinic/shared';
-import { AsyncView, Button, CodeText, DateTimeText, EmptyState, SemanticChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
+import { AsyncView, Button, CodeText, DateTimeText, SemanticChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
@@ -32,6 +32,7 @@ import { useAfterAppointmentChange } from '../components/appointments/appointmen
 import { AppointmentFormDialog } from '../components/appointments/appointment-form-dialog.tsx';
 import { PatientAppointmentsTab, UpcomingAppointment, type PatientAppointmentsQuery } from '../components/patients/patient-appointments.tsx';
 import { LastEncounter, PatientEncountersTab, type PatientEncountersQuery } from '../components/patients/patient-encounters.tsx';
+import { PatientBalancesTab } from '../components/patients/patient-balances.tsx';
 import { PatientMembershipCardView } from '../components/patients/patient-membership.tsx';
 import { api, type ApiError } from '../lib/api.ts';
 import { formatDay } from '../lib/catalog.ts';
@@ -62,8 +63,6 @@ const TABS: readonly TabItem<TabKey>[] = [
   { key: 'saldos', label: 'Saldos', icon: Wallet },
 ];
 
-/** Los saldos llegan con la fase 3B (T-027 y siguientes). */
-const PHASE_3 = 'Llega en la fase 3.';
 
 export function PatientPage({ sede, patientId }: { sede: string; patientId: string }) {
   const me = useMe();
@@ -79,7 +78,9 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
   const canAppointments = permissions.includes('appointments.access');
   const canManageAppointments = canAppointments && permissions.includes('appointments.manage');
   const afterAppointment = useAfterAppointmentChange();
-  const tabs = canAppointments ? TABS : TABS.filter((t) => t.key !== 'citas');
+  // T-028: Saldos (S-CAJ-17 / S-PAC-10) para Recepción y el Proveedor; Enfermería no la ve.
+  const canBalances = permissions.includes('balances.view');
+  const tabs = TABS.filter((t) => (t.key !== 'citas' || canAppointments) && (t.key !== 'saldos' || canBalances));
   const [tab, setTab] = useState<TabKey>('resumen');
   const appointments: PatientAppointmentsQuery = useInfiniteQuery<PatientAppointments, ApiError>({
     queryKey: ['patient-appointments', patientId],
@@ -157,9 +158,9 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
                 <PatientAppointmentsTab query={appointments} sede={sede} timeZone={timeZone} />
               ) : tab === 'visitas' ? (
                 <PatientEncountersTab query={encounters} timeZone={timeZone} />
-              ) : (
-                <EmptyState icon={Wallet} title="No hay saldos pendientes." description={PHASE_3} />
-              )}
+              ) : tab === 'saldos' && canBalances ? (
+                <PatientBalancesTab patientId={p.id} timeZone={timeZone} />
+              ) : null}
             </Tabs>
             {dialog === 'edit' ? (
               <EditPatientDialog

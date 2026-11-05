@@ -71,7 +71,7 @@ Las de `CLAUDE.md` y las de la fase 2, más estas:
 | T-026 — Ejecutar órdenes y cola de órdenes | 3B | 3 días | T-025 | — |
 | T-026b — Planes de membresía y beneficios (partes A y B) | 3B | 5–6 días | T-026 | [0034](../decisions/0034-membresias-fase-3.md), [0041](../decisions/0041-sin-descuento-manual-caja.md) |
 | T-027 — Caja: cola y estado de cuenta | 3B | 4 días | T-026b | [0034](../decisions/0034-membresias-fase-3.md), [0035](../decisions/0035-reparto-importe-seguro.md), [0041](../decisions/0041-sin-descuento-manual-caja.md) |
-| T-028 — Pagos, anulaciones y saldos | 3B | 3 días | T-027 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md) |
+| T-028 — Pagos, anulaciones y saldos | 3B | 3 días | T-027 | [0033](../decisions/0033-acciones-administrativas-flujo-clinico.md), [0042](../decisions/0042-pagos-saldos-visitas-cerradas.md) |
 | T-029 — Recibos | 3B | 2–3 días | T-028 | [0037](../decisions/0037-recibo-80mm-es-en.md) |
 | T-030 — Fusionar pacientes | 3B | 2–3 días | T-028 | [0032](../decisions/0032-fusionar-pacientes.md) |
 | T-031 — Reporte diario de la sede | 3B | 2–3 días | T-029 | [0038](../decisions/0038-reporte-diario-antes-piloto.md) |
@@ -658,7 +658,7 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 **Decisiones al planificarla (2026-11-04, [ADR 0035](../decisions/0035-reparto-importe-seguro.md)):**
 - Coaseguro: la parte del paciente se redondea al centavo más cercano, con la mitad hacia arriba, y el seguro cubre el resto exacto.
 - Estado del estado de cuenta: «Pagado» también cuando el total a pagar es $0.00.
-- Una visita cerrada como «Cancelada» o «Se retiró» muestra su estado de cuenta en solo lectura, con su saldo calculado. Qué pasa con ese saldo se decide en T-028 (hay que preguntarlo al planificarla).
+- Una visita cerrada como «Cancelada» o «Se retiró» muestra su estado de cuenta en solo lectura, con su saldo calculado. Qué pasa con ese saldo lo decidió el dueño al planificar T-028 ([ADR 0042](../decisions/0042-pagos-saldos-visitas-cerradas.md)).
 - «Agregar cargo» lleva `Idempotency-Key`.
 
 **Cómo quedó (2026-11-04):**
@@ -695,7 +695,23 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 
 **Decisiones (resueltas el 2026-11-01):** P-17 ([ADR 0033](../decisions/0033-acciones-administrativas-flujo-clinico.md)). Anulan cargos y pagos el Propietario o el Administrador **con rol clínico en la sede**; Recepción cobra, pero no anula.
 
-**Pregunta pendiente para el plan (de T-027, 2026-11-04):** qué pasa con el saldo de una visita cerrada como «Cancelada» o «Se retiró» que tiene cargos activos: si se le sigue debiendo al paciente (pestaña Saldos) o el estado de cuenta queda «Anulado». Se pregunta al dueño antes de programar T-028.
+**Decisiones al planificarla (2026-11-05, [ADR 0042](../decisions/0042-pagos-saldos-visitas-cerradas.md)):**
+- **Visitas cerradas:**
+  - «Se retiró» se sigue debiendo: el saldo aparece en Saldos;
+  - «Cancelada» deja el estado de cuenta «Anulado», con saldo $0.00 y lo pagado como «Crédito a favor»;
+  - regla nueva: una visita con órdenes completadas no se puede cerrar como «Cancelada», solo como «Se retiró». El servidor lo rechaza y la pantalla lo explica.
+- **Cuotas de membresía:**
+  - se cobran completas, un pago por cuota;
+  - anular el pago de una cuota la devuelve a pendiente. Si eso cancela la membresía (la cuota inicial pasados los 30 días), el diálogo lo avisa antes («Esto cancelará la membresía»);
+  - con la membresía ya cancelada, la cuota queda «Anulada», sin deuda.
+- **Referencia:** solo se guardan los últimos 4 caracteres, cifrados, en cualquier método.
+- **Saldos:** Recepción ve la pestaña con «Cobrar»; el Proveedor, en solo lectura con «Abrir visita». Enfermería no la ve.
+- **Caja de la visita:** la abre también quien anula con un rol clínico. Ve el estado de cuenta completo y anula, pero solo cobra si además tiene Recepción.
+- **Cuándo se cobra y se anula:**
+  - se cobra en cualquier estado abierto, con la visita completada y con «Se retiró»;
+  - se anula también con la visita cerrada;
+  - «Agregar cargo», solo con la visita abierta.
+- **Cargos:** siguen con el mecanismo de T-025. Los pagos se anulan con una fila inversa.
 
 **Objetivo:** Recepción registra pagos manuales sin duplicarlos nunca, las anulaciones dejan rastro y el saldo que queda se cobra después desde el perfil.
 
@@ -721,6 +737,54 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - el saldo de una visita completada se cobra desde Saldos;
 - pagar la cuota inicial activa la membresía y pagar una mensualidad vencida la reactiva (reloj fijado);
 - E2E `pagos.spec.ts`.
+
+**Cómo quedó (2026-11-05):**
+- **Base de datos:** migraciones `0045` y `0046`.
+  - `payments`, append-only (solo `SELECT` e `INSERT`), con RLS forzada.
+  - Cada fila es un pago o la anulación de uno, de una visita o de una cuota de membresía. La anulación es una fila inversa, una sola por pago, con el motivo cifrado.
+  - De la referencia solo se guardan los últimos 4 caracteres, cifrados.
+  - Aislamiento en `packages/db/test/payments.test.ts`.
+- **Compartido:**
+  - estado «Anulado» y `creditCents` en `computeStatement()`;
+  - `recordPaymentSchema`, `payMembershipFeeSchema` (sin monto) y `voidSchema`;
+  - `voidCancelsMembership()`;
+  - `blockedByCompletedOrders` en la máquina de estados;
+  - permisos `billing.void` y `balances.view`.
+- **API:** `apps/api/src/payments.ts`, con el reloj inyectable. Todas las escrituras llevan `Idempotency-Key`.
+  - **Registrar pago:** `POST /api/encounters/:id/payments`.
+    - En una transacción: la visita y su estado de cuenta con `FOR UPDATE`, la versión, el saldo recalculado y un monto que no lo supere (`409 amount_exceeds_balance` con el saldo).
+    - Después el pago, la auditoría con el antes y el después y `billing.changed`.
+  - **Anular un cargo de Caja:** `POST /api/charges/:id/void`. Los de orden, no (`409 charge_from_order`).
+  - **Anular un pago:** `POST /api/payments/:id/void`, de una visita o de una cuota.
+  - **Cobrar una cuota:** `POST /api/membership-fees/:id/payments`, con `settleMembership()` en la misma transacción.
+  - **Saldos:** `GET /api/patients/:id/balances`, auditado.
+  - «Cerrar visita» como «Cancelada» con órdenes completadas: `409 completed_orders`.
+- **Web:**
+  - tarjeta «Pagos» (S-CAJ-11/12) al lado del estado de cuenta;
+  - diálogos «Anular cargo» y «Anular pago» (S-CAJ-10/13);
+  - «Crédito a favor» y «Anulado» en los totales;
+  - pestaña Saldos (S-CAJ-17 / S-PAC-10);
+  - «Cobrar» y «Anular pago» en las cuotas de la tarjeta «Membresía»;
+  - «Cancelada» bloqueada y explicada en «Cerrar visita».
+- **Semilla:** las cuotas iniciales ya pagadas de las membresías ficticias tienen su pago en efectivo.
+- **Pruebas:**
+  - `apps/api/test/payments.test.ts`, con el reloj fijado:
+    - dos pulsaciones o un reintento con la misma clave registran un solo pago;
+    - dos cajas a la vez no superan el saldo;
+    - las anulaciones no borran nada y se auditan con el antes y el después;
+    - Recepción y un Administrador sin rol clínico no anulan;
+    - el saldo de una visita completada se cobra desde Saldos;
+    - «Cancelada» y «Se retiró»;
+    - la cuota inicial activa la membresía, una mensualidad vencida la reactiva, y anular pasados los 30 días la cancela.
+  - `packages/shared/test/billing.test.ts` y `apps/web/src/components/billing/payments-card.test.tsx`: Enter no envía y un reintento usa la misma clave.
+  - E2E `apps/web/e2e/pagos.spec.ts`.
+- **Diferencias con el manual:**
+  - Enter no registra el pago;
+  - no se muestra «Estado de cuenta v{n}»;
+  - Enfermería no ve la pestaña Saldos;
+  - la referencia se guarda solo con sus últimos 4 caracteres, en todos los métodos;
+  - el motivo de una anulación tiene un máximo de 200 caracteres;
+  - el Administrador anula solo con un rol clínico (ADR 0033).
 
 ## T-029 — Recibos
 

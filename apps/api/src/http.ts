@@ -17,6 +17,9 @@ import {
   saveVitalsSchema,
   sendToProviderSchema,
   addChargeSchema,
+  payMembershipFeeSchema,
+  recordPaymentSchema,
+  voidSchema,
   assignOrderSchema,
   cancelOrderSchema,
   completeOrderSchema,
@@ -94,6 +97,7 @@ import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { BillingService } from './billing.ts';
 import { EncounterService } from './encounters.ts';
+import { PaymentService } from './payments.ts';
 import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
 import { NursingService } from './nursing.ts';
@@ -1290,6 +1294,57 @@ export class BillingController {
   }
 }
 
+/**
+ * Pagos, anulaciones y saldos (T-028; S-CAJ-10 a 13, S-CAJ-17, S-PAC-10).
+ * Cobrar (una visita o una cuota de membresía): Recepción (checkout.access).
+ * Anular cargos de Caja y pagos: billing.void con un rol clínico en la sede
+ * (ADR 0033). Saldos: balances.view (Recepción y Proveedor). Todas las
+ * escrituras con Idempotency-Key; el servicio valida el cuerpo.
+ */
+@Controller()
+export class PaymentsController {
+  readonly #payments: PaymentService;
+  constructor(@Inject(PaymentService) payments: PaymentService) {
+    this.#payments = payments;
+  }
+
+  @Post('encounters/:id/payments')
+  @RequirePermission('patients.access', 'checkout.access')
+  record(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(recordPaymentSchema, body);
+    return this.#payments.recordPayment(principalOf(request), id(encounterId), body, key, metaOf(request));
+  }
+
+  @Post('charges/:id/void')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'billing.void')
+  voidCharge(@Req() request: FastifyRequest, @Param('id') chargeId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(voidSchema, body);
+    return this.#payments.voidCharge(principalOf(request), id(chargeId), body, key, metaOf(request));
+  }
+
+  @Post('payments/:id/void')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'billing.void')
+  voidPayment(@Req() request: FastifyRequest, @Param('id') paymentId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(voidSchema, body);
+    return this.#payments.voidPayment(principalOf(request), id(paymentId), body, key, metaOf(request));
+  }
+
+  @Post('membership-fees/:id/payments')
+  @RequirePermission('patients.access', 'checkout.access')
+  payFee(@Req() request: FastifyRequest, @Param('id') feeId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(payMembershipFeeSchema, body);
+    return this.#payments.payFee(principalOf(request), id(feeId), body, key, metaOf(request));
+  }
+
+  @Get('patients/:id/balances')
+  @RequirePermission('patients.access', 'balances.view')
+  balances(@Req() request: FastifyRequest, @Param('id') patientId: string) {
+    return this.#payments.balances(principalOf(request), id(patientId), metaOf(request));
+  }
+}
+
 /** S-CLI-02 Cola de proveedor (T-023): el rol Proveedor (provider_queue.access) con patients.access. Lectura auditada. */
 @Controller('provider')
 export class ProviderController {
@@ -1449,6 +1504,7 @@ export interface ApiProviders {
   provider: ProviderService;
   orders: OrderService;
   billing: BillingService;
+  payments: PaymentService;
   kiosk: KioskService;
   kioskAdmin: KioskAdminService;
   kioskArrivals: KioskArrivalService;
@@ -1485,6 +1541,7 @@ export function createApiModule(providers: ApiProviders) {
       ProviderController,
       OrdersController,
       BillingController,
+      PaymentsController,
       LocationKiosksController,
       KioskController,
       KioskArrivalsController,
@@ -1509,6 +1566,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: ProviderService, useValue: providers.provider },
       { provide: OrderService, useValue: providers.orders },
       { provide: BillingService, useValue: providers.billing },
+      { provide: PaymentService, useValue: providers.payments },
       { provide: KioskService, useValue: providers.kiosk },
       { provide: KioskAdminService, useValue: providers.kioskAdmin },
       { provide: KioskArrivalService, useValue: providers.kioskArrivals },

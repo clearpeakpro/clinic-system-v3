@@ -146,7 +146,7 @@ describe('T-018 pantalla de la visita', () => {
       appointmentType: null,
       provider: null,
       coverage: { type: 'insurance', insurerName: 'Aseguradora Ficticia Dos', memberId: 'MBR-1234', term: 'coinsurance', coinsuranceBp: 2000, amountCents: null, version: 1 },
-      abilities: { actions: ['send_to_nurse'], close: true, forceTargets: [], assignProvider: true, assignSelf: false, editCoverage: true },
+      abilities: { actions: ['send_to_nurse'], close: true, cancelBlocked: false, forceTargets: [], assignProvider: true, assignSelf: false, editCoverage: true },
     });
     expect(d.code).toMatch(/^NOR1-V-\d{6}$/);
     expect(d.timeline).toEqual([
@@ -154,7 +154,7 @@ describe('T-018 pantalla de la visita', () => {
     ]);
     // Enfermería la abre en solo lectura; quien registró aparece con su nombre.
     const nurse = await detail(enfermeria, id);
-    expect(nurse.abilities).toEqual({ actions: [], close: false, forceTargets: [], assignProvider: false, assignSelf: false, editCoverage: false });
+    expect(nurse.abilities).toEqual({ actions: [], close: false, cancelBlocked: false, forceTargets: [], assignProvider: false, assignSelf: false, editCoverage: false });
     expect(nurse.timeline[0]?.actor).toEqual({ kind: 'user', name: 'Persona vi-rec' });
     expect((await readAudit(`action = 'encounter.view' and entity_id = $1`, [id])).length).toBe(2);
     // Otra sede, otra organización o sin rol clínico: no la ven.

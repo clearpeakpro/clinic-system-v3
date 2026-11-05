@@ -19,7 +19,7 @@ const statement = (over: Partial<BillingStatement> = {}): BillingStatement => ({
   coverage: { type: 'insurance', term: 'copay' },
   statementVersion: 2,
   // Ninguna cifra sale de las otras: 111 + 222 ≠ 999, etc.
-  totals: { subtotalCents: 99900, discountCents: 1100, insuranceCents: 2200, totalDueCents: 3300, paidCents: 4400, balanceCents: 5500, status: 'partial', rule: 'insurance_copay' },
+  totals: { subtotalCents: 99900, discountCents: 1100, insuranceCents: 2200, totalDueCents: 3300, paidCents: 4400, balanceCents: 5500, creditCents: 0, status: 'partial', rule: 'insurance_copay' },
   view: 'full',
   lines: [
     {
@@ -55,6 +55,9 @@ const statement = (over: Partial<BillingStatement> = {}): BillingStatement => ({
   ],
   voided: [],
   editable: true,
+  payments: [],
+  canPay: true,
+  canVoid: false,
   ...over,
 });
 
@@ -83,10 +86,33 @@ describe('estado de cuenta (S-CAJ-07)', () => {
   });
 
   it('sin cargos y con la visita cerrada: sin «Agregar cargo» y en solo lectura', () => {
-    render(<StatementCard statement={statement({ lines: [], editable: false })} onAddCharge={() => undefined} />);
+    render(<StatementCard statement={statement({ lines: [], editable: false, encounter: { ...statement().encounter, status: 'COMPLETED' } })} onAddCharge={() => undefined} />);
     expect(screen.getByText('Esta visita aún no tiene cargos.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Agregar cargo/ })).toBeNull();
     expect(screen.getByText('Esta visita está cerrada. El estado de cuenta es de solo lectura.')).toBeTruthy();
+  });
+
+  it('T-028: un saldo negativo es «Crédito a favor», con el valor que manda el servidor; «Cancelada» es «Anulado»', () => {
+    const totals = { ...statement().totals, balanceCents: -2000, creditCents: 7700, status: 'voided' as const };
+    render(<StatementCard statement={statement({ totals, editable: false, encounter: { ...statement().encounter, status: 'CANCELLED' } })} onAddCharge={() => undefined} />);
+    const balance = screen.getByTestId('total-balance');
+    expect(balance.textContent).toContain('Crédito a favor');
+    expect(balance.textContent).toContain('$77.00');
+    expect(balance.textContent).not.toContain('-$');
+    expect(balance.textContent).toContain('Anulado');
+    expect(screen.getByText(/el estado de cuenta está anulado/)).toBeTruthy();
+  });
+
+  it('T-028: «Anular cargo» solo para quien anula, y deshabilitado en los cargos de orden', () => {
+    const { unmount } = render(<StatementCard statement={statement()} onAddCharge={() => undefined} onVoidCharge={() => undefined} />);
+    expect(screen.queryByRole('button', { name: /Anular cargo/ })).toBeNull();
+    unmount();
+    const voided: string[] = [];
+    render(<StatementCard statement={statement({ canVoid: true })} onAddCharge={() => undefined} onVoidCharge={(l) => voided.push(l.id)} />);
+    const button = screen.getAllByRole('button', { name: 'Anular cargo CONS-INICIAL' })[0] as HTMLButtonElement;
+    button.click();
+    expect(voided).toEqual(['l2']);
+    expect((screen.getAllByRole('button', { name: /se anulan cancelando la orden/ })[0] as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('los totales de la sección Facturación también son los del servidor', () => {
@@ -105,6 +131,8 @@ describe('revisión: ningún archivo de Caja hace cuentas con importes', () => {
     join(here, '../../lib/billing.ts'),
     join(here, '../../pages/checkout.tsx'),
     join(here, '../../pages/checkout-queue.tsx'),
+    join(here, '../patients/patient-balances.tsx'),
+    join(here, '../patients/patient-membership.tsx'),
   ];
 
   it('la revisión detecta una cuenta', () => {

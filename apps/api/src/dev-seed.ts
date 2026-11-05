@@ -16,6 +16,7 @@ import {
   patientMembershipEvents,
   patientMembershipMembers,
   patientMemberships,
+  payments,
   user as userTable,
   type FieldCipher,
 } from '@clinic/db';
@@ -252,7 +253,7 @@ export async function seedDevAppointments(
 // Esencial ya activo (cuota inicial pagada) y, en Norte, la madre y el hijo
 // con el mismo teléfono en el plan Familiar. Empiezan hoy (día de la sede de
 // inscripción, según el reloj) y su día de cobro es el de hoy. La cuota
-// inicial se marca pagada aquí porque los pagos llegan con T-028.
+// inicial ya está pagada, con su pago ficticio en efectivo (T-028).
 // Idempotente: un paciente que ya está en una membresía no se toca.
 
 export const DEMO_MEMBERSHIPS: readonly { org: Org; plan: string; holder: string; affiliates: string[]; site: 0 | 1; receptionist: string }[] = [
@@ -328,7 +329,10 @@ export async function seedDevMemberships(app: Pick<ClinicApp, 'pool'>, options: 
           addedAt: now,
         });
       }
+      // T-028: la cuota inicial pagada lleva su pago ficticio en efectivo, sin referencia.
+      const feeId = uuidv7();
       await tx.insert(membershipFees).values({
+        id: feeId,
         organizationId: demo.org.id,
         membershipId: id,
         kind: 'initial',
@@ -337,6 +341,17 @@ export async function seedDevMemberships(app: Pick<ClinicApp, 'pool'>, options: 
         status: 'paid',
         paidAt: now,
         createdAt: now,
+      });
+      await tx.insert(payments).values({
+        organizationId: demo.org.id,
+        locationId: site.id,
+        patientId: demo.holder,
+        membershipFeeId: feeId,
+        kind: 'payment',
+        method: 'cash',
+        amountCents: fee.initialFeeCents,
+        recordedByMembershipId: me.id,
+        recordedAt: now,
       });
       await tx.insert(patientMembershipEvents).values([
         { organizationId: demo.org.id, membershipId: id, action: 'enrolled', fromStatus: null, toStatus: 'pending_payment', actorType: 'user', actorMembershipId: me.id, occurredAt: now },
