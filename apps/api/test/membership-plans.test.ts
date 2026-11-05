@@ -83,7 +83,11 @@ describe('T-026b planes de membresía y beneficios', () => {
     const total = await detail(plans.find((p) => p.code === 'TOTAL')?.id ?? '');
     const followUp = total.benefits.find((b) => b.nameEs === 'Consultas de seguimiento o enfermedad');
     expect(followUp).toMatchObject({ type: 'included', quantityPerYear: 3, quotaMode: 'shared', includesSameVisitLabs: true });
-    expect(followUp?.items.map((i) => [i.kind, i.code])).toEqual([['consultations', 'CONS-SEGUIMIENTO']]);
+    // T-027: dos consultas distintas en el mismo «Cupo compartido».
+    expect(followUp?.items.map((i) => [i.kind, i.code]).sort()).toEqual([
+      ['consultations', 'CONS-ENFERMEDAD'],
+      ['consultations', 'CONS-SEGUIMIENTO'],
+    ]);
     const checkup = total.benefits.find((b) => b.nameEs === 'Chequeo general');
     expect(checkup?.items.map((i) => i.code)).toEqual(['LAB-A1C', 'LAB-TSH']);
     expect(total.benefits.find((b) => b.category === 'consultation')).toMatchObject({ type: 'discount', discountBp: 10000, nameEs: null });

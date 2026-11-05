@@ -1,4 +1,9 @@
 import type {
+  AddChargeInput,
+  BillingStatement,
+  ChargeAdded,
+  ChargeOptions,
+  CheckoutQueue,
   AssignOrderInput,
   CancelOrderInput,
   CompleteOrderInput,
@@ -419,6 +424,12 @@ export const api = {
     request<OrderSaved>('POST', `/api/orders/${orderId}/cancel`, input, { 'idempotency-key': idempotencyKey }),
   orderLabOptions: (orderId: string) => request<OrderLabOptions>('GET', `/api/orders/${orderId}/lab-options`),
   changeOrderLab: (orderId: string, input: ChangeOrderLabInput) => request<OrderSaved>('POST', `/api/orders/${orderId}/lab`, input),
+  // Caja (T-027; S-CAJ-01 a 08, S-CAJ-16). «Agregar cargo» lleva Idempotency-Key.
+  statement: (encounterId: string) => request<BillingStatement>('GET', `/api/encounters/${encounterId}/statement`),
+  chargeOptions: (encounterId: string) => request<ChargeOptions>('GET', `/api/encounters/${encounterId}/charge-options`),
+  addCharge: (encounterId: string, input: AddChargeInput, idempotencyKey: string) =>
+    request<ChargeAdded>('POST', `/api/encounters/${encounterId}/charges`, input, { 'idempotency-key': idempotencyKey }),
+  checkoutQueue: (search: string) => request<CheckoutQueue>('GET', `/api/checkout/queue${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`),
   // T-026: cola de órdenes (S-CLI-03), asignar, iniciar y completar (S-CLI-19, 20 y 22).
   orderQueue: (tab: OrderQueueTab, mine: boolean) => request<OrderQueue>('GET', `/api/orders/queue?tab=${tab}${mine ? '&mine=1' : ''}`),
   orderAssignees: () => request<OrderAssignee[]>('GET', '/api/orders/assignees'),

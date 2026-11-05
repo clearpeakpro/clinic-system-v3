@@ -68,6 +68,9 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
         invalidate(['encounter', encounterId]);
         // T-026: la Cola de órdenes.
         invalidate(['orders-queue']);
+        // T-027: el estado de cuenta de esa visita y la cola de Caja.
+        invalidate(['statement', encounterId]);
+        invalidate(['checkout-queue']);
       }, delay);
       return;
     }
@@ -97,9 +100,12 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       if (ids.encounters.size > 0) invalidate(['provider-queue']);
       // T-026: la Cola de órdenes muestra el estado de la visita.
       if (ids.encounters.size > 0) invalidate(['orders-queue']);
+      // T-027: la cola de Caja.
+      if (ids.encounters.size > 0) invalidate(['checkout-queue']);
       for (const encounterId of ids.encounters) {
         invalidate(['encounter', encounterId]);
         invalidate(['nursing', encounterId]);
+        invalidate(['statement', encounterId]);
       }
     }, delay);
   };

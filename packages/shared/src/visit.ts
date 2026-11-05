@@ -325,7 +325,7 @@ export const VISIT_ACTION_LABELS: Record<VisitAction, string> = {
   send_to_provider: 'Enviar al proveedor',
   start_consult: 'Iniciar consulta',
   ready_for_checkout: 'Listo para caja',
-  start_checkout: 'Iniciar pago',
+  start_checkout: 'Iniciar caja',
   complete: 'Completar visita',
   close_left_early: 'Se retiró antes',
   close_cancelled: 'Cancelada',

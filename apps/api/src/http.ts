@@ -16,6 +16,7 @@ import {
   saveAssessmentSchema,
   saveVitalsSchema,
   sendToProviderSchema,
+  addChargeSchema,
   assignOrderSchema,
   cancelOrderSchema,
   completeOrderSchema,
@@ -91,6 +92,7 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
+import { BillingService } from './billing.ts';
 import { EncounterService } from './encounters.ts';
 import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
@@ -1246,6 +1248,48 @@ export class OrdersController {
   }
 }
 
+/**
+ * Caja (T-027; S-CAJ-01 a 08, S-CAJ-16, S-CLI-23). El estado de cuenta lo
+ * ven los cuatro roles clínicos (patients.access): Recepción con sus líneas,
+ * Enfermería y el Proveedor solo los totales (lo decide el servicio). La cola,
+ * el catálogo de cargos y «Agregar cargo» (con Idempotency-Key): Recepción
+ * (checkout.access).
+ */
+@Controller()
+export class BillingController {
+  readonly #billing: BillingService;
+  constructor(@Inject(BillingService) billing: BillingService) {
+    this.#billing = billing;
+  }
+
+  @Get('encounters/:id/statement')
+  @RequirePermission('patients.access')
+  statement(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
+    return this.#billing.statement(principalOf(request), id(encounterId), metaOf(request));
+  }
+
+  @Get('encounters/:id/charge-options')
+  @RequirePermission('patients.access', 'checkout.access')
+  chargeOptions(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
+    return this.#billing.chargeOptions(principalOf(request), id(encounterId));
+  }
+
+  @Post('encounters/:id/charges')
+  @RequirePermission('patients.access', 'checkout.access')
+  addCharge(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    // El hash de la clave se calcula con el cuerpo tal como llegó; el servicio lo valida.
+    parse(addChargeSchema, body);
+    return this.#billing.addCharge(principalOf(request), id(encounterId), body, key, metaOf(request));
+  }
+
+  @Get('checkout/queue')
+  @RequirePermission('patients.access', 'checkout.access')
+  queue(@Req() request: FastifyRequest, @Query('q') q: unknown) {
+    if (q !== undefined && (typeof q !== 'string' || q.length > 120)) throw new HttpError(400, 'invalid_request');
+    return this.#billing.queue(principalOf(request), q ?? '', metaOf(request));
+  }
+}
+
 /** S-CLI-02 Cola de proveedor (T-023): el rol Proveedor (provider_queue.access) con patients.access. Lectura auditada. */
 @Controller('provider')
 export class ProviderController {
@@ -1404,6 +1448,7 @@ export interface ApiProviders {
   nursing: NursingService;
   provider: ProviderService;
   orders: OrderService;
+  billing: BillingService;
   kiosk: KioskService;
   kioskAdmin: KioskAdminService;
   kioskArrivals: KioskArrivalService;
@@ -1439,6 +1484,7 @@ export function createApiModule(providers: ApiProviders) {
       NursingController,
       ProviderController,
       OrdersController,
+      BillingController,
       LocationKiosksController,
       KioskController,
       KioskArrivalsController,
@@ -1462,6 +1508,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: NursingService, useValue: providers.nursing },
       { provide: ProviderService, useValue: providers.provider },
       { provide: OrderService, useValue: providers.orders },
+      { provide: BillingService, useValue: providers.billing },
       { provide: KioskService, useValue: providers.kiosk },
       { provide: KioskAdminService, useValue: providers.kioskAdmin },
       { provide: KioskArrivalService, useValue: providers.kioskArrivals },

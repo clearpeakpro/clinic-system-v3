@@ -76,7 +76,8 @@ describe('T-011 catálogo y precios', () => {
     expect(find(nor1, 'PROC-LAVOT')?.price?.effective?.amountCents).toBe(3000);
     expect(nor1.items['referral-sources'][0]).not.toHaveProperty('price');
     // T-026b: las consultas, con precio por sede; la categoría de membresía, en procedimientos y pruebas.
-    expect(nor1.items.consultations.map((c) => c.code)).toEqual(['CONS-INICIAL', 'CONS-SEGUIMIENTO']);
+    // Las de la semilla, en su orden (otras pruebas añaden consultas propias, sin orden, al final).
+    expect(nor1.items.consultations.map((c) => c.code).filter((c) => !/-[0-9A-F]{6}$/.test(c))).toEqual(['CONS-INICIAL', 'CONS-SEGUIMIENTO', 'CONS-ENFERMEDAD']);
     expect(find(nor1, 'CONS-SEGUIMIENTO')?.price?.effective?.amountCents).toBe(4500);
     expect(find(await list(admin, NOR2), 'CONS-SEGUIMIENTO')?.price?.effective?.amountCents).toBe(5000);
     expect(find(nor1, 'CONS-INICIAL')).not.toHaveProperty('membershipCategory');

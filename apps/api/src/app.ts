@@ -23,6 +23,7 @@ import { PatientMembershipService } from './patient-memberships.ts';
 import { AppointmentCommands } from './appointment-commands.ts';
 import { AppointmentService } from './appointments.ts';
 import { systemClock, type Clock } from './clock.ts';
+import { BillingService } from './billing.ts';
 import { EncounterService } from './encounters.ts';
 import { NursingService } from './nursing.ts';
 import { OrderService } from './orders.ts';
@@ -76,6 +77,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     nursing: new NursingService(pool, tenantDb, audit, fieldCipher, clock, encounters),
     provider: new ProviderService(pool, tenantDb, audit, fieldCipher, clock),
     orders: new OrderService(pool, tenantDb, audit, fieldCipher, idempotency, clock, encounters, config.outboxKey),
+    billing: new BillingService(pool, tenantDb, audit, fieldCipher, idempotency, clock),
     kiosk: new KioskService(pool, tenantDb, audit, fieldCipher, idempotency, clock, kioskLimits),
     kioskAdmin: new KioskAdminService(tenantDb, audit, clock),
     kioskArrivals: new KioskArrivalService(tenantDb, audit, fieldCipher, clock),
