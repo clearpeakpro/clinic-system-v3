@@ -215,7 +215,7 @@ test('el Proveedor entra con «Mis citas»; Enfermería no ve Citas; Sur no ve n
   // En el perfil, sin pestaña Citas ni «Próxima cita».
   await page.goto(`/app/NOR1/pacientes/${DEMO.norte.patients[10].id}`);
   await expect(page.getByRole('heading', { name: 'Valentina Castillo Ríos', level: 1 })).toBeVisible();
-  await expect(page.getByRole('tablist', { name: 'Secciones del perfil' }).getByRole('tab')).toHaveText(['Resumen', 'Visitas', 'Saldos']);
+  await expect(page.getByRole('tablist', { name: 'Secciones del perfil' }).getByRole('tab')).toHaveText(['Resumen', 'Visitas']);
   await expect(page.getByRole('heading', { name: 'Próxima cita' })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Menú de cuenta' }).click();

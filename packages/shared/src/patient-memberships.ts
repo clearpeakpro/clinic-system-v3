@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { addDays } from './appointments.ts';
+import type { PaymentView } from './billing.ts';
 import type { MembershipCategory } from './catalog.ts';
 import type { BenefitQuotaMode } from './membership-plans.ts';
 
@@ -215,6 +216,19 @@ export function membershipStanding(m: MembershipStandingInput, today: string): M
   if (initialPending) return { status: 'pending_payment' };
   if (oldest) return { status: 'suspended', since: addDays(oldest, 1), overdueDueDate: oldest };
   return { status: 'active' };
+}
+
+/**
+ * ¿Anular el pago de la cuota `index` cancelaría la membresía? (T-028,
+ * decisión del 2026-11-05.) La cuota vuelve a pendiente y se recalcula el
+ * estado: por ejemplo, la cuota inicial pasados los 30 días de la
+ * inscripción. Una membresía ya cancelada no cambia (la cuota queda anulada,
+ * sin deuda). El diálogo de anular lo avisa antes.
+ */
+export function voidCancelsMembership(m: MembershipStandingInput, index: number, today: string): boolean {
+  if (m.status === 'cancelled' || m.fees[index]?.status !== 'paid') return false;
+  const fees = m.fees.map((f, i) => (i === index ? { ...f, status: 'pending' as const } : f));
+  return membershipStanding({ ...m, fees }, today).status === 'cancelled';
 }
 
 /** ¿Da beneficios hoy? Activa y ya empezada. */
@@ -461,6 +475,11 @@ export interface MembershipFeeView {
   periodEnd: string;
   amountCents: number;
   status: MembershipFeeStatus;
+  version: number;
+  /** El pago vigente de la cuota pagada (T-028); nulo si no está pagada. */
+  payment: PaymentView | null;
+  /** Anular ese pago cancelaría la membresía (decisión del 2026-11-05): el diálogo lo avisa antes. */
+  voidCancelsMembership: boolean;
 }
 
 export interface MembershipHistoryEntry {
@@ -503,7 +522,15 @@ export interface PatientMembershipView {
   hasBenefitsToday: boolean;
   benefitYear: { start: string; end: string };
   version: number;
-  abilities: { addMember: boolean; removeMember: boolean; cancel: boolean };
+  abilities: {
+    addMember: boolean;
+    removeMember: boolean;
+    cancel: boolean;
+    /** Cobrar sus cuotas pendientes (Recepción, checkout.access). */
+    payFee: boolean;
+    /** Anular el pago de una cuota (billing.void con un rol clínico, ADR 0033). */
+    voidFeePayment: boolean;
+  };
 }
 
 export interface PatientMembershipCard {

@@ -1,7 +1,7 @@
 import type { ChargeOption } from '@clinic/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from './api.ts';
-import { billingMessage, chargeQuantityError, checkoutQueueSubtitle, completeWithBalanceText, filterChargeOptions, pendingBalance, totalRows } from './billing.ts';
+import { billingMessage, chargeQuantityError, checkoutQueueSubtitle, completeWithBalanceText, filterChargeOptions, maskedReference, paymentAmountError, pendingBalance, totalRows } from './billing.ts';
 
 // T-027: textos y filtros de Caja. Los importes llegan del servidor; aquí solo se les da formato.
 
@@ -27,7 +27,7 @@ describe('Caja (textos y errores)', () => {
   });
 
   it('las filas de totales llevan los importes tal como llegan, en el orden del ADR 0035', () => {
-    const rows = totalRows({ subtotalCents: 1, discountCents: 2, insuranceCents: 3, totalDueCents: 4, paidCents: 5, balanceCents: 6, status: 'open', rule: 'self_pay' });
+    const rows = totalRows({ subtotalCents: 1, discountCents: 2, insuranceCents: 3, totalDueCents: 4, paidCents: 5, balanceCents: 6, creditCents: 0, status: 'open', rule: 'self_pay' });
     expect(rows.map((r) => [r.label, r.cents])).toEqual([
       ['Subtotal', 1],
       ['Descuento total', 2],
@@ -52,5 +52,18 @@ describe('Caja (textos y errores)', () => {
     expect(chargeQuantityError('0')).not.toBeNull();
     expect(chargeQuantityError('1001')).not.toBeNull();
     expect(chargeQuantityError('2.5')).not.toBeNull();
+  });
+
+  it('T-028: «Monto (USD)» se compara con el saldo del servidor; la referencia, enmascarada', () => {
+    expect(paymentAmountError('', null, 4500)).toBe('Ingrese un monto.');
+    expect(paymentAmountError('45.555', null, 4500)).toBe('Ingrese un monto válido con hasta dos decimales.');
+    expect(paymentAmountError('0', 0, 4500)).toBe('El monto debe ser mayor que cero.');
+    expect(paymentAmountError('45.01', 4501, 4500)).toBe('El monto supera el saldo.');
+    expect(paymentAmountError('45.00', 4500, 4500)).toBeNull();
+    expect(maskedReference('7654')).toBe('Ref. ••••7654');
+    expect(maskedReference(null)).toBeNull();
+    expect(billingMessage(new ApiError(409, 'amount_exceeds_balance'))).toBe('El monto supera el saldo actual. El estado de cuenta se ha actualizado.');
+    expect(billingMessage(new ApiError(409, 'charge_from_order'))).toBe('Los cargos de órdenes se anulan cancelando la orden, no aquí.');
+    expect(billingMessage(new ApiError(409, 'completed_orders'))).toContain('Se retiró antes');
   });
 });

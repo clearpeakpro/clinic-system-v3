@@ -1,15 +1,17 @@
-import type { BillingStatement } from '@clinic/shared';
-import { AsyncView, Button, CodeText, useSnackbar, VisitStatusChip } from '@clinic/ui';
+import type { BillingStatement, StatementLine } from '@clinic/shared';
+import { AsyncView, Button, CodeText, MoneyText, useSnackbar, VisitStatusChip } from '@clinic/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft, CircleCheckBig, ClipboardList, Play, RefreshCw, UserRound } from 'lucide-react';
 import { useState } from 'react';
 import { AddChargeDialog } from '../components/billing/add-charge-dialog.tsx';
 import { CompleteVisitDialog } from '../components/billing/complete-visit-dialog.tsx';
+import { PaymentsCard } from '../components/billing/payments-card.tsx';
 import { StatementCard } from '../components/billing/statement-card.tsx';
+import { VoidDialog } from '../components/billing/void-dialog.tsx';
 import { OpenOrdersDialog } from '../components/encounters/open-orders-dialog.tsx';
 import { api, type ApiError } from '../lib/api.ts';
-import { BILLING_CONFLICT_TEXT, billingMessage, pendingBalance } from '../lib/billing.ts';
+import { BILLING_CONFLICT_TEXT, billingMessage, pendingBalance, VOID_CHARGE_PAID_TEXT } from '../lib/billing.ts';
 import { isOpenOrders, isVersionConflict, VERSION_CONFLICT_TEXT } from '../lib/encounters.ts';
 import { useActiveLocation } from '../lib/session.ts';
 
@@ -18,7 +20,12 @@ import { useActiveLocation } from '../lib/session.ts';
 // (órdenes abiertas), S-CAJ-07 (estado de cuenta) y S-CAJ-08 (agregar cargo).
 //  - Recepción (checkout.access). De Stitch: «Atrás», el nombre del paciente
 //    con «Caja · {código}», el chip de estado y «Completar visita» arriba, y el
-//    estado de cuenta. Las tarjetas «Pagos» y «Recibos» llegan con T-028 y T-029.
+//    estado de cuenta, y a la derecha la tarjeta «Pagos» (T-028, S-CAJ-11 y
+//    12). La tarjeta «Recibos» llega con T-029.
+//  - T-028: la abre también quien anula (Propietario o Administrador con un
+//    rol clínico, ADR 0033), que ve el estado de cuenta completo y «Anular»
+//    pero solo cobra si además tiene Recepción. Se cobra también con la
+//    visita completada o «Se retiró» (ADR 0004 y 0042).
 //  - Se puede agregar cargos en cualquier estado abierto (cobro anticipado);
 //    con la visita cerrada, solo lectura.
 //  - «Completar visita» con saldo: el servidor lo rechaza con el saldo y se
@@ -36,6 +43,7 @@ export function CheckoutPage({ sede, encounterId }: { sede: string; encounterId:
   const [busy, setBusy] = useState(false);
   const [dialog, setDialog] = useState<null | 'charge' | 'open-orders'>(null);
   const [balance, setBalance] = useState<number | null>(null);
+  const [voidingCharge, setVoidingCharge] = useState<StatementLine | null>(null);
   const statement = useQuery<BillingStatement, ApiError>({
     queryKey: ['statement', encounterId],
     queryFn: () => api.statement(encounterId),
@@ -75,7 +83,7 @@ export function CheckoutPage({ sede, encounterId }: { sede: string; encounterId:
 
   const s = statement.data;
   return (
-    <section aria-labelledby="page-title" className="mx-auto flex w-full max-w-5xl flex-col gap-space-lg">
+    <section aria-labelledby="page-title" className="mx-auto flex w-full max-w-7xl flex-col gap-space-lg">
       <div className="flex flex-wrap items-center justify-between gap-space-sm">
         <div className="flex min-w-0 flex-wrap items-center gap-space-md">
           <Button variant="tonal" onClick={back}>
@@ -131,7 +139,33 @@ export function CheckoutPage({ sede, encounterId }: { sede: string; encounterId:
                 </Button>
               ) : null}
             </div>
-            <StatementCard statement={d} onAddCharge={() => { setDialog('charge'); }} />
+            <div className="grid items-start gap-space-lg desk:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <StatementCard statement={d} onAddCharge={() => { setDialog('charge'); }} onVoidCharge={setVoidingCharge} />
+              <PaymentsCard statement={d} timeZone={active?.timezone ?? 'UTC'} onChanged={reload} />
+            </div>
+            {voidingCharge ? (
+              <VoidDialog
+                title="Anular cargo"
+                summary={
+                  <p className="flex items-center justify-between gap-space-sm text-body-lg text-on-surface">
+                    <span className="font-mono">{`${voidingCharge.itemCode} · Cant. ${String(voidingCharge.quantity)}`}</span>
+                    <MoneyText cents={voidingCharge.lineTotalCents} className="font-bold" />
+                  </p>
+                }
+                warnings={[VOID_CHARGE_PAID_TEXT]}
+                onClose={() => { setVoidingCharge(null); }}
+                onConfirm={async (reason, key) => {
+                  try {
+                    await api.voidCharge(voidingCharge.id, { reason, expectedVersion: d.statementVersion }, key);
+                    snackbar({ message: 'Cargo anulado.' });
+                  } catch (error) {
+                    snackbar({ message: billingMessage(error) });
+                  } finally {
+                    await reload();
+                  }
+                }}
+              />
+            ) : null}
             {dialog === 'charge' ? (
               <AddChargeDialog
                 encounterId={d.encounter.id}

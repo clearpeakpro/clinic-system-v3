@@ -9,9 +9,10 @@ import {
   type VisitAction,
   type VisitStatus,
 } from '@clinic/shared';
-import { Button, ConfirmDialog, SegmentedControl, SelectField, Spinner } from '@clinic/ui';
+import { Banner, Button, ConfirmDialog, SegmentedControl, SelectField, Spinner } from '@clinic/ui';
 import { ArrowRight, Lock, LogOut, ShieldAlert, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
+import { CANCEL_BLOCKED_TEXT } from '../../lib/billing.ts';
 
 // S-CLI-07 Barra de acciones de la visita, con S-CLI-09 «Cerrar visita» y
 // S-CLI-10 «Cambio excepcional de estado».
@@ -67,6 +68,7 @@ export function ActionBar({ encounter: e, busy, onCommand }: { encounter: Encoun
       )}
       {dialog === 'close' ? (
         <CloseEncounterDialog
+          cancelBlocked={abilities.cancelBlocked}
           onClose={() => { setDialog(null); }}
           onConfirm={(outcome, reason) => onCommand({ kind: 'close', outcome, reason })}
         />
@@ -83,9 +85,22 @@ export function ActionBar({ encounter: e, busy, onCommand }: { encounter: Encoun
   );
 }
 
-/** S-CLI-09 «Cerrar visita»: resultado y motivo obligatorio; botón rojo. */
-function CloseEncounterDialog({ onClose, onConfirm }: { onClose: () => void; onConfirm: (outcome: CloseOutcome, reason: string) => Promise<void> }) {
+/**
+ * S-CLI-09 «Cerrar visita»: resultado y motivo obligatorio; botón rojo.
+ * T-028 (ADR 0042): con órdenes completadas, «Cancelada» no se ofrece (el
+ * servidor la rechaza) y se explica por qué; solo «Se retiró antes».
+ */
+function CloseEncounterDialog({
+  cancelBlocked,
+  onClose,
+  onConfirm,
+}: {
+  cancelBlocked: boolean;
+  onClose: () => void;
+  onConfirm: (outcome: CloseOutcome, reason: string) => Promise<void>;
+}) {
   const [outcome, setOutcome] = useState<CloseOutcome>('LEFT_EARLY');
+  const outcomes = cancelBlocked ? CLOSE_OUTCOMES.filter((o) => o !== 'CANCELLED') : CLOSE_OUTCOMES;
   return (
     <ConfirmDialog
       open
@@ -101,11 +116,12 @@ function CloseEncounterDialog({ onClose, onConfirm }: { onClose: () => void; onC
     >
       <SegmentedControl<CloseOutcome>
         label="Resultado"
-        options={CLOSE_OUTCOMES.map((o) => ({ value: o, label: CLOSE_OUTCOME_LABELS[o] }))}
+        options={outcomes.map((o) => ({ value: o, label: CLOSE_OUTCOME_LABELS[o] }))}
         value={outcome}
         onChange={setOutcome}
         className="self-start"
       />
+      {cancelBlocked ? <Banner tone="info" title={CANCEL_BLOCKED_TEXT} /> : null}
     </ConfirmDialog>
   );
 }

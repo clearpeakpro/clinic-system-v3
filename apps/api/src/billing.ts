@@ -40,6 +40,7 @@ import type { Clock } from './clock.ts';
 import { hasOpenOrders, lockEncounter, type LockedEncounter } from './encounters.ts';
 import type { IdempotencyService } from './idempotency.ts';
 import type { BenefitChange } from './membership-benefits.ts';
+import { loadPayments, myMembership, paymentViews } from './payments.ts';
 import type { Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
 
@@ -88,8 +89,11 @@ export class BillingService {
   /** S-CAJ-07 / S-CAJ-16: el estado de cuenta de la visita. Recalcula los beneficios si está abierta. Lectura auditada. */
   async statement(actor: Principal, encounterId: string, meta: RequestMeta): Promise<BillingStatement> {
     const ctx = requireContext(actor);
-    const full = actor.permissions.has('checkout.access');
-    return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+    // T-028: quien anula (billing.void con un rol clínico, ADR 0033) también ve el estado de cuenta completo.
+    const canVoid = actor.permissions.has('billing.void') && actor.permissions.has('patients.access');
+    const cashier = actor.permissions.has('checkout.access');
+    const full = cashier || canVoid;
+    const data = await this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
       const now = this.#clock.now();
       const current = await lockEncounter(tx, ctx.locationId, encounterId);
       const { version, changes } = await prepareStatement(tx, current, now);
@@ -99,12 +103,14 @@ export class BillingService {
       const [patient] = full
         ? await tx.select({ id: patients.id, code: patients.code, firstName: patients.firstName, lastName: patients.lastName }).from(patients).where(eq(patients.id, current.patientId))
         : [];
+      const loaded = full ? await loadPayments(tx, this.#cipher, { encounterId: current.id }) : null;
+      const me = loaded ? await myMembership(tx, actor.userId) : '';
       await this.#audit.inTx(tx, ctx.organizationId, {
         action: 'billing.statement_view',
         ...auditBase(actor, current, meta),
         metadata: { encounterCode: current.code, view: full ? 'full' : 'totals', lines: data.lines.length },
       });
-      return {
+      const statement: Omit<BillingStatement, 'payments'> = {
         encounter: { id: current.id, code: current.code, status: current.status, route: current.route, version: current.version, hasOpenOrders: await hasOpenOrders(tx, current.id) },
         patient: patient ?? null,
         coverage: data.coverage ? { type: data.coverage.type, term: data.coverage.term } : null,
@@ -113,9 +119,14 @@ export class BillingService {
         view: full ? 'full' : 'totals',
         lines: full ? data.lines : null,
         voided: full ? data.voided : null,
-        editable: full && isOpenVisitStatus(current.status),
+        editable: cashier && isOpenVisitStatus(current.status),
+        canPay: cashier && current.status !== 'CANCELLED',
+        canVoid: full && canVoid && current.status !== 'CANCELLED',
       };
+      return { statement, loaded, me };
     });
+    const names = data.loaded ? await this.#names(data.loaded.userIds) : new Map<string, string>();
+    return { ...data.statement, payments: data.loaded ? paymentViews(data.loaded.rows, names, data.me) : null };
   }
 
   /** S-CAJ-08: los servicios activos del catálogo con su precio vigente en la sede hoy. */
@@ -366,12 +377,6 @@ async function catalogItem(tx: Tx, kind: BillingItemKind, id: string): Promise<{
 
 function auditBase(actor: Principal, current: LockedEncounter, meta: RequestMeta, entityType: 'encounter' | 'charge' = 'encounter', entityId: string = current.id) {
   return { actorType: 'user' as const, actorId: actor.userId, locationId: current.locationId, entityType, entityId, ...meta };
-}
-
-async function myMembership(tx: Tx, userId: string): Promise<string> {
-  const [mine] = await tx.select({ id: memberships.id }).from(memberships).where(eq(memberships.userId, userId));
-  if (!mine) throw new HttpError(403, 'forbidden');
-  return mine.id;
 }
 
 /** AAAA-MM-DD en la zona de la sede. */

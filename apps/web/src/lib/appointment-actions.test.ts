@@ -67,6 +67,7 @@ describe('agenda en vivo', () => {
       ['provider-queue'],
       ['orders-queue'],
       ['checkout-queue'],
+      ['patient-balances'],
       ['encounter', ID_B],
       ['nursing', ID_B],
       ['statement', ID_B],
@@ -81,6 +82,7 @@ describe('agenda en vivo', () => {
       ['provider-queue'],
       ['orders-queue'],
       ['checkout-queue'],
+      ['patient-balances'],
       ['encounter', ID_B],
       ['nursing', ID_B],
       ['statement', ID_B],
@@ -93,7 +95,7 @@ describe('agenda en vivo', () => {
     onEvent({ name: 'order.changed', ids: { order: ID_A, encounter: ID_B }, status: 'IN_PROGRESS' });
     onEvent({ name: 'order.changed', ids: { order: ID_A, encounter: ID_B }, status: 'COMPLETED' });
     vi.advanceTimersByTime(500);
-    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['orders', ID_B], ['encounter', ID_B], ['orders-queue'], ['statement', ID_B], ['checkout-queue']]);
+    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['orders', ID_B], ['encounter', ID_B], ['orders-queue'], ['statement', ID_B], ['checkout-queue'], ['patient-balances']]);
   });
 
   it('billing.changed (T-027) relee el estado de cuenta de esa visita y la cola de Caja', () => {

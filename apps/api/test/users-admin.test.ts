@@ -388,6 +388,7 @@ describe('Administración › Usuarios', () => {
     // Fecha de nacimiento e inactivar (ADR 0009) solo sirven junto a patients.access.
     expect(me.permissions).toEqual([
       'admin.access',
+      'billing.void',
       'catalog.manage',
       'kiosks.manage',
       'locations.manage',

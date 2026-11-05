@@ -314,6 +314,8 @@ const appOrdersQueueRoute = createRoute({
 
 // S-CAJ-01 Caja y S-CAJ-03 Caja de la visita (T-027): Recepción (checkout.access y patients.access).
 const hasCheckout = (permissions: readonly string[]) => permissions.includes('checkout.access') && permissions.includes('patients.access');
+// T-028 (ADR 0033): la Caja de la visita la abre también quien anula con un rol clínico en la sede.
+const canOpenCheckout = (permissions: readonly string[]) => hasCheckout(permissions) || (permissions.includes('billing.void') && permissions.includes('patients.access'));
 
 const appCheckoutQueueRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -333,7 +335,7 @@ const appCheckoutRoute = createRoute({
   component: function Checkout() {
     const me = useMe();
     const { sede, id } = appCheckoutRoute.useParams();
-    if (me.data && !hasCheckout(me.data.permissions)) return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+    if (me.data && !canOpenCheckout(me.data.permissions)) return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
     if (!UUID_RE.test(id)) return <NotFoundPage />;
     return <CheckoutPage key={id} sede={sede} encounterId={id} />;
   },

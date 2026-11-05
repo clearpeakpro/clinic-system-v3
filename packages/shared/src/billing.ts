@@ -23,10 +23,16 @@ import type { VisitRoute, VisitStatus } from './visit.ts';
 //      · deducible: el paciente paga el monto completo.
 //    No cuenta como descuento.
 //  - Total a pagar = Subtotal − Descuento total − A cargo del seguro.
-//  - Saldo = Total a pagar − Pagado (los pagos llegan con T-028).
+//  - Pagado: la suma de los pagos de la visita y de sus anulaciones (filas
+//    inversas, en negativo; T-028).
+//  - Saldo = Total a pagar − Pagado. Negativo: «Crédito a favor» (no hay
+//    reembolsos en V1); el servidor manda también su valor en positivo.
 //  - Estado: «Pagado» si el saldo es $0.00 o menos (también con un total a
 //    pagar de $0.00, decisión del 2026-11-04); «Pago parcial» con algo
 //    pagado y saldo; «Abierto» sin pagos y con saldo.
+//  - Visita «Cancelada» (decisión del dueño del 2026-11-05, ADR 0042): el
+//    estado de cuenta queda «Anulado», con Total a pagar $0.00 y lo pagado
+//    como «Crédito a favor». «Se retiró» se sigue debiendo.
 
 /** Origen del cargo: «Orden» (T-025) o «Caja» (S-CAJ-08). */
 export const CHARGE_SOURCES = ['order', 'cashier'] as const;
@@ -47,9 +53,9 @@ export const CHARGE_ITEM_GROUP_LABELS: Record<ChargeItemGroup, string> = {
   lab_test: 'Pruebas',
 };
 
-export const STATEMENT_STATUSES = ['open', 'partial', 'paid'] as const;
+export const STATEMENT_STATUSES = ['open', 'partial', 'paid', 'voided'] as const;
 export type StatementStatus = (typeof STATEMENT_STATUSES)[number];
-export const STATEMENT_STATUS_LABELS: Record<StatementStatus, string> = { open: 'Abierto', partial: 'Pago parcial', paid: 'Pagado' };
+export const STATEMENT_STATUS_LABELS: Record<StatementStatus, string> = { open: 'Abierto', partial: 'Pago parcial', paid: 'Pagado', voided: 'Anulado' };
 
 /** La regla que explica lo que debe el paciente (S-CAJ-07, fila de regla). */
 export const STATEMENT_RULES = ['self_pay', 'membership_applied', 'membership_none', 'insurance_copay', 'insurance_coinsurance', 'insurance_deductible'] as const;
@@ -82,8 +88,10 @@ export interface StatementTotals {
   /** «Total a pagar»: lo que debe el paciente. */
   totalDueCents: number;
   paidCents: number;
-  /** «Saldo». */
+  /** «Saldo». Negativo: crédito a favor. */
   balanceCents: number;
+  /** «Crédito a favor»: el saldo negativo, en positivo (0 sin crédito). */
+  creditCents: number;
   status: StatementStatus;
   rule: StatementRule;
 }
@@ -108,7 +116,7 @@ export function patientShareCents(baseCents: number, coverage: StatementCoverage
 }
 
 /** El estado de cuenta: totales, estado y regla. Pura: sin hora ni base de datos. */
-export function computeStatement(input: { lines: readonly StatementInputLine[]; coverage: StatementCoverage | null; paidCents: number }): StatementTotals {
+export function computeStatement(input: { lines: readonly StatementInputLine[]; coverage: StatementCoverage | null; paidCents: number; voided?: boolean }): StatementTotals {
   let subtotalCents = 0;
   let discountCents = 0;
   for (const line of input.lines) {
@@ -116,8 +124,10 @@ export function computeStatement(input: { lines: readonly StatementInputLine[]; 
     discountCents += line.membershipDiscountCents;
   }
   const baseCents = subtotalCents - discountCents;
-  const totalDueCents = patientShareCents(baseCents, input.coverage);
-  const insuranceCents = baseCents - totalDueCents;
+  const patientCents = patientShareCents(baseCents, input.coverage);
+  const insuranceCents = baseCents - patientCents;
+  // Anulado: no se debe nada; lo pagado queda como crédito a favor.
+  const totalDueCents = input.voided === true ? 0 : patientCents;
   const balanceCents = totalDueCents - input.paidCents;
   return {
     subtotalCents,
@@ -126,7 +136,8 @@ export function computeStatement(input: { lines: readonly StatementInputLine[]; 
     totalDueCents,
     paidCents: input.paidCents,
     balanceCents,
-    status: statementStatus(totalDueCents, input.paidCents, balanceCents),
+    creditCents: balanceCents < 0 ? -balanceCents : 0,
+    status: input.voided === true ? 'voided' : statementStatus(totalDueCents, input.paidCents, balanceCents),
     rule: statementRule(input.coverage, discountCents),
   };
 }
@@ -166,6 +177,128 @@ export const addChargeSchema = z
   .strict();
 export type AddChargeInput = z.input<typeof addChargeSchema>;
 
+// --- Pagos (T-028; S-CAJ-11 a 13) ---------------------------------------------
+
+/** Métodos de pago (S-CAJ-11). El sistema solo registra el pago: no hay procesador. */
+export const PAYMENT_METHODS = ['cash', 'credit_card', 'debit_card', 'other'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Efectivo',
+  credit_card: 'Tarjeta de crédito',
+  debit_card: 'Tarjeta de débito',
+  other: 'Otro',
+};
+
+/** Tope de un pago: $1,000,000.00 (el CHECK de la tabla). */
+export const PAYMENT_MAX_CENTS = 100_000_000;
+export const PAYMENT_REFERENCE_MAX = 64;
+/** De la referencia solo se guardan los últimos 4 caracteres (decisión del 2026-11-05). */
+export const PAYMENT_REFERENCE_KEPT = 4;
+export const VOID_REASON_MAX = 200;
+
+const referenceSchema = z.string().trim().max(PAYMENT_REFERENCE_MAX).optional();
+
+/** S-CAJ-11 «Registrar pago»: método, monto en centavos, referencia opcional y la versión del estado de cuenta. */
+export const recordPaymentSchema = z
+  .object({
+    method: z.enum(PAYMENT_METHODS),
+    amountCents: z.number().int().min(1).max(PAYMENT_MAX_CENTS),
+    reference: referenceSchema,
+    expectedVersion: expectedVersionSchema,
+  })
+  .strict();
+export type RecordPaymentInput = z.input<typeof recordPaymentSchema>;
+
+/** Cobro de una cuota de membresía: siempre completa, un pago por cuota (decisión del 2026-11-05), así que no lleva monto. */
+export const payMembershipFeeSchema = z
+  .object({
+    method: z.enum(PAYMENT_METHODS),
+    reference: referenceSchema,
+    /** La versión de la cuota que se leyó. */
+    expectedVersion: expectedVersionSchema,
+  })
+  .strict();
+export type PayMembershipFeeInput = z.input<typeof payMembershipFeeSchema>;
+
+/**
+ * S-CAJ-10 y S-CAJ-13: anular un cargo de Caja o un pago, con motivo. La
+ * versión es la del estado de cuenta (cargo o pago de una visita) o la de la
+ * cuota (pago de una cuota de membresía).
+ */
+export const voidSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(VOID_REASON_MAX),
+    expectedVersion: expectedVersionSchema,
+  })
+  .strict();
+export type VoidInput = z.input<typeof voidSchema>;
+
+/** Los últimos 4 caracteres de la referencia (nulo si no hay). El resto nunca se guarda. */
+export function referenceLast4(reference: string | undefined): string | null {
+  const trimmed = reference?.trim() ?? '';
+  return trimmed === '' ? null : trimmed.slice(-PAYMENT_REFERENCE_KEPT);
+}
+
+/** Un pago de la visita o de una cuota (S-CAJ-12), con su anulación si la tiene. */
+export interface PaymentView {
+  id: string;
+  method: PaymentMethod;
+  amountCents: number;
+  /** «Ref. ••••1234»: solo los últimos 4 (nulo sin referencia). */
+  referenceLast4: string | null;
+  recordedAt: string;
+  /** «Usted» o el nombre de quien lo recibió (nulo si no se conoce). */
+  recordedBy: string | null;
+  voided: { reason: string | null; at: string; by: string | null } | null;
+}
+
+/** Respuesta de «Registrar pago» y de cada repetición con la misma Idempotency-Key. */
+export interface PaymentRecorded {
+  paymentId: string;
+  /** La versión del estado de cuenta (o de la cuota) después del pago. */
+  version: number;
+}
+
+/** Respuesta de una anulación (cargo o pago). */
+export interface VoidResult {
+  id: string;
+  version: number;
+}
+
+// --- Saldos del paciente (S-CAJ-17 / S-PAC-10) -----------------------------------
+
+/** Una visita con saldo en una de las sedes de quien mira. */
+export interface PatientBalanceVisit {
+  encounterId: string;
+  code: string;
+  status: VisitStatus;
+  location: { id: string; code: string; name: string };
+  arrivedAt: string;
+  totalDueCents: number;
+  paidCents: number;
+  balanceCents: number;
+  statementStatus: StatementStatus;
+}
+
+/** Una cuota de membresía pendiente del titular (ADR 0034). */
+export interface PatientBalanceFee {
+  feeId: string;
+  membershipId: string;
+  membershipCode: string;
+  planName: string;
+  kind: 'initial' | 'monthly';
+  dueDate: string;
+  amountCents: number;
+  version: number;
+}
+
+export interface PatientBalances {
+  visits: PatientBalanceVisit[];
+  fees: PatientBalanceFee[];
+  /** Recepción cobra (checkout.access); el Proveedor solo mira. */
+  canCollect: boolean;
+}
+
 // --- Tipos de las respuestas ------------------------------------------------------
 
 /** Una línea del estado de cuenta (S-CAJ-07). Todos los importes, del servidor. */
@@ -192,6 +325,7 @@ export interface StatementLine {
 /** Un cargo anulado: se conserva con su motivo (cifrado en reposo). */
 export interface StatementVoidedLine {
   id: string;
+  quantity: number;
   source: ChargeSource;
   itemCode: string;
   itemName: string;
@@ -215,6 +349,12 @@ export interface BillingStatement {
   voided: StatementVoidedLine[] | null;
   /** Visita abierta y quien mira cobra en Caja: puede agregar cargos. */
   editable: boolean;
+  /** Los pagos de la visita (S-CAJ-12), con los anulados; nulo en la vista de totales. */
+  payments: PaymentView[] | null;
+  /** Puede registrar pagos: cobra en Caja y el estado de cuenta no está anulado (visita abierta, completada o «Se retiró»). */
+  canPay: boolean;
+  /** Puede anular cargos de Caja y pagos (ADR 0033: Propietario o Administrador con rol clínico en la sede). */
+  canVoid: boolean;
 }
 
 /** Un servicio del catálogo para «Agregar cargo», con su precio vigente en la sede hoy (nulo: sin precio). */

@@ -45,3 +45,4 @@ Una decisión por archivo. Para cambiar una, crea un ADR nuevo que la reemplace.
 | [0039. Alertas de espera en el Panel («Alerta» y «Crítico»)](0039-alertas-espera-panel.md) | Aceptada |
 | [0040. Alergias: «Sin alergias conocidas» como estado explícito](0040-alergias-sin-alergias-conocidas.md) | Aceptada |
 | [0041. Caja sin descuentos manuales ni cargos de precio libre](0041-sin-descuento-manual-caja.md) | Aceptada |
+| [0042. Pagos, saldos de visitas cerradas y cobro de cuotas](0042-pagos-saldos-visitas-cerradas.md) | Aceptada |

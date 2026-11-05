@@ -75,6 +75,13 @@ export const PERMISSIONS = [
   // cancelación. Recepción (la etapa 1 es en Recepción). Verla en el perfil:
   // patients.access.
   'memberships.manage',
+  // Caja (T-028; ADR 0033). Anular cargos de Caja y pagos: Propietario y
+  // Administrador, que solo vale junto a patients.access (un rol clínico en
+  // la sede). Recepción cobra, pero no anula. Saldos del paciente (S-CAJ-17 /
+  // S-PAC-10): Recepción (con «Cobrar») y el Proveedor (solo mira);
+  // Enfermería no ve la pestaña.
+  'billing.void',
+  'balances.view',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -108,6 +115,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'patients.deactivate',
     'visits.force_state',
     'nursing.send_exception',
+    'billing.void',
   ],
   administrador: [
     'members.invite',
@@ -120,6 +128,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'patients.deactivate',
     'visits.force_state',
     'nursing.send_exception',
+    'billing.void',
   ],
   recepcion: [
     'panel.view',
@@ -132,6 +141,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'visits.manage',
     'memberships.manage',
     'checkout.access',
+    'balances.view',
     'reports.location',
   ],
   enfermeria: [
@@ -158,6 +168,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'orders.create',
     'orders.execute',
     'orders.cancel',
+    'balances.view',
   ],
 };
 

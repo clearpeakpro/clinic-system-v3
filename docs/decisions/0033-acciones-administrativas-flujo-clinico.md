@@ -30,7 +30,7 @@ El manual reserva al Administrador varias acciones del flujo clínico y de Caja:
 - **Reabrir:** desde una visita cerrada, forzar a un estado abierto la reabre (`closed_at` vuelve a nulo). Si el paciente ya tiene otra visita abierta en la sede: 409 `encounter_already_open`, «El paciente ya tiene una visita abierta en esta sede.» (decisión del 2026-11-01).
 - **Motivo obligatorio** (máx. 500), cifrado en `encounter_events` y en la auditoría `encounter.forced` (`forced`, `reopened`). En el historial (S-CLI-24) la entrada lleva el chip «Forzado» y el motivo.
 - **Pruebas:** `apps/api/test/encounter-screen.test.ts` (Administrador sin rol clínico, Recepción, Enfermería y Proveedor: 403; destinos regulares y cierres: 409; reabrir y su bloqueo) y `apps/web/e2e/visita.spec.ts` (el Propietario de una organización nueva se asigna Recepción y fuerza con motivo).
-- **Pendiente en sus tareas:** la excepción de «Enviar al proveedor» (T-022), la creación de órdenes (T-025) y anular cargos y pagos (T-028). Las dos primeras ya están hechas: ver las secciones de abajo.
+- **Pendiente en sus tareas:** la excepción de «Enviar al proveedor» (T-022), la creación de órdenes (T-025) y anular cargos y pagos (T-028). Las tres ya están hechas: ver las secciones de abajo.
 
 ## Cómo quedó implementada la excepción de «Enviar al proveedor» (T-022, 2026-11-01)
 
@@ -57,3 +57,19 @@ El manual (S-CLI-03, 19, 20 y 22) da al Administrador acceso completo a ejecutar
 - **Cola de órdenes (S-CLI-03):** la tarjeta muestra el nombre y el código del servicio, los códigos del paciente, de la visita y de la orden, la cantidad, el tipo, el estado, el personal y el estado de la visita. Nunca nombres de pacientes ni notas. Los avisos y los eventos en vivo siguen llevando solo códigos e ids.
 
 **Implementación (T-026):** `orderActions()` de `packages/shared/src/orders.ts` (la misma regla en la web y en la API) y `OrderService.start/complete/assign/queue` de `apps/api/src/orders.ts`. Pruebas en `apps/api/test/orders-queue.test.ts`.
+
+## Cómo quedó la anulación de cargos y pagos (T-028, 2026-11-05)
+
+- **Permiso:** `billing.void`, del Propietario y el Administrador. `POST /api/charges/:id/void` y `POST /api/payments/:id/void` exigen además `patients.access`, es decir, un rol clínico en la sede.
+  - Sin rol clínico: 403.
+  - Recepción cobra (`checkout.access`), pero no anula: 403.
+- **Dónde:**
+  - en la Caja de la visita, que abre también quien anula aunque su rol clínico no sea Recepción: ve el estado de cuenta completo, pero no cobra;
+  - para las cuotas de membresía, en la tarjeta «Membresía» del perfil.
+  - Se anula también con la visita cerrada, salvo en un estado de cuenta «Anulado» (visita «Cancelada», [ADR 0042](0042-pagos-saldos-visitas-cerradas.md)).
+- **Cómo:**
+  - motivo obligatorio de hasta 200 caracteres, cifrado, e `Idempotency-Key`;
+  - un pago se anula con su fila inversa; un cargo de Caja pasa a «Anulado» con el mecanismo de T-025;
+  - los cargos de orden se siguen anulando cancelando la orden (`409 charge_from_order`).
+- **Auditoría:** `payment.voided` y `charge.voided`, con el antes y el después de los importes del estado de cuenta.
+- **Pruebas:** `apps/api/test/payments.test.ts` y la E2E `apps/web/e2e/pagos.spec.ts`. En la E2E, el Propietario de una organización nueva se asigna Recepción y anula un pago y un cargo.

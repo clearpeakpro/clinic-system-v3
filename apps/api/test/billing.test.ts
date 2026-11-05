@@ -150,7 +150,7 @@ describe('T-027 Caja: cola y estado de cuenta', () => {
     await orderB12(v, 2);
     await added(v, consultation('CONS-INICIAL'));
     const s = await statement(v);
-    expect(s.totals).toEqual({ subtotalCents: 10000, discountCents: 0, insuranceCents: 0, totalDueCents: 10000, paidCents: 0, balanceCents: 10000, status: 'open', rule: 'self_pay' });
+    expect(s.totals).toEqual({ subtotalCents: 10000, discountCents: 0, insuranceCents: 0, totalDueCents: 10000, paidCents: 0, balanceCents: 10000, creditCents: 0, status: 'open', rule: 'self_pay' });
     expect(s.view).toBe('full');
     expect(s.editable).toBe(true);
     expect(s.coverage).toEqual({ type: 'self_pay', term: null });

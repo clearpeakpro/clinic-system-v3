@@ -146,6 +146,16 @@ export async function lockEncounter(tx: Tx, locationId: string, encounterId: str
   return { ...row, status: row.status as VisitStatus, route: row.route as VisitRoute };
 }
 
+/** ¿Tiene la visita órdenes completadas? (T-028: no se puede cerrar como «Cancelada».) */
+export async function hasCompletedOrders(tx: Tx, encounterId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(eq(orders.encounterId, encounterId), eq(orders.status, 'COMPLETED')))
+    .limit(1);
+  return row !== undefined;
+}
+
 /** ¿Tiene la visita órdenes pendientes o en curso? (S-CLI-08, T-025.) */
 export async function hasOpenOrders(tx: Tx, encounterId: string): Promise<boolean> {
   const [row] = await tx
@@ -514,6 +524,7 @@ export class EncounterService {
       const memberIds = [...events.map((e) => e.actorMembershipId), row.providerMembershipId].filter((id): id is string => id !== null);
       const members = memberIds.length > 0 ? await tx.select({ id: memberships.id, userId: memberships.userId }).from(memberships).where(inArray(memberships.id, [...new Set(memberIds)])) : [];
       const me = await this.#myMembership(tx, actor.userId);
+      const completedOrders = await hasCompletedOrders(tx, row.id);
       // Aviso de alergias (ADR 0040, T-022): solo para quien ve datos clínicos; Recepción no.
       const allergies = actor.permissions.has('nursing.view') ? allergyNotice(await latestHistory(tx, this.#cipher, ctx.organizationId, row.patientId)) : null;
       // T-026b: la membresía de la cobertura y la que el paciente podría usar hoy (solo para quien edita la cobertura).
@@ -521,9 +532,9 @@ export class EncounterService {
       const availableMembership =
         actor.permissions.has('visits.manage') && isOpenVisitStatus(row.status as VisitStatus) ? await coverageMembership(tx, row.patientId, this.#clock.now()) : null;
       await this.#auditRead(tx, actor, 'encounter', row.id, meta);
-      return { row, coverage, coverageMember, availableMembership, events, members, me, allergies };
+      return { row, coverage, coverageMember, availableMembership, events, members, me, allergies, completedOrders };
     });
-    const { row, coverage, coverageMember, availableMembership, events, members, me, allergies } = data;
+    const { row, coverage, coverageMember, availableMembership, events, members, me, allergies, completedOrders } = data;
     const names = await this.#names(members.map((m) => m.userId));
     const nameOf = (membershipId: string | null) => {
       const member = members.find((m) => m.id === membershipId);
@@ -585,6 +596,7 @@ export class EncounterService {
         canForce: this.#canForce(actor),
         isMine: row.providerMembershipId !== null && row.providerMembershipId === me,
         assignedToOther: row.providerMembershipId !== null && row.providerMembershipId !== me,
+        hasCompletedOrders: completedOrders,
       }),
     };
   }
@@ -648,7 +660,8 @@ export class EncounterService {
       this.#requireVersion(current, input.expectedVersion);
       if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
       const action = closeAction(input.outcome);
-      const result = visitTransition(current.status, action, { route: current.route, roles: actor.roles });
+      // T-028 (ADR 0042): con órdenes completadas no se cancela; solo «Se retiró».
+      const result = visitTransition(current.status, action, { route: current.route, roles: actor.roles, hasCompletedOrders: await hasCompletedOrders(tx, current.id) });
       if (!result.ok) throw this.#transitionError(result.reason);
       await this.move(tx, actor, current, me, now, meta, { action, to: result.to, forced: false, reason: input.reason, audit: 'encounter.closed' });
     });
@@ -901,7 +914,7 @@ export class EncounterService {
     if (current.version !== expectedVersion) throw new HttpError(409, 'version_conflict');
   }
 
-  #transitionError(reason: 'invalid_transition' | 'forbidden' | 'open_orders'): HttpError {
+  #transitionError(reason: 'invalid_transition' | 'forbidden' | 'open_orders' | 'completed_orders'): HttpError {
     if (reason === 'forbidden') return new HttpError(403, 'transition_not_owned');
     return new HttpError(409, reason);
   }

@@ -1,6 +1,12 @@
 import type {
   AddChargeInput,
   BillingStatement,
+  PatientBalances,
+  PayMembershipFeeInput,
+  PaymentRecorded,
+  RecordPaymentInput,
+  VoidInput,
+  VoidResult,
   ChargeAdded,
   ChargeOptions,
   CheckoutQueue,
@@ -429,6 +435,14 @@ export const api = {
   chargeOptions: (encounterId: string) => request<ChargeOptions>('GET', `/api/encounters/${encounterId}/charge-options`),
   addCharge: (encounterId: string, input: AddChargeInput, idempotencyKey: string) =>
     request<ChargeAdded>('POST', `/api/encounters/${encounterId}/charges`, input, { 'idempotency-key': idempotencyKey }),
+  // T-028: pagos, anulaciones (con Idempotency-Key) y saldos (S-CAJ-10 a 13, S-CAJ-17).
+  recordPayment: (encounterId: string, input: RecordPaymentInput, idempotencyKey: string) =>
+    request<PaymentRecorded>('POST', `/api/encounters/${encounterId}/payments`, input, { 'idempotency-key': idempotencyKey }),
+  voidCharge: (chargeId: string, input: VoidInput, idempotencyKey: string) => request<VoidResult>('POST', `/api/charges/${chargeId}/void`, input, { 'idempotency-key': idempotencyKey }),
+  voidPayment: (paymentId: string, input: VoidInput, idempotencyKey: string) => request<VoidResult>('POST', `/api/payments/${paymentId}/void`, input, { 'idempotency-key': idempotencyKey }),
+  payMembershipFee: (feeId: string, input: PayMembershipFeeInput, idempotencyKey: string) =>
+    request<PaymentRecorded>('POST', `/api/membership-fees/${feeId}/payments`, input, { 'idempotency-key': idempotencyKey }),
+  patientBalances: (patientId: string) => request<PatientBalances>('GET', `/api/patients/${patientId}/balances`),
   checkoutQueue: (search: string) => request<CheckoutQueue>('GET', `/api/checkout/queue${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`),
   // T-026: cola de órdenes (S-CLI-03), asignar, iniciar y completar (S-CLI-19, 20 y 22).
   orderQueue: (tab: OrderQueueTab, mine: boolean) => request<OrderQueue>('GET', `/api/orders/queue?tab=${tab}${mine ? '&mine=1' : ''}`),

@@ -31,6 +31,8 @@ const MESSAGES: Record<string, string> = {
   encounter_closed: 'La visita ya está cerrada.',
   version_conflict: VERSION_CONFLICT_TEXT,
   open_orders: 'Esta visita aún tiene órdenes pendientes o en curso. Complételas o cancélelas antes de continuar.',
+  // T-028 (ADR 0042): con órdenes completadas no se cancela.
+  completed_orders: 'Esta visita tiene órdenes completadas: no se puede cancelar. Ciérrela como «Se retiró antes».',
   invalid_provider: 'Ese usuario no es un proveedor activo en esta sede.',
   assign_not_allowed: 'Solo recepción o administradores pueden asignar un proveedor; los proveedores pueden asignarse a sí mismos.',
   encounter_already_open: REOPEN_BLOCKED_TEXT,
