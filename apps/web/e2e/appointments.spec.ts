@@ -3,6 +3,7 @@ import { appointments, appointmentTypes, createTenantDb, DEMO, nextAppointmentCo
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-014: agenda (S-REC-06 a 09), «N citas hoy» del Panel y citas del perfil
 // (S-PAC-07), con las citas ficticias de la semilla (21 por sede: ayer, hoy y
@@ -16,10 +17,12 @@ const axe = async (page: Page) =>
 const expectAccessible = (page: Page) => expect.poll(() => axe(page), { timeout: 10_000 }).toEqual([]);
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
 }
 
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Navegación principal' }).first();

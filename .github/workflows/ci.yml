@@ -42,8 +42,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Con caché, límite de tiempo y reintento (.github/actions/playwright-chromium).
       - name: Navegador de Playwright
-        run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
+        uses: ./.github/actions/playwright-chromium
+        timeout-minutes: 15
       # Flujos de rol de T-004: Postgres (Testcontainers) + API real + web compilada.
       - run: pnpm --filter @clinic/web test:e2e:general
       # Accesibilidad de /dev/ui (T-005): axe con el servidor de desarrollo de Vite.
@@ -67,8 +69,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Con caché, límite de tiempo y reintento (.github/actions/playwright-chromium).
       - name: Navegador de Playwright
-        run: pnpm --filter @clinic/web exec playwright install --with-deps chromium
+        uses: ./.github/actions/playwright-chromium
+        timeout-minutes: 15
       # Los guiones de las demos de las fases 1, 2 y 3A (T-010, T-016 y T-024),
       # cada uno con su base preparada con pnpm demo:reset.
       - run: pnpm --filter @clinic/web test:e2e:demos

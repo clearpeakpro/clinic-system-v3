@@ -2,6 +2,7 @@ import { createTenantDb, DEMO, enqueueNotification } from '@clinic/db';
 import { expect, test, type Page } from '@playwright/test';
 import pg from 'pg';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-009: indicador «En vivo» (S-GEN-14), campana y centro de notificaciones
 // (S-GEN-15) y banner de modo degradado (S-GEN-19), con la API, el worker y
@@ -10,10 +11,12 @@ import { E2E } from './global-setup.ts';
 // Datos ficticios: solo códigos, nunca nombres.
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
 }
 
 const live = (page: Page) => page.getByRole('banner').getByRole('status');

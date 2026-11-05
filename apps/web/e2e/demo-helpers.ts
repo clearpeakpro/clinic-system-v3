@@ -30,15 +30,23 @@ export async function signOut(page: Page, everywhere = false) {
 /** Códigos ya usados por secreto: un código no se repite dentro de su ventana de 30 s. */
 const usedCodes = new Map<string, Set<string>>();
 
-/** Un código TOTP que todavía no se usó (espera, si hace falta, al siguiente). */
+/**
+ * Un código TOTP que todavía no se usó: el del periodo actual o, si ya se usó,
+ * el del siguiente, que el servidor también acepta (Better Auth admite un
+ * periodo de margen a cada lado). Solo si los dos se usaron espera al
+ * periodo siguiente.
+ */
 export async function freshCode(secret: string): Promise<string> {
   const used = usedCodes.get(secret) ?? new Set<string>();
   usedCodes.set(secret, used);
   for (;;) {
-    const code = await generate({ secret });
-    if (!used.has(code)) {
-      used.add(code);
-      return code;
+    const now = Math.floor(Date.now() / 1000);
+    for (const epoch of [now, now + 30]) {
+      const code = await generate({ secret, epoch });
+      if (!used.has(code)) {
+        used.add(code);
+        return code;
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }

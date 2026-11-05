@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-025: órdenes con su cargo y laboratorio sugerido (S-CLI-17, S-CLI-18,
 // S-CLI-21 y S-CLI-08) con los usuarios ficticios de NOR1.
@@ -27,10 +28,12 @@ async function newPage(browser: Browser): Promise<Page> {
 }
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
   await expect(page).toHaveURL(/\/app\/NOR1\/panel$/);
 }
 

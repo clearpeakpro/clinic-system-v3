@@ -40,9 +40,10 @@ async function listen(url: string, fn: () => Promise<void>): Promise<string[]> {
   await client.query(`LISTEN ${REALTIME_CHANNEL}`);
   try {
     await fn();
-    // Los avisos llegan al confirmarse la transacción; un viaje más los recoge.
+    // Los avisos llegan al confirmarse la transacción; un viaje más los recoge:
+    // el servidor los manda antes de la respuesta de esta consulta, y el
+    // cliente los entrega en ese orden. Sin esperas fijas.
     await client.query('select 1');
-    await new Promise((resolve) => setTimeout(resolve, 100));
   } finally {
     await client.end();
   }
