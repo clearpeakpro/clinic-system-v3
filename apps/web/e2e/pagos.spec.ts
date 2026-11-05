@@ -209,11 +209,11 @@ test('el Propietario con Recepción anula un pago y un cargo de Caja con motivo;
     'pnpm',
     [
       'exec', 'tsx', 'scripts/org-create.ts',
-      '--organizacion', arg('Clínica Demo Este (ficticia)'),
-      '--propietario-correo', 'propietario.este@example.test',
-      '--propietario-nombre', arg('Propietaria Este (ficticia)'),
-      '--sede-codigo', 'EST1',
-      '--sede-nombre', arg('Este Centro'),
+      '--organizacion', arg('Clínica Demo Caja (ficticia)'),
+      '--propietario-correo', 'propietario.caja@example.test',
+      '--propietario-nombre', arg('Propietaria Caja (ficticia)'),
+      '--sede-codigo', 'CAJ1',
+      '--sede-nombre', arg('Caja Centro'),
       '--zona-horaria', 'America/Chicago',
     ],
     {
@@ -225,9 +225,9 @@ test('el Propietario con Recepción anula un pago y un cargo de Caja con motivo;
   const link = /https?:\/\/\S+\/invitacion\/\S+/.exec(created.stdout)?.[0];
   if (!link) throw new Error('org:create no mostró el enlace');
   await page.goto(new URL(link).pathname);
-  await page.getByLabel('Nombre para mostrar').fill('Propietaria Este (ficticia)');
-  await page.getByLabel('Contraseña', { exact: true }).fill('una frase larga de la propietaria este');
-  await page.getByLabel('Confirmar contraseña').fill('una frase larga de la propietaria este');
+  await page.getByLabel('Nombre para mostrar').fill('Propietaria Caja (ficticia)');
+  await page.getByLabel('Contraseña', { exact: true }).fill('una frase larga de la propietaria caja');
+  await page.getByLabel('Confirmar contraseña').fill('una frase larga de la propietaria caja');
   await page.getByRole('button', { name: 'Aceptar invitación' }).click();
   await expect(page.getByTestId('totp-secret')).toHaveText(/\w{4}/);
   const secret = (await page.getByTestId('totp-secret').innerText()).replace(/\s/g, '');
@@ -237,11 +237,11 @@ test('el Propietario con Recepción anula un pago y un cargo de Caja con motivo;
   await page.getByRole('button', { name: 'Continuar' }).click();
   await expect(page).toHaveURL(/\/admin\/usuarios$/);
 
-  // Se asigna Recepción en EST1 (ADR 0027) y crea una consulta del catálogo con precio.
-  await page.getByRole('row').filter({ hasText: 'propietario.este@example.test' }).getByRole('button', { name: /Más acciones/ }).click();
+  // Se asigna Recepción en CAJ1 (ADR 0027) y crea una consulta del catálogo con precio.
+  await page.getByRole('row').filter({ hasText: 'propietario.caja@example.test' }).getByRole('button', { name: /Más acciones/ }).click();
   await page.getByRole('menuitem', { name: 'Mis roles clínicos' }).click();
   const roles = page.getByRole('dialog', { name: 'Mis roles clínicos' });
-  await roles.getByRole('checkbox', { name: 'Recepción en EST1' }).click();
+  await roles.getByRole('checkbox', { name: 'Recepción en CAJ1' }).click();
   await roles.getByLabel('Motivo del cambio').fill('Cubre la recepción esta semana');
   await roles.getByRole('button', { name: 'Guardar' }).click();
   await expect(roles).toHaveCount(0);
@@ -251,7 +251,7 @@ test('el Propietario con Recepción anula un pago y un cargo de Caja con motivo;
   });
   expect(consultation.status(), await consultation.text()).toBe(201);
 
-  await walkIn(page, 'EST1', { create: { first: 'Elisa', last: 'Anulación Ficticia', birth: '1990-02-14' } }, 'Solo procedimiento');
+  await walkIn(page, 'CAJ1', { create: { first: 'Elisa', last: 'Anulación Ficticia', birth: '1990-02-14' } }, 'Solo procedimiento');
   await toCheckoutWith(page, /Consulta ficticia Este/);
   await payments(page).getByRole('button', { name: 'Pagar saldo' }).click();
   await payments(page).getByTestId('record-payment').click();
