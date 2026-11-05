@@ -11,6 +11,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:e2e": "vite build && playwright test && playwright test -c playwright.demo.config.ts && playwright test -c playwright.demo2.config.ts && playwright test -c playwright.demo3a.config.ts",
+    "test:e2e:general": "vite build && playwright test",
+    "test:e2e:demos": "vite build && playwright test -c playwright.demo.config.ts && playwright test -c playwright.demo2.config.ts && playwright test -c playwright.demo3a.config.ts",
     "test:a11y": "playwright test -c playwright.a11y.config.ts"
   },
   "dependencies": {
