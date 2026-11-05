@@ -547,7 +547,7 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - Parte B:
   - S-REC-24 y S-REC-25 (se añade «Membresía») y S-CLI-12 (cobertura de la visita);
   - el cálculo de los beneficios de S-CAJ-07 (la tarjeta la construye T-027);
-  - la tarjeta «Membresía» del perfil y el diálogo «Inscribir en un plan» (S-PAC-21 y S-PAC-22, fichas nuevas del manual).
+  - la tarjeta «Membresía» del perfil y el diálogo «Inscribir en un plan» (S-PAC-22 y S-PAC-23, fichas nuevas del manual; S-PAC-21 ya era «Registro de exportación previo»).
 
 **ADR:** [0029](../decisions/0029-precio-general-excepcion-sede.md), [0034](../decisions/0034-membresias-fase-3.md), [0041](../decisions/0041-sin-descuento-manual-caja.md).
 
@@ -593,11 +593,26 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
   - el trabajo del worker se prueba con el reloj fijado justo antes y justo después del vencimiento y de los 30 días;
   - E2E `membresias.spec.ts`.
 
+**Decisiones al planificar la parte B (2026-11-04, [ADR 0034](../decisions/0034-membresias-fase-3.md)):**
+- reparto por unidad; recálculo de todos los cargos activos de la visita abierta, en el orden en que se crearon; fijos al completarse;
+- «Pendiente de pago» se cancela sola a los 30 días de la inscripción, o en el momento con el aviso; al cancelarse, las cuotas pendientes se anulan, sin deuda;
+- después de una cancelación, inscripción nueva; la suspendida vuelve al pagar, con el mismo año;
+- «Monto fijo»: cada membresía guarda las cuotas vigentes el día de su inscripción;
+- tipo de cupo de cada incluido, «Paquete» o «Cupo compartido», que elige el Administrador;
+- plan Total: el laboratorio de la misma visita gasta antes el cupo del incluido.
+
 **Cómo quedó implementada la parte A (2026-11-04):** ver el [ADR 0034](../decisions/0034-membresias-fase-3.md#cómo-quedó-implementada-la-parte-a-t-026b-2026-11-04).
 - Migraciones `0039` y `0040`.
 - API `apps/api/src/membership-plans.ts`; las consultas van por las rutas del catálogo.
 - Web: las pestañas «Consultas» y «Planes de membresía» de Catálogos y la página de beneficios `apps/web/src/pages/admin-membership-benefits.tsx`.
 - Pruebas: `packages/db/test/membership-plans.test.ts`, `apps/api/test/membership-plans.test.ts`, `packages/shared/test/membership-plans.test.ts` y la E2E `catalog.spec.ts`, que crece.
+
+**Cómo quedó implementada la parte B (2026-11-04):** ver el [ADR 0034](../decisions/0034-membresias-fase-3.md#cómo-quedó-implementada-la-parte-b-t-026b-2026-11-04).
+- Migraciones `0041` y `0042`; `settleMembership()` en `packages/db/src/patient-memberships.ts`; trabajo `memberships-daily` del worker, cada hora.
+- API `apps/api/src/patient-memberships.ts` y `apps/api/src/membership-benefits.ts`; permiso `memberships.manage` (Recepción).
+- Web: `components/patients/patient-membership.tsx` (S-PAC-22 y 23), «Membresía» en la llegada (S-REC-24) y en el diálogo Cobertura (S-CLI-12), «Membresía −{importe}» en la orden y el tipo de cupo en S-ADM-22.
+- Pruebas: `packages/shared/test/patient-memberships.test.ts`, `packages/db/test/patient-memberships.test.ts`, `apps/worker/test/memberships.test.ts`, `apps/api/test/patient-memberships.test.ts` y la E2E `membresias.spec.ts`.
+- Diferencias con el manual: con «Membresía» la llegada tiene 5 pasos (el plan sale de la membresía, no hay «Datos del pagador»); la cobertura por defecto sigue siendo «Pago directo».
 
 ## T-027 — Caja: cola y estado de cuenta
 
@@ -658,7 +673,7 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 3. Anular pago (S-CAJ-13) y anular cargo manual (S-CAJ-10), como filas inversas, con motivo e `Idempotency-Key`. Los cargos de orden se anulan solo cancelando la orden.
 4. Un saldo negativo se muestra como «Crédito a favor», no en rojo de error. En V1 no hay reembolsos.
 5. Pestaña Saldos del perfil (S-CAJ-17 / S-PAC-10) y cobro de saldos de visitas completadas (ADR 0004).
-6. Cobro de las cuotas de membresía pendientes de T-026b, con `Idempotency-Key` y la misma terminal (efectivo o tarjeta; el sistema solo registra el pago y nunca guarda datos de tarjeta). En la misma transacción, pagar la cuota inicial activa la membresía, y pagar una mensualidad vencida la reactiva. Anular ese pago devuelve la cuota a pendiente ([ADR 0034](../decisions/0034-membresias-fase-3.md)).
+6. Cobro de las cuotas de membresía pendientes de T-026b, con `Idempotency-Key` y la misma terminal (efectivo o tarjeta; el sistema solo registra el pago y nunca guarda datos de tarjeta). En la misma transacción, la cuota pasa a pagada y `settleMembership()` activa la membresía (cuota inicial) o la reactiva (mensualidad vencida). Anular ese pago devuelve la cuota a pendiente. Una cuota anulada por la cancelación no se cobra ([ADR 0034](../decisions/0034-membresias-fase-3.md)).
 
 **Terminada cuando:**
 - dos pulsaciones, o un reintento de red con la misma clave, registran un solo pago;

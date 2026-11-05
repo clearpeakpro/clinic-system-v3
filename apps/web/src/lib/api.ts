@@ -61,6 +61,11 @@ import type {
   CreateLabProviderInput,
   CreateMembershipBenefitInput,
   CreateMembershipPlanInput,
+  EnrollMembershipInput,
+  EnrollmentOptions,
+  MembershipCancelResult,
+  MembershipSaved,
+  PatientMembershipCard,
   MembershipPlanDetail,
   MembershipPlanList,
   UpdateMembershipBenefitInput,
@@ -355,6 +360,16 @@ export const api = {
     request<null>('POST', `/api/patients/${id}/deactivate`, { reason, expectedVersion }),
   reactivatePatient: (id: string, reason: string, expectedVersion: number) =>
     request<null>('POST', `/api/patients/${id}/reactivate`, { reason, expectedVersion }),
+  // Membresía del paciente (T-026b; S-PAC-22 y 23). Inscribir lleva Idempotency-Key.
+  patientMembership: (patientId: string) => request<PatientMembershipCard>('GET', `/api/patients/${patientId}/membership`),
+  enrollmentOptions: () => request<EnrollmentOptions>('GET', '/api/patient-memberships/enrollment-options'),
+  enrollMembership: (patientId: string, input: EnrollMembershipInput, idempotencyKey: string) =>
+    request<MembershipSaved>('POST', `/api/patients/${patientId}/membership`, input, { 'idempotency-key': idempotencyKey }),
+  addMembershipMember: (id: string, patientId: string, expectedVersion: number) =>
+    request<MembershipSaved>('POST', `/api/patient-memberships/${id}/members`, { patientId, expectedVersion }),
+  removeMembershipMember: (id: string, patientId: string, expectedVersion: number) =>
+    request<MembershipSaved>('POST', `/api/patient-memberships/${id}/members/${patientId}/remove`, { expectedVersion }),
+  cancelMembership: (id: string, expectedVersion: number) => request<MembershipCancelResult>('POST', `/api/patient-memberships/${id}/cancel`, { expectedVersion }),
   openExistingPatient: (id: string) => request<null>('POST', `/api/patients/${id}/open-existing`, {}),
   phoneSharedBack: (input: PhoneSharedBackInput) => request<null>('POST', '/api/patients/phone-shared/back', input),
   // Citas (S-REC-06 a 09 y S-PAC-07, T-014): sin fecha, hoy en la sede activa.

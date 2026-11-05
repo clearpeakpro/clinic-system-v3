@@ -7,6 +7,8 @@ import {
   enqueueNotification,
   kioskCheckins,
   locations,
+  membershipPlans,
+  patientMemberships,
   membershipRoles,
   memberships,
   nextEncounterCode,
@@ -69,6 +71,8 @@ import type { Clock } from './clock.ts';
 import type { IdempotencyService } from './idempotency.ts';
 import { allergyNotice, latestHistory } from './nursing.ts';
 import { kioskContent, notifyKioskCheckin } from './kiosk-arrivals.ts';
+import { recalculateVisitBenefits } from './membership-benefits.ts';
+import { coverageMembership } from './patient-memberships.ts';
 import { rolesAt, type Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
 
@@ -199,10 +203,12 @@ export class EncounterService {
         .where(and(eq(appointments.id, appointmentId), eq(appointments.locationId, ctx.locationId)));
       if (!row) throw new HttpError(404, 'appointment_not_found');
       const patient = await this.#patient(tx, row.patientId);
+      const membership = await coverageMembership(tx, row.patientId, this.#clock.now());
       await this.#auditRead(tx, actor, 'appointment', row.id, meta);
       return {
         site: site.info,
         patient,
+        membership,
         appointment: {
           id: row.id,
           code: row.code,
@@ -228,10 +234,12 @@ export class EncounterService {
         .from(appointmentTypes)
         .where(eq(appointmentTypes.active, true))
         .orderBy(sql`${appointmentTypes.sortOrder} asc nulls last`, asc(appointmentTypes.code));
+      const membership = await coverageMembership(tx, patientId, this.#clock.now());
       await this.#auditRead(tx, actor, 'patient', patientId, meta);
       return {
         site: site.info,
         patient,
+        membership,
         appointment: null,
         appointmentTypes: types.map((t): ArrivalAppointmentType => ({ ...t, suggestedRoute: t.suggestedRoute as VisitRoute | null })),
       };
@@ -349,7 +357,10 @@ export class EncounterService {
             encounterVersion: 1,
             occurredAt: now,
           });
-          await this.#insertCoverage(tx, ctx.organizationId, encounterId, input.coverage);
+          // «Membresía»: la del paciente, que debe dar beneficios hoy (T-026b).
+          const membership = input.coverage.type === 'membership' ? await coverageMembership(tx, patientId, now) : null;
+          if (input.coverage.type === 'membership' && !membership) throw new HttpError(409, 'membership_not_active');
+          await this.#insertCoverage(tx, ctx.organizationId, encounterId, input.coverage, membership?.id ?? null);
           if (appointment) {
             await tx
               .update(appointments)
@@ -386,6 +397,7 @@ export class EncounterService {
               source: input.source,
               route: input.route,
               coverage: input.coverage.type,
+              ...(membership ? { membershipCode: membership.code } : {}),
               ...(appointment ? { appointmentCode: appointment.code } : {}),
               ...(kiosk ? { kiosk: true } : {}),
             },
@@ -502,10 +514,14 @@ export class EncounterService {
       const me = await this.#myMembership(tx, actor.userId);
       // Aviso de alergias (ADR 0040, T-022): solo para quien ve datos clínicos; Recepción no.
       const allergies = actor.permissions.has('nursing.view') ? allergyNotice(await latestHistory(tx, this.#cipher, ctx.organizationId, row.patientId)) : null;
+      // T-026b: la membresía de la cobertura y la que el paciente podría usar hoy (solo para quien edita la cobertura).
+      const coverageMember = coverage?.patientMembershipId ? await this.#membershipInfo(tx, coverage.patientMembershipId) : null;
+      const availableMembership =
+        actor.permissions.has('visits.manage') && isOpenVisitStatus(row.status as VisitStatus) ? await coverageMembership(tx, row.patientId, this.#clock.now()) : null;
       await this.#auditRead(tx, actor, 'encounter', row.id, meta);
-      return { row, coverage, events, members, me, allergies };
+      return { row, coverage, coverageMember, availableMembership, events, members, me, allergies };
     });
-    const { row, coverage, events, members, me, allergies } = data;
+    const { row, coverage, coverageMember, availableMembership, events, members, me, allergies } = data;
     const names = await this.#names(members.map((m) => m.userId));
     const nameOf = (membershipId: string | null) => {
       const member = members.find((m) => m.id === membershipId);
@@ -550,7 +566,8 @@ export class EncounterService {
       appointmentType: row.typeId && row.typeName ? { id: row.typeId, name: row.typeName } : null,
       provider: row.providerMembershipId ? { membershipId: row.providerMembershipId, name: nameOf(row.providerMembershipId) ?? '' } : null,
       myMembershipId: me,
-      coverage: coverage ? await this.#coverageView(ctx.organizationId, coverage) : null,
+      coverage: coverage ? await this.#coverageView(ctx.organizationId, coverage, coverageMember) : null,
+      availableMembership,
       allergies,
       declaredReason: row.declaredReasonEnc
         ? (JSON.parse(
@@ -733,8 +750,11 @@ export class EncounterService {
       const [row] = await tx.select().from(coverages).where(eq(coverages.encounterId, current.id)).for('update');
       if (!row) throw new HttpError(404, 'coverage_not_found');
       if (row.version !== input.expectedVersion) throw new HttpError(409, 'version_conflict');
-      const before = await this.#coverageView(current.organizationId, row);
+      const before = { ...(await this.#coverageView(current.organizationId, row)), patientMembershipId: row.patientMembershipId };
       const next = input.coverage;
+      // «Membresía»: la del paciente, que debe dar beneficios hoy (T-026b).
+      const membership = next.type === 'membership' ? await coverageMembership(tx, current.patientId, this.#clock.now()) : null;
+      if (next.type === 'membership' && !membership) throw new HttpError(409, 'membership_not_active');
       const after = {
         type: next.type,
         insurerName: next.type === 'insurance' ? next.insurerName : null,
@@ -742,8 +762,9 @@ export class EncounterService {
         term: next.type === 'insurance' ? next.term : null,
         amountCents: next.type === 'insurance' ? next.amountCents : null,
         coinsuranceBp: next.type === 'insurance' ? next.coinsuranceBp : null,
+        patientMembershipId: membership?.id ?? null,
       };
-      const fields = (['type', 'insurerName', 'memberId', 'term', 'amountCents', 'coinsuranceBp'] as const).filter((f) => before[f] !== after[f]);
+      const fields = (['type', 'insurerName', 'memberId', 'term', 'amountCents', 'coinsuranceBp', 'patientMembershipId'] as const).filter((f) => before[f] !== after[f]);
       if (fields.length === 0) return;
       const version = row.version + 1;
       await tx
@@ -755,10 +776,24 @@ export class EncounterService {
           term: after.term,
           amountCents: after.amountCents,
           coinsuranceBp: after.coinsuranceBp,
+          patientMembershipId: after.patientMembershipId,
           version,
           updatedAt: this.#clock.now(),
         })
         .where(eq(coverages.id, row.id));
+      // Con o sin membresía, los beneficios de los cargos de la visita se recalculan.
+      for (const change of await recalculateVisitBenefits(tx, current.id, this.#clock.now())) {
+        await this.#audit.inTx(tx, current.organizationId, {
+          action: 'charge.membership_benefits',
+          actorType: 'user',
+          actorId: actor.userId,
+          locationId: current.locationId,
+          entityType: 'charge',
+          entityId: change.chargeId,
+          ...meta,
+          metadata: { encounterCode: current.code, previousDiscountCents: change.previousDiscountCents, discountCents: change.discountCents, includedQuantity: change.includedQuantity },
+        });
+      }
       await this.#audit.inTx(tx, current.organizationId, {
         action: 'encounter.coverage_updated',
         ...this.#auditBase(actor, current, meta),
@@ -948,7 +983,7 @@ export class EncounterService {
   }
 
   /** Cobertura descifrada (S-CLI-11). */
-  async #coverageView(organizationId: string, row: typeof coverages.$inferSelect): Promise<EncounterCoverage> {
+  async #coverageView(organizationId: string, row: typeof coverages.$inferSelect, membership: EncounterCoverage['membership'] = null): Promise<EncounterCoverage> {
     return {
       type: row.type as CoverageType,
       insurerName: row.insurerNameEnc ? await this.#cipher.decrypt(row.insurerNameEnc, coverageContext(organizationId, row.id, 'insurer_name')) : null,
@@ -956,8 +991,19 @@ export class EncounterService {
       term: row.term as InsuranceTerm | null,
       amountCents: row.amountCents,
       coinsuranceBp: row.coinsuranceBp,
+      membership,
       version: row.version,
     };
+  }
+
+  /** Código, plan e inicio de una membresía del paciente (tarjeta Cobertura, S-CLI-11). */
+  async #membershipInfo(tx: Tx, membershipId: string): Promise<EncounterCoverage['membership']> {
+    const [row] = await tx
+      .select({ code: patientMemberships.code, planName: membershipPlans.nameEs, startDate: patientMemberships.startDate })
+      .from(patientMemberships)
+      .innerJoin(membershipPlans, eq(membershipPlans.id, patientMemberships.planId))
+      .where(eq(patientMemberships.id, membershipId));
+    return row ?? null;
   }
 
   /** Nombres del personal (cuentas globales, fuera de RLS; solo las ya filtradas por organización). */
@@ -1007,10 +1053,14 @@ export class EncounterService {
     });
   }
 
-  async #insertCoverage(tx: Tx, organizationId: string, encounterId: string, coverage: ArrivalData['coverage']): Promise<void> {
+  async #insertCoverage(tx: Tx, organizationId: string, encounterId: string, coverage: ArrivalData['coverage'], patientMembershipId: string | null): Promise<void> {
     const id = uuidv7();
     if (coverage.type === 'self_pay') {
       await tx.insert(coverages).values({ id, organizationId, encounterId, type: 'self_pay' });
+      return;
+    }
+    if (coverage.type === 'membership') {
+      await tx.insert(coverages).values({ id, organizationId, encounterId, type: 'membership', patientMembershipId });
       return;
     }
     await tx.insert(coverages).values({

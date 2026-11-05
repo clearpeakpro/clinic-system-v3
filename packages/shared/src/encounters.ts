@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AppointmentStatus } from './appointments.ts';
 import type { DeclaredReason } from './kiosk.ts';
 import type { AllergyNotice } from './nursing.ts';
+import type { CoverageMembership } from './patient-memberships.ts';
 import type { PatientSummary } from './patients.ts';
 import { expectedVersionSchema, reasonSchema } from './schemas.ts';
 import {
@@ -34,8 +35,12 @@ export const COVERAGE_TYPE_LABELS: Record<CoverageType, string> = {
   membership: 'Membresía',
 };
 
-/** Coberturas que ofrece la llegada en la parte 3A: «Membresía» llega con T-026b (ADR 0034). */
-export const ARRIVAL_COVERAGE_TYPES = ['self_pay', 'insurance'] as const satisfies readonly CoverageType[];
+/**
+ * Coberturas de la llegada y del diálogo Cobertura. «Membresía» (T-026b,
+ * ADR 0034) solo se ofrece si el paciente tiene una membresía que da
+ * beneficios hoy; el plan sale de su membresía, no se elige.
+ */
+export const ARRIVAL_COVERAGE_TYPES = ['self_pay', 'insurance', 'membership'] as const satisfies readonly CoverageType[];
 
 export const INSURANCE_TERMS = ['copay', 'coinsurance', 'deductible'] as const;
 export type InsuranceTerm = (typeof INSURANCE_TERMS)[number];
@@ -119,8 +124,8 @@ const insuranceInput = z
     return { type: v.type, insurerName: v.insurerName, memberId: v.memberId, term: v.term, amountCents, coinsuranceBp: null };
   });
 
-/** Cobertura de la llegada en 3A: Pago directo o Seguro con un solo término. */
-export const arrivalCoverageSchema = z.union([z.object({ type: z.literal('self_pay') }), insuranceInput]);
+/** Cobertura de la llegada: Pago directo, Seguro con un solo término o Membresía (la del paciente, T-026b). */
+export const arrivalCoverageSchema = z.union([z.object({ type: z.literal('self_pay') }), z.object({ type: z.literal('membership') }), insuranceInput]);
 export type ArrivalCoverageInput = z.input<typeof arrivalCoverageSchema>;
 export type ArrivalCoverageData = z.output<typeof arrivalCoverageSchema>;
 
@@ -179,6 +184,8 @@ export interface ArrivalAppointmentType {
 export interface ArrivalContext {
   site: ArrivalSite;
   patient: ArrivalPatient;
+  /** T-026b: la membresía que da beneficios hoy («Membresía activa: {plan} (desde {fecha})»), o nula. */
+  membership: CoverageMembership | null;
   /** Solo con cita. */
   appointment: {
     id: string;
@@ -239,7 +246,7 @@ export type ForceEncounterInput = z.input<typeof forceEncounterSchema>;
 export const assignProviderSchema = z.object({ providerMembershipId: z.uuid(), expectedVersion: expectedVersionSchema });
 export type AssignProviderInput = z.input<typeof assignProviderSchema>;
 
-/** Diálogo «Cobertura» (S-CLI-12): la misma cobertura que la llegada (3A: sin membresía) y la versión de la cobertura. */
+/** Diálogo «Cobertura» (S-CLI-12): la misma cobertura que la llegada y la versión de la cobertura. */
 export const updateCoverageSchema = z.object({ coverage: arrivalCoverageSchema, expectedVersion: expectedVersionSchema });
 export type UpdateCoverageInput = z.input<typeof updateCoverageSchema>;
 
@@ -258,6 +265,8 @@ export interface EncounterCoverage {
   term: InsuranceTerm | null;
   amountCents: number | null;
   coinsuranceBp: number | null;
+  /** Con «Membresía» (T-026b): la membresía de la cobertura y su plan. */
+  membership: { code: string; planName: string; startDate: string } | null;
   version: number;
 }
 
@@ -307,6 +316,8 @@ export interface EncounterDetail {
   /** Membresía de quien abre la visita (para «Usted»). */
   myMembershipId: string;
   coverage: EncounterCoverage | null;
+  /** T-026b: la membresía del paciente que da beneficios hoy (para elegir «Membresía» en S-CLI-12), o nula. */
+  availableMembership: CoverageMembership | null;
   /** Aviso de alergias del encabezado (ADR 0040, T-022). Nulo para quien no ve datos clínicos (Recepción). */
   allergies: AllergyNotice | null;
   /** «Motivo declarado por el paciente» en el kiosco (T-021), para los cuatro roles clínicos. Nulo si no vino del kiosco. */

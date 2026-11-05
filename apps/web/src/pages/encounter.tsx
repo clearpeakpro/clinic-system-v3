@@ -228,7 +228,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
             ) : null}
             <OpenOrdersDialog open={dialog === 'open-orders'} onClose={() => { setDialog(null); }} onGoToOrders={goToOrders} />
             {dialog === 'coverage' ? (
-              <CoverageDialog coverage={d.coverage} onClose={() => { setDialog(null); }} onSave={(input, version) => saveCoverage(d, input, version)} />
+              <CoverageDialog coverage={d.coverage} membership={d.availableMembership} onClose={() => { setDialog(null); }} onSave={(input, version) => saveCoverage(d, input, version)} />
             ) : null}
           </>
         )}

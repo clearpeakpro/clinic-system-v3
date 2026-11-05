@@ -241,7 +241,9 @@ describe('T-014 agenda y detalle de la cita', () => {
     expect(audit).toHaveLength(1);
     expect(JSON.stringify(audit)).not.toContain('Nota ficticia');
     expect(JSON.stringify(audit)).not.toContain(NORTE.patients[0].lastName);
-    expect((await day(recepcion, '2026-12-05')).appointments.map((a) => a.id)).toEqual([created.id, cancelled.id]);
+    // Solo las de esta prueba: appointment-commands.test.ts crea citas a «hoy + 31 días» con la fecha real, que puede caer este mismo día.
+    const mine = new Set([created.id, cancelled.id]);
+    expect((await day(recepcion, '2026-12-05')).appointments.map((a) => a.id).filter((id) => mine.has(id))).toEqual([created.id, cancelled.id]);
     const list = await readAudit(`action = 'appointment.list' and metadata->>'date' = '2026-12-05'`);
     expect(list.length).toBeGreaterThan(0);
     expect(JSON.stringify(list)).not.toContain(NORTE.patients[0].lastName);

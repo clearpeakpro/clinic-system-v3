@@ -23,6 +23,8 @@ describe('asistente de llegada', () => {
   it('5 pasos con Pago directo y 6 con Seguro', () => {
     expect(arrivalSteps({ coverage: 'self_pay' })).toEqual(['patient', 'site', 'route', 'coverage', 'confirm']);
     expect(arrivalSteps({ coverage: 'insurance' })).toEqual(['patient', 'site', 'route', 'coverage', 'payer', 'confirm']);
+    // T-026b: con Membresía no hay «Datos del pagador»: el plan sale de la membresía.
+    expect(arrivalSteps({ coverage: 'membership' })).toEqual(['patient', 'site', 'route', 'coverage', 'confirm']);
   });
 
   it('cada paso exige lo suyo; con la sede inactiva no se avanza', () => {

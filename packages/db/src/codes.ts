@@ -47,6 +47,14 @@ export async function nextEncounterCode(tx: Tx, organizationId: string, location
 }
 
 /**
+ * Siguiente código de membresía del paciente por sede de inscripción:
+ * `NOR1-M-000012` (T-026b). Contador propio por sede (`membership:<id de la sede>`).
+ */
+export async function nextMembershipCode(tx: Tx, organizationId: string, location: { id: string; code: string }): Promise<string> {
+  return `${location.code}-M-${padded(await nextValue(tx, organizationId, `membership:${location.id}`))}`;
+}
+
+/**
  * Siguiente código de orden de una sede: `NOR1-O-000045` (T-025; ADR 0019).
  * Contador propio por sede (`order:<id de la sede>`).
  */

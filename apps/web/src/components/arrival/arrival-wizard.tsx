@@ -15,7 +15,7 @@ import {
 } from '@clinic/shared';
 import { Button, Checkbox, cn, CodeText, Field, formatDateTime, RouteBadge, SegmentedControl, SelectField, VISIT_ROUTE_ICONS } from '@clinic/ui';
 import { Link } from '@tanstack/react-router';
-import { Building2, Check, CircleAlert, Info, TriangleAlert } from 'lucide-react';
+import { BadgeCheck, Building2, Check, CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { useRef, useState, type ReactNode } from 'react';
 import { api } from '../../lib/api.ts';
 import { newIdempotencyKey } from '../../lib/appointments.ts';
@@ -34,6 +34,7 @@ import {
   type DraftCoverage,
 } from '../../lib/arrival.ts';
 import { formatDay } from '../../lib/catalog.ts';
+import { membershipNotice } from '../../lib/memberships.ts';
 import { useUnsavedChanges } from '../../lib/unsaved.ts';
 import { DeclaredReasonCard } from '../kiosk/declared-reason.tsx';
 
@@ -289,13 +290,21 @@ export function ArrivalWizard({
         ) : null}
 
         {step === 'coverage' ? (
-          <SegmentedControl<DraftCoverage>
-            label="Cobertura"
-            options={ARRIVAL_COVERAGE_TYPES.map((t) => ({ value: t, label: COVERAGE_TYPE_LABELS[t] }))}
-            value={draft.coverage}
-            onChange={(v) => { change({ coverage: v }); }}
-            className="self-start"
-          />
+          <>
+            {/* T-026b: el aviso solo informa; la cobertura por defecto sigue siendo «Pago directo» (S-REC-24). */}
+            {context.membership ? (
+              <p role="status" className="flex items-center gap-space-xs rounded-md bg-secondary/10 p-3.5 text-body-md text-on-surface">
+                <BadgeCheck aria-hidden className="size-5 shrink-0 text-secondary" /> {membershipNotice(context.membership)}
+              </p>
+            ) : null}
+            <SegmentedControl<DraftCoverage>
+              label="Cobertura"
+              options={ARRIVAL_COVERAGE_TYPES.filter((t) => t !== 'membership' || context.membership).map((t) => ({ value: t, label: COVERAGE_TYPE_LABELS[t] }))}
+              value={draft.coverage}
+              onChange={(v) => { change({ coverage: v }); }}
+              className="self-start"
+            />
+          </>
         ) : null}
 
         {step === 'payer' ? (
@@ -407,6 +416,7 @@ function Summary({ context, draft }: { context: ArrivalContext; draft: ArrivalDr
         {type ? <Pair label="Tipo de cita">{type.name}</Pair> : null}
         <Pair label="Ruta">{draft.route ? <RouteBadge route={draft.route} /> : '—'}</Pair>
         <Pair label="Cobertura">{COVERAGE_TYPE_LABELS[draft.coverage]}</Pair>
+        {draft.coverage === 'membership' && context.membership ? <Pair label="Plan de membresía">{context.membership.planName}</Pair> : null}
         {draft.coverage === 'insurance' ? (
           <>
             <Pair label="Nombre del seguro">{draft.insurerName.trim()}</Pair>

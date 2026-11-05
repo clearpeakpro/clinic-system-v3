@@ -1,5 +1,8 @@
 import {
   acceptInvitationSchema,
+  addMembershipMemberSchema,
+  enrollMembershipSchema,
+  membershipVersionSchema,
   appointmentOverlapSchema,
   appointmentVersionSchema,
   arrivalSchema,
@@ -102,6 +105,7 @@ import type { Principal } from './principal.ts';
 import { InvitationService } from './invitations.ts';
 import { LabProviderService } from './lab-providers.ts';
 import { MembershipPlanService } from './membership-plans.ts';
+import { PatientMembershipService } from './patient-memberships.ts';
 import { PatientService } from './patients.ts';
 import { LocationService } from './locations.ts';
 import { NotificationService } from './notifications.ts';
@@ -1007,6 +1011,70 @@ export class PatientEncountersController {
 }
 
 /**
+ * Membresía del paciente (T-026b parte B; S-PAC-22 y 23; ADR 0034). Verla en
+ * el perfil: patients.access. Inscribir, afiliados y aviso de cancelación:
+ * además memberships.manage (Recepción). Inscribir lleva Idempotency-Key.
+ */
+@Controller('patients')
+export class PatientMembershipController {
+  readonly #memberships: PatientMembershipService;
+  constructor(@Inject(PatientMembershipService) memberships: PatientMembershipService) {
+    this.#memberships = memberships;
+  }
+
+  @Get(':id/membership')
+  @RequirePermission('patients.access')
+  card(@Req() request: FastifyRequest, @Param('id') patientId: string) {
+    return this.#memberships.card(principalOf(request), id(patientId), metaOf(request));
+  }
+
+  @Post(':id/membership')
+  @RequirePermission('patients.access', 'memberships.manage')
+  enroll(@Req() request: FastifyRequest, @Param('id') patientId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    // El hash de la clave se calcula con el cuerpo tal como llegó; el servicio lo valida.
+    parse(enrollMembershipSchema, body);
+    return this.#memberships.enroll(principalOf(request), id(patientId), body, key, metaOf(request));
+  }
+}
+
+@Controller('patient-memberships')
+export class PatientMembershipsController {
+  readonly #memberships: PatientMembershipService;
+  constructor(@Inject(PatientMembershipService) memberships: PatientMembershipService) {
+    this.#memberships = memberships;
+  }
+
+  /** S-PAC-23: planes que se pueden elegir hoy y el rango de la fecha de inicio. */
+  @Get('enrollment-options')
+  @RequirePermission('patients.access', 'memberships.manage')
+  options(@Req() request: FastifyRequest) {
+    return this.#memberships.enrollmentOptions(principalOf(request));
+  }
+
+  @Post(':id/members')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'memberships.manage')
+  addMember(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    return this.#memberships.addMember(principalOf(request), id(membershipId), parse(addMembershipMemberSchema, body), metaOf(request));
+  }
+
+  @Post(':id/members/:patientId/remove')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'memberships.manage')
+  removeMember(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Param('patientId') patientId: string, @Body() body: unknown) {
+    return this.#memberships.removeMember(principalOf(request), id(membershipId), id(patientId), parse(membershipVersionSchema, body), metaOf(request));
+  }
+
+  /** «Registrar aviso de cancelación». */
+  @Post(':id/cancel')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'memberships.manage')
+  cancel(@Req() request: FastifyRequest, @Param('id') membershipId: string, @Body() body: unknown) {
+    return this.#memberships.cancel(principalOf(request), id(membershipId), parse(membershipVersionSchema, body), metaOf(request));
+  }
+}
+
+/**
  * S-REC-01 Panel en vivo (T-019): la foto de la sede activa. Exige panel.view
  * y, porque lleva nombres de pacientes, patients.access (ADR 0027).
  */
@@ -1327,6 +1395,7 @@ export interface ApiProviders {
   catalog: CatalogService;
   labProviders: LabProviderService;
   membershipPlans: MembershipPlanService;
+  patientMemberships: PatientMembershipService;
   patients: PatientService;
   appointments: AppointmentService;
   appointmentCommands: AppointmentCommands;
@@ -1364,6 +1433,8 @@ export function createApiModule(providers: ApiProviders) {
       ArrivalsController,
       EncountersController,
       PatientEncountersController,
+      PatientMembershipController,
+      PatientMembershipsController,
       PanelController,
       NursingController,
       ProviderController,
@@ -1382,6 +1453,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: CatalogService, useValue: providers.catalog },
       { provide: LabProviderService, useValue: providers.labProviders },
       { provide: MembershipPlanService, useValue: providers.membershipPlans },
+      { provide: PatientMembershipService, useValue: providers.patientMemberships },
       { provide: PatientService, useValue: providers.patients },
       { provide: AppointmentService, useValue: providers.appointments },
       { provide: AppointmentCommands, useValue: providers.appointmentCommands },

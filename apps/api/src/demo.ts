@@ -7,7 +7,7 @@ import { createApp, type ClinicApp } from './app.ts';
 import type { AppConfig } from './config.ts';
 import { FixedClock, systemClock, type Clock } from './clock.ts';
 import { seedDevEncounters } from './dev-encounters.ts';
-import { seedDevAppointments, seedDevUsers } from './dev-seed.ts';
+import { seedDevAppointments, seedDevMemberships, seedDevUsers } from './dev-seed.ts';
 import { MemoryLogSink } from './logging.ts';
 import { operatorErrorMessage } from './platform.ts';
 
@@ -101,6 +101,7 @@ export async function resetDemo(options: ResetOptions): Promise<void> {
   try {
     await seedDevUsers(app, options.seedPassword);
     await seedDevAppointments(app, options.config.fieldEncryptionKey, { clock, withVisits: true });
+    await seedDevMemberships(app, { clock });
     await seedDevEncounters(app, clock);
   } finally {
     await app.close();

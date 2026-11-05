@@ -4,6 +4,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { appointments } from './appointments-schema.ts';
 import { appointmentTypes, VISIT_ROUTE_VALUES } from './catalog-schema.ts';
 import { memberships } from './identity-schema.ts';
+import { patientMemberships } from './patient-memberships-schema.ts';
 import { patients } from './patients-schema.ts';
 import { appSchema, locations, organizations } from './schema.ts';
 
@@ -189,6 +190,8 @@ export const coverages = appSchema.table(
     term: text('term'),
     amountCents: integer('amount_cents'),
     coinsuranceBp: integer('coinsurance_bp'),
+    /** Con «Membresía» (T-026b): la membresía del paciente, que da el plan. */
+    patientMembershipId: uuid('patient_membership_id'),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
@@ -201,6 +204,13 @@ export const coverages = appSchema.table(
       columns: [t.organizationId, t.encounterId],
       foreignColumns: [encounters.organizationId, encounters.id],
     }),
+    foreignKey({
+      name: 'coverages_patient_membership_fk',
+      columns: [t.organizationId, t.patientMembershipId],
+      foreignColumns: [patientMemberships.organizationId, patientMemberships.id],
+    }),
+    // Membresía ⇔ la membresía del paciente (T-026b).
+    check('coverages_membership_check', sql`(${t.type} = 'membership') = (${t.patientMembershipId} is not null)`),
     check('coverages_type_check', sql`${t.type} in (${inList(COVERAGE_TYPE_VALUES)})`),
     check('coverages_term_check', sql`${t.term} is null or ${t.term} in (${inList(INSURANCE_TERM_VALUES)})`),
     check('coverages_amount_range', sql`${t.amountCents} between 0 and ${sql.raw(String(COVERAGE_AMOUNT_MAX_CENTS))}`),

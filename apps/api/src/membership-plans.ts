@@ -14,6 +14,7 @@ import type {
   BenefitItem,
   BenefitItemKind,
   BenefitItemRef,
+  BenefitQuotaMode,
   CreateMembershipBenefitInput,
   CreateMembershipPlanInput,
   MembershipBenefit,
@@ -462,6 +463,7 @@ function toBenefit(row: BenefitRow, items: BenefitItem[]): MembershipBenefit {
     nameEs: row.nameEs,
     nameEn: row.nameEn,
     quantityPerYear: row.quantityPerYear,
+    quotaMode: row.quotaMode as MembershipBenefit['quotaMode'],
     includesSameVisitLabs: row.includesSameVisitLabs,
     category: row.category as MembershipBenefit['category'],
     discountBp: row.discountBp,
@@ -480,6 +482,7 @@ function benefitValues(input: CreateMembershipBenefitInput) {
         nameEs: input.nameEs,
         nameEn: input.nameEn,
         quantityPerYear: input.quantityPerYear,
+        quotaMode: input.quotaMode,
         includesSameVisitLabs: input.includesSameVisitLabs,
         category: null,
         discountBp: null,
@@ -490,6 +493,7 @@ function benefitValues(input: CreateMembershipBenefitInput) {
         nameEs: null,
         nameEn: null,
         quantityPerYear: null,
+        quotaMode: null,
         includesSameVisitLabs: false,
         category: input.category,
         discountBp: input.discountBp,
@@ -505,6 +509,7 @@ function rowAsInput(row: BenefitRow): CreateMembershipBenefitInput {
         nameEs: row.nameEs ?? '',
         nameEn: row.nameEn ?? '',
         quantityPerYear: row.quantityPerYear ?? 0,
+        quotaMode: (row.quotaMode ?? 'shared') as BenefitQuotaMode,
         includesSameVisitLabs: row.includesSameVisitLabs,
         items: [],
         sortOrder: row.sortOrder,
@@ -517,6 +522,7 @@ function describe(input: CreateMembershipBenefitInput, codes: string, prefix: 'p
   if (input.type === 'discount') return { [`${prefix}Category`]: input.category, [`${prefix}DiscountBp`]: input.discountBp };
   return {
     [`${prefix}Quantity`]: input.quantityPerYear,
+    [`${prefix}QuotaMode`]: input.quotaMode,
     [`${prefix}SameVisitLabs`]: input.includesSameVisitLabs,
     [`${prefix}Items`]: codes,
   };

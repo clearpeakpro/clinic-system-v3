@@ -617,6 +617,8 @@ Leyenda: ✅ completo · ◐ limitado (el rol usa la pantalla, pero alguna acci�
 | [S-PAC-19](#s-pac-19) | Documentos (página del paciente) | ✅ | ◐ | ◐ | ◐ | Solo por URL; mismas reglas que [S-PAC-09](#s-pac-09). |
 | [S-PAC-20](#s-pac-20) | Documentos de la visita | ✅ | ◐ | ◐ | ◐ | Solo por URL; igual que [S-CLI-25](#s-cli-25). |
 | [S-PAC-21](#s-pac-21) | Registro de exportación previo | ✅ | ✅ | ◐ | ◐ | El servidor lo permite a Enfermería y Proveedor, pero no tienen pantallas que exporten. Ver [S-CAJ-24](#s-caj-24). |
+| [S-PAC-22](#s-pac-22) | Tarjeta «Membresía» del perfil (v3) | ◐ | ✅ | ◐ | ◐ | Ven todos; inscribir, afiliados y aviso de cancelación, solo Recepción (`memberships.manage`). El Administrador, solo con rol clínico (ADR 0027). |
+| [S-PAC-23](#s-pac-23) | Inscribir en un plan (v3) | ◐ | ✅ | ❌ | ❌ | Recepción; el Administrador, solo con rol de Recepción. |
 
 ### <a id="inicio--recepcion-panel-citas-y-llegada-s-rec"></a>Recepción: Panel, citas y llegada (S-REC)
 

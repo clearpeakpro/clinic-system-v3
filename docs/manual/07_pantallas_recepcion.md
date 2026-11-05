@@ -1636,6 +1636,8 @@ No aplica.
 
 ### <a id="p-rec--s-rec-24--paso-cobertura-tipo-de-pagador"></a>S-REC-24 Paso «Cobertura» (tipo de pagador)
 
+> **Cambio en v3 (T-026b, 2026-11-04, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** el aviso «Membresía activa: {plan} (desde {fecha})» y la opción «Membresía» solo aparecen si el paciente tiene una membresía que da beneficios hoy (activa y ya empezada, calculada por el servidor con el reloj). La cobertura por defecto sigue siendo «Pago directo». Con «Membresía» la llegada tiene **5 pasos**: el plan sale de la membresía del paciente y no hay «Datos del pagador». Si la membresía deja de dar beneficios antes de confirmar: «El paciente ya no tiene una membresía activa hoy. Elija otra cobertura.» Mandan estas decisiones sobre el texto de esta ficha.
+
 **Ruta:** paso 4 del asistente · **Tipo:** panel
 
 **Propósito**
@@ -1696,6 +1698,8 @@ No aplica.
 ---
 
 ### <a id="p-rec--s-rec-25--paso-datos-del-pagador-seguro-o-membresia"></a>S-REC-25 Paso «Datos del pagador» (seguro o membresía)
+
+> **Cambio en v3 (T-026b, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** este paso es **solo para Seguro**. Con «Membresía» no se elige el plan: sale de la membresía del paciente ([S-PAC-22](06_pantallas_pacientes.md#p-pac--s-pac-22--tarjeta-membresia-del-perfil)) y el resumen de [S-REC-26](07_pantallas_recepcion.md#p-rec--s-rec-26--paso-confirmar-revisar-y-confirmar) muestra «Plan de membresía». Mandan estas decisiones sobre el texto de esta ficha.
 
 **Ruta:** paso 5 del asistente (solo con Seguro o Membresía) · **Tipo:** panel
 

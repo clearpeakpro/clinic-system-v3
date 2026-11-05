@@ -1,8 +1,17 @@
-import { ARRIVAL_COVERAGE_TYPES, COVERAGE_TYPE_LABELS, INSURANCE_TERM_LABELS, INSURANCE_TERMS, type EncounterCoverage, type InsuranceTerm } from '@clinic/shared';
+import {
+  ARRIVAL_COVERAGE_TYPES,
+  COVERAGE_TYPE_LABELS,
+  INSURANCE_TERM_LABELS,
+  INSURANCE_TERMS,
+  type CoverageMembership,
+  type EncounterCoverage,
+  type InsuranceTerm,
+} from '@clinic/shared';
 import { Banner, Button, Dialog, DiscardChangesDialog, Field, SegmentedControl } from '@clinic/ui';
 import { CreditCard, Pencil, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { capitalizeWords } from '../../lib/arrival.ts';
+import { membershipNotice } from '../../lib/memberships.ts';
 import {
   coverageDirty,
   coverageDraft,
@@ -18,8 +27,9 @@ import { SectionCard } from './section-card.tsx';
 
 // S-CLI-11 Tarjeta «Cobertura» y S-CLI-12 diálogo «Cobertura».
 //  - Los cuatro roles la ven; editan Recepción (visits.manage) con la visita abierta.
-//  - En la parte 3A: «Pago directo» o «Seguro» con un solo término, como la
-//    llegada (ADR 0034). Los importes se envían como texto y los convierte a
+//  - «Pago directo», «Seguro» con un solo término o, con una membresía activa
+//    hoy, «Membresía» (T-026b, ADR 0034), como la llegada: el plan sale de la
+//    membresía del paciente. Al guardar, el servidor recalcula los beneficios. Los importes se envían como texto y los convierte a
 //    centavos el servidor; aquí solo se les da formato.
 //  - Con cambios: cambiar de sede pide confirmación (S-CLI-26) y «Cancelar»
 //    también (el manual descartaba sin aviso al tocar fuera).
@@ -67,10 +77,13 @@ export function CoverageCard({ coverage, canEdit, onEdit }: { coverage: Encounte
 
 export function CoverageDialog({
   coverage,
+  membership,
   onClose,
   onSave,
 }: {
   coverage: EncounterCoverage | null;
+  /** T-026b: la membresía del paciente que da beneficios hoy, o nula (no se ofrece «Membresía»). */
+  membership: CoverageMembership | null;
   onClose: () => void;
   /** Devuelve el mensaje de error del servidor, o null si guardó (o si el conflicto ya lo resolvió la página). */
   onSave: (input: ReturnType<typeof coverageDraftInput>, expectedVersion: number) => Promise<string | null>;
@@ -124,9 +137,10 @@ export function CoverageDialog({
         }
       >
         {serverError ? <Banner tone="error" title={serverError} /> : null}
+        {membership ? <Banner tone="info" title={membershipNotice(membership)} /> : null}
         <SegmentedControl<CoverageDraftType>
           label="Tipo de cobertura"
-          options={ARRIVAL_COVERAGE_TYPES.map((t) => ({ value: t, label: COVERAGE_TYPE_LABELS[t] }))}
+          options={ARRIVAL_COVERAGE_TYPES.filter((t) => t !== 'membership' || membership !== null || coverage?.type === 'membership').map((t) => ({ value: t, label: COVERAGE_TYPE_LABELS[t] }))}
           value={draft.type}
           onChange={(type) => { change({ type }); }}
           className="self-start"

@@ -1,6 +1,8 @@
 import { ROLES } from '@clinic/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DEV_OWNERS, DEV_USERS, seedDevUsers } from '../src/dev-seed.ts';
+import { createTenantDb, patientMembershipMembers, patientMemberships } from '@clinic/db';
+import { eq } from 'drizzle-orm';
+import { DEMO_MEMBERSHIPS, DEV_OWNERS, DEV_USERS, seedDevMemberships, seedDevUsers } from '../src/dev-seed.ts';
 import { Client, enrollTotp, NORTE, selectContext, signIn, startApp, SUR, type TestApp } from './support.ts';
 
 // El primer Propietario de cada organización ficticia lo crea solo la semilla
@@ -35,6 +37,21 @@ describe('semilla de desarrollo: Propietarios ficticios', () => {
       const other = owner.org.id === NORTE.id ? SUR : NORTE;
       expect((await selectContext(client, other)).statusCode).toBe(403);
       expect((await selectContext(client, owner.org)).statusCode).toBe(204);
+    }
+  });
+
+  it('T-026b: las membresías ficticias quedan activas, una por paciente, sin duplicarse', async () => {
+    await seedDevMemberships(app);
+    await seedDevMemberships(app);
+    for (const demo of DEMO_MEMBERSHIPS) {
+      const rows = await createTenantDb(app.pool).withTenant(demo.org.id, (tx) =>
+        tx
+          .select({ status: patientMemberships.status, role: patientMembershipMembers.role })
+          .from(patientMembershipMembers)
+          .innerJoin(patientMemberships, eq(patientMemberships.id, patientMembershipMembers.membershipId))
+          .where(eq(patientMembershipMembers.patientId, demo.holder)),
+      );
+      expect(rows).toEqual([{ status: 'active', role: 'holder' }]);
     }
   });
 

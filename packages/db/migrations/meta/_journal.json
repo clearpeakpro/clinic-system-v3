@@ -288,6 +288,20 @@
       "when": 1793760394152,
       "tag": "0040_membership_plans_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793810360063,
+      "tag": "0041_patient_memberships",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793810369441,
+      "tag": "0042_patient_memberships_rls",
+      "breakpoints": true
     }
   ]
 }

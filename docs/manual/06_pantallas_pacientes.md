@@ -48,6 +48,8 @@ Este capítulo cubre todo lo relativo al expediente administrativo del paciente:
 | [S-PAC-19](06_pantallas_pacientes.md#p-pac--s-pac-19--documentos-pagina-del-paciente) | Documentos (página del paciente) | `/app/<código>/patients/<id>/documents` | Página |
 | [S-PAC-20](06_pantallas_pacientes.md#p-pac--s-pac-20--documentos-de-la-visita) | Documentos de la visita | `/app/<código>/encounters/<id>/documents` | Página |
 | [S-PAC-21](06_pantallas_pacientes.md#p-pac--s-pac-21--registro-de-exportacion-previo-auditoria-antes-de-imprimir--descargar--compartir) | Registro de exportación previo (auditoría antes de imprimir / descargar / compartir) | Comportamiento sin ruta | Aviso |
+| [S-PAC-22](06_pantallas_pacientes.md#p-pac--s-pac-22--tarjeta-membresia-del-perfil) | Tarjeta «Membresía» del perfil (v3, T-026b) | Tarjeta del Resumen del perfil | Tarjeta |
+| [S-PAC-23](06_pantallas_pacientes.md#p-pac--s-pac-23--inscribir-en-un-plan) | Inscribir en un plan (v3, T-026b) | Diálogo desde S-PAC-22 | Diálogo |
 
 ---
 
@@ -1474,10 +1476,116 @@ Ninguno.
 
 ---
 
+### <a id="p-pac--s-pac-22--tarjeta-membresia-del-perfil"></a>S-PAC-22 Tarjeta «Membresía» del perfil
+
+> **Ficha nueva de v3 (T-026b parte B, [ADR 0034](../decisions/0034-membresias-fase-3.md)).** El prototipo no tenía pantalla para la membresía del paciente. Stitch no tiene diseño: sigue las tarjetas del Resumen ([S-PAC-06](06_pantallas_pacientes.md#p-pac--s-pac-06--pestana-resumen)).
+
+**Ruta:** tarjeta del Resumen del perfil, `/app/<código>/pacientes/<id>` · **Tipo:** tarjeta
+
+**Propósito**
+
+Ver la membresía en curso del paciente (o la última cancelada), sus personas, sus cuotas y su historial, y gestionarla desde Recepción.
+
+**Acceso por rol**
+
+| Rol | Acceso | Detalle |
+| --- | --- | --- |
+| Propietario / Administrador | Solo con un rol clínico en la sede ([ADR 0027](../decisions/0027-acceso-clinico-propietario-administrador.md)) | Con rol de Recepción, igual que Recepción. |
+| Recepción | Completo | `memberships.manage`: inscribir, añadir y quitar afiliados y registrar el aviso de cancelación. |
+| Enfermería / asistente médico | Solo lectura | — |
+| Proveedor | Solo lectura | — |
+
+**Distribución**
+
+- Sin membresía: «Sin membresía.» y, para Recepción, «Inscribir en un plan» ([S-PAC-23](06_pantallas_pacientes.md#p-pac--s-pac-23--inscribir-en-un-plan)).
+- Con membresía: nombre del plan, estado con icono + texto + color («Pendiente de pago», «Activa», «Suspendida», «Cancelada») y código `NOR1-M-000012`.
+- Aviso según el estado:
+  - «Sin beneficios hasta que se pague la cuota inicial en Caja.»;
+  - «Suspendida desde el {fecha}: la mensualidad del {fecha} no se ha pagado. Los beneficios vuelven al pagarla.»;
+  - «Aviso de cancelación registrado: beneficios hasta el {fecha}.»;
+  - «Cancelada el {fecha}: {motivo}.».
+- Pares: Inicio, Día de cobro, Año de beneficios, Cuota inicial, «Mensualidad (monto fijo)» e «Inscrita en» (sede y día).
+- «Identidad verificada por {persona} · {fecha}».
+- Personas ({n} de {máximo}): nombre, código y «Titular» o «Afiliado»; «Añadir afiliado» y «Quitar».
+- Cuotas: tipo, vencimiento, periodo que cubre, importe y estado («Pendiente», «Pagada», «Anulada»). «Se cobran en Caja con la terminal de la clínica. El sistema no guarda datos de tarjeta.»
+- «Historial de la membresía» (plegable): fecha, paso, afiliado y quién («Usted», el nombre o «Sistema»).
+- «Registrar aviso de cancelación».
+
+**Acciones**
+
+| Acción | Quién | Qué hace | Confirmación | Resultado |
+| --- | --- | --- | --- | --- |
+| «Añadir afiliado» | Recepción | Busca un paciente registrado (nombre o código) y lo añade, hasta el máximo del plan. | No | «Afiliado añadido.» |
+| «Quitar» | Recepción | Quita a un afiliado (no al titular): pierde los beneficios desde hoy; lo ya usado no cambia. | Sí | «Afiliado quitado.» |
+| «Registrar aviso de cancelación» | Recepción | Con 15 días o más antes del próximo cobro, los beneficios valen hasta el día anterior; con menos, esa mensualidad se debe y duran un mes más. «Pendiente de pago» se cancela en el momento. | Sí | «Aviso registrado. Beneficios hasta el {fecha}.» (y «Se debe la mensualidad del {fecha}.») o «Membresía cancelada.» |
+
+**Reglas de negocio**
+
+- El estado lo calcula el servidor con el reloj, en la hora de la sede de inscripción: suspendida a las 12:00 a. m. de D+1 si la mensualidad del día D no se pagó; cancelada a las 12:00 a. m. de D+30, a los 30 días de la inscripción sin cuota inicial o el día después del fin del aviso. Al cancelarse, las cuotas pendientes se anulan, sin deuda.
+- Cada mensualidad aparece 14 días antes de vencer. Las cuotas son las vigentes el día de la inscripción («Monto fijo»).
+- Un paciente solo está en una membresía en curso. Después de una cancelación se inscribe de nuevo, con cuota inicial y un año de beneficios nuevo.
+- Cada cambio usa la `version` de la membresía (409 y «Actualice para continuar»).
+- La lectura se audita (`patient.membership_view`); los cambios, con códigos, fechas e importes, nunca nombres.
+
+---
+
+### <a id="p-pac--s-pac-23--inscribir-en-un-plan"></a>S-PAC-23 Inscribir en un plan
+
+> **Ficha nueva de v3 (T-026b parte B, [ADR 0034](../decisions/0034-membresias-fase-3.md)).** Etapa 1: la inscripción es en Recepción; la inscripción en línea es P-24.
+
+**Ruta:** diálogo desde [S-PAC-22](06_pantallas_pacientes.md#p-pac--s-pac-22--tarjeta-membresia-del-perfil) · **Tipo:** diálogo
+
+**Propósito**
+
+Inscribir al paciente como titular de un plan, con sus afiliados si el plan lo admite.
+
+**Acceso por rol**
+
+| Rol | Acceso | Detalle |
+| --- | --- | --- |
+| Recepción | Completo | `memberships.manage`. |
+| Propietario / Administrador | Solo con rol de Recepción en la sede | — |
+| Enfermería / Proveedor | Sin acceso | — |
+
+**Campos**
+
+| Campo | Tipo | Obligatorio | Validación | PHI |
+| --- | --- | --- | --- | --- |
+| Plan | Desplegable de planes activos con cuotas vigentes hoy | Sí («Elija un plan.») | — | No |
+| Fecha de inicio | Fecha | Sí | Hoy o hasta 30 días después | No |
+| Día de cobro | Desplegable «Día 1» a «Día 31» | Sí («Elija el día de cobro.») | — | No |
+| Afiliados | Búsqueda de pacientes registrados | No | Hasta el máximo del plan menos el titular; ninguno en otra membresía en curso | Sí (nombres) |
+| «Identidad verificada» | Casilla | Sí («Verifique la identidad del titular antes de inscribir.») | — | No |
+
+**Distribución**
+
+- Al elegir el plan: su descripción, «Cuota inicial {importe} (incluye el primer mes) · Mensualidad {importe} · Hasta {n} personas» y «Monto fijo: estas cuotas no cambian aunque el plan cambie de precio después.»
+- Con el día de cobro: «Primera mensualidad: {fecha}. La cuota inicial cubre hasta el día anterior. Los días 29 a 31 pasan al último día de los meses más cortos.»
+- «Identidad verificada»: «Revise el documento del titular. El sistema anota quién y cuándo; no guarda números de ID ni de tarjeta.»
+
+**Acciones**
+
+| Acción | Quién | Qué hace | Confirmación | Resultado |
+| --- | --- | --- | --- | --- |
+| «Inscribir» | Recepción | Valida y crea la membresía «Pendiente de pago» con la cuota inicial pendiente, con `Idempotency-Key`. | No | «Paciente inscrito. Cobre la cuota inicial en Caja para activar la membresía.» |
+| «Cancelar» | Ídem | Con cambios, pide confirmar el descarte. | Sí, con cambios | — |
+
+**Estados y mensajes**
+
+- «Este paciente ya está en una membresía en curso.», «El plan no admite más personas.», «La fecha de inicio debe ser hoy o hasta 30 días después.», «Ese plan ya no está disponible. Elija otro.»
+
+**Reglas de negocio**
+
+- La primera mensualidad vence el primer día de cobro que cae al cumplirse un mes desde el inicio, o después (inicio 3 nov y día 15: 15 dic).
+- La membresía guarda las cuotas vigentes del plan el día de la inscripción; los planes cuestan lo mismo en todas las sedes.
+- Sin beneficios hasta que se pague la cuota inicial en Caja (T-028).
+
+---
+
 ## <a id="p-pac--preguntas-abiertas-detectadas-en-estas-pantallas"></a>Preguntas abiertas detectadas en estas pantallas
 
 1. Proveedor «limitado» al editar datos (`docs/06_RBAC_MATRIX.md` marca ◐; el comentario de `EditPatientBasic` en `backend/src/shared/rbac.rs` y `permission.dart` dice «own encounters' patients, non-identity fields», es decir, solo pacientes de sus propias visitas y campos no identitarios): ni la app ni el servidor restringen a pacientes de sus visitas; solo se limita al teléfono. ¿Es la regla deseada? ([S-PAC-11](06_pantallas_pacientes.md#p-pac--s-pac-11--editar-paciente))
-2. Membresías: el perfil no muestra membresías (solo aparecen en el paso de cobertura del registro de llegada «Membresía activa: {plan} (desde {since})» y se trasladan al fusionar). ¿Se espera una sección de membresías en el perfil?
+2. **Resuelta en v3 (T-026b):** la tarjeta «Membresía» del perfil ([S-PAC-22](06_pantallas_pacientes.md#p-pac--s-pac-22--tarjeta-membresia-del-perfil)) e «Inscribir en un plan» ([S-PAC-23](06_pantallas_pacientes.md#p-pac--s-pac-23--inscribir-en-un-plan)). Pregunta original: el perfil no muestra membresías (solo aparecen en el paso de cobertura del registro de llegada «Membresía activa: {plan} (desde {since})» y se trasladan al fusionar). ¿Se espera una sección de membresías en el perfil?
 3. Estado «Inactivo»: existe en los datos y en los chips, pero no hay petición ni interfaz para inactivar o reactivar un paciente. ¿Cómo llega un paciente a Inactivo?
 4. No hay forma de corregir la fecha de nacimiento ni de añadir referencias después del alta. ¿Es intencional?
 5. Las rutas de documentos del paciente y de la visita ([S-PAC-19](06_pantallas_pacientes.md#p-pac--s-pac-19--documentos-pagina-del-paciente), [S-PAC-20](06_pantallas_pacientes.md#p-pac--s-pac-20--documentos-de-la-visita)) no tienen enlace en la app; la página de visita no tiene sección de documentos. ¿Deben enlazarse o integrarse?

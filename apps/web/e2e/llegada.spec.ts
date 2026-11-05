@@ -95,7 +95,7 @@ test('Recepción registra la llegada de una cita de hoy y la proveedora la ve en
   await recepcion.getByRole('radio', { name: /^Solo laboratorio/ }).click();
   await wizardButton(recepcion, 'Continuar').click();
 
-  // Paso 4: en 3A, solo Pago directo y Seguro (ADR 0034). Con Seguro, 6 pasos.
+  // Paso 4: sin membresía activa no se ofrece «Membresía» (T-026b). Con Seguro, 6 pasos.
   await expect(recepcion.getByRole('radio', { name: 'Membresía' })).toHaveCount(0);
   await recepcion.getByRole('radio', { name: 'Seguro' }).click();
   await expect(recepcion.getByRole('heading', { name: 'Paso 4 de 6: Cobertura' })).toBeVisible();

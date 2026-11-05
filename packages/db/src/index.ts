@@ -11,6 +11,7 @@ export * from './nursing-schema.ts';
 export * from './kiosk-schema.ts';
 export * from './orders-schema.ts';
 export * from './membership-plans-schema.ts';
+export * from './patient-memberships-schema.ts';
 export { createTenantDb, type Db, type TenantDb, type Tx } from './with-tenant.ts';
 export { bootstrap, type BootstrapOptions } from './bootstrap.ts';
 export { migrate } from './migrate.ts';
@@ -28,5 +29,6 @@ export {
 } from './outbox.ts';
 export { notifyRealtime, parseRealtimeMessage, REALTIME_CHANNEL, type RealtimeMessage } from './realtime.ts';
 export { DEMO, DEMO_LABS, DEMO_MEMBERSHIP_PLANS, seed, type DemoPatient } from './seed.ts';
-export { nextAppointmentCode, nextCode, nextEncounterCode, nextOrderCode, type CodeKind } from './codes.ts';
+export { nextAppointmentCode, nextCode, nextEncounterCode, nextMembershipCode, nextOrderCode, type CodeKind } from './codes.ts';
+export { localDay, settleMembership, type SettledMembership } from './patient-memberships.ts';
 export { createLocalFieldCipher, type FieldCipher, type FieldContext } from './field-cipher.ts';

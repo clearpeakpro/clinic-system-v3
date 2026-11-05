@@ -878,6 +878,8 @@ Se actualiza cuando se recarga la visita.
 
 ### <a id="p-cli--s-cli-12--dialogo-cobertura-editar-cobertura"></a>S-CLI-12 Diálogo «Cobertura» (editar cobertura)
 
+> **Cambio en v3 (T-026b, [ADR 0034](../decisions/0034-membresias-fase-3.md)):** «Membresía» se ofrece solo si el paciente tiene una membresía que da beneficios hoy, con el aviso «Membresía activa: {plan} (desde {fecha})»; no hay «ID de miembro» ni desplegable «Plan de membresía»: el plan sale de su membresía. La tarjeta S-CLI-11 muestra «Plan de membresía» y el código de la membresía. Al guardar, el servidor recalcula los beneficios de todos los cargos activos de la visita (con «Pago directo» o «Seguro», los quita). Mandan estas decisiones sobre el texto de esta ficha.
+
 **Ruta:** diálogo sobre `/app/<código>/encounters/<encounterId>` (pantalla completa en menos de 600 px) · **Tipo:** diálogo
 
 **Propósito**

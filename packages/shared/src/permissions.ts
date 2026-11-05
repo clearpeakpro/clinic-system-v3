@@ -70,6 +70,11 @@ export const PERMISSIONS = [
   'orders.create',
   'orders.execute',
   'orders.cancel',
+  // Membresías del paciente (T-026b parte B; S-PAC-22 y 23; ADR 0034):
+  // inscribir, añadir y quitar afiliados y registrar el aviso de
+  // cancelación. Recepción (la etapa 1 es en Recepción). Verla en el perfil:
+  // patients.access.
+  'memberships.manage',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -125,6 +130,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'appointments.manage',
     'appointments.check_in',
     'visits.manage',
+    'memberships.manage',
     'checkout.access',
     'reports.location',
   ],

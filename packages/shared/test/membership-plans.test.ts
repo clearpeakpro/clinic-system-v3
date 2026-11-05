@@ -28,7 +28,7 @@ describe('planes de membresía', () => {
   });
 
   it('cada tipo de beneficio con sus campos: el incluido, con uno o más servicios sin repetir; el descuento, de 0 a 100 %', () => {
-    const included = { type: 'included', nameEs: 'Consulta', nameEn: 'Visit', quantityPerYear: 3, includesSameVisitLabs: false, sortOrder: null };
+    const included = { type: 'included', nameEs: 'Consulta', nameEn: 'Visit', quantityPerYear: 3, quotaMode: 'shared', includesSameVisitLabs: false, sortOrder: null };
     expect(createMembershipBenefitSchema.safeParse({ ...included, items: [{ kind: 'consultations', id: ITEM }] }).success).toBe(true);
     expect(createMembershipBenefitSchema.safeParse({ ...included, items: [] }).success).toBe(false);
     expect(
