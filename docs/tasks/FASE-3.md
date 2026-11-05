@@ -655,9 +655,47 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - completar con saldo pide confirmación;
 - E2E `caja.spec.ts`.
 
+**Decisiones al planificarla (2026-11-04, [ADR 0035](../decisions/0035-reparto-importe-seguro.md)):**
+- Coaseguro: la parte del paciente se redondea al centavo más cercano, con la mitad hacia arriba, y el seguro cubre el resto exacto.
+- Estado del estado de cuenta: «Pagado» también cuando el total a pagar es $0.00.
+- Una visita cerrada como «Cancelada» o «Se retiró» muestra su estado de cuenta en solo lectura, con su saldo calculado. Qué pasa con ese saldo se decide en T-028 (hay que preguntarlo al planificarla).
+- «Agregar cargo» lleva `Idempotency-Key`.
+
+**Cómo quedó (2026-11-04):**
+- **Base de datos:** migraciones `0043` y `0044`.
+  - `billing_statements`: una fila por visita con su `version`, sin importes. RLS forzada, sin `DELETE`, y solo cambian `version` y `updated_at`.
+  - `charges` admite el origen `cashier` (sin orden) y guarda su servicio del catálogo (consulta, procedimiento o prueba; exactamente uno) con la copia del código y el nombre. Los cargos de orden que ya existían se rellenan desde su línea.
+  - Aislamiento en `packages/db/test/billing.test.ts`.
+- **Compartido:** `computeStatement()`, `patientShareCents()`, `addChargeSchema` (estricto: un precio o un descuento enviado por la web da 400) y los tipos de Caja, en `packages/shared/src/billing.ts`. `acknowledgeBalance` en `encounterTransitionSchema`. «Iniciar pago» pasa a llamarse «Iniciar caja» (ADR 0015).
+- **API:**
+  - `apps/api/src/billing.ts` y `billing-statement.ts`, con el reloj inyectable.
+  - `GET /api/encounters/:id/statement`: los cuatro roles clínicos; Recepción con líneas, Enfermería y Proveedor solo los totales. Con la visita abierta recalcula los beneficios de membresía y, si cambian, sube la versión. Lectura auditada (`billing.statement_view`, vista `full` o `totals`).
+  - `GET …/charge-options` y `POST …/charges` (`checkout.access`), con `Idempotency-Key`, la versión del estado de cuenta y el precio vigente de la sede ese día. Auditoría `charge.created` con origen `cashier`.
+  - `GET /api/checkout/queue?q=`: «En caja» primero, después «Listo para caja» de la que más espera a la que menos, con su saldo y búsqueda por nombre o código. Lectura auditada sin nombres.
+  - «Completar visita» recalcula por última vez los beneficios y, con saldo, exige `acknowledgeBalance` (`409 balance_pending` con el saldo).
+  - Las órdenes y el cambio de cobertura suben la versión del estado de cuenta y emiten `billing.changed`. `recalculateVisitBenefits()` lee el servicio del propio cargo, así que los cargos de Caja reciben los mismos beneficios.
+- **Web:**
+  - `/app/<sede>/caja` (S-CAJ-01/02) y `/app/<sede>/caja/<visita>` (S-CAJ-03 a 08), con `components/billing/`.
+  - Sección Facturación de la visita (S-CAJ-16 / S-CLI-23) con «Ir a Caja».
+  - «Completar visita» con saldo pide confirmación en Caja y en la barra de la visita (S-CAJ-05).
+  - Se relee con `billing.changed` y `encounter.changed`.
+- **Semilla:** una segunda consulta de seguimiento, «Consulta por enfermedad aguda» (`CONS-ENFERMEDAD`), en el mismo «Cupo compartido» de las 3 de seguimiento.
+- **Pruebas:**
+  - `packages/shared/test/billing.test.ts` y `apps/api/test/billing.test.ts`, con casos calculados a mano: pago directo, copago (también mayor que el total), coaseguro con redondeo, deducible y membresía (consulta inicial, 3 de seguimiento con dos consultas distintas y la 4.ª con el 35 %); recálculo al abrir con la membresía suspendida; precio a las 11:59 p. m. y a las 12:01 a. m.
+  - `apps/web/src/components/billing/statement-card.test.tsx`: la web muestra los importes tal como llegan, aunque no cuadren, y ningún archivo de Caja hace cuentas con importes.
+  - E2E `apps/web/e2e/caja.spec.ts`.
+- **Diferencias con el manual:**
+  - sin «Recalcular» (el servidor recalcula al abrir) ni «Aplicar descuento» (ADR 0041);
+  - las tarjetas «Pagos» y «Recibos» llegan con T-028 y T-029;
+  - «Caja» en lugar de «Checkout» en todas las etiquetas;
+  - el diálogo «Agregar cargo» no se cierra si el servidor rechaza el cargo;
+  - con órdenes abiertas, la cola de Caja también muestra el diálogo S-CAJ-06 (el manual mostraba un aviso suelto).
+
 ## T-028 — Pagos, anulaciones y saldos
 
 **Decisiones (resueltas el 2026-11-01):** P-17 ([ADR 0033](../decisions/0033-acciones-administrativas-flujo-clinico.md)). Anulan cargos y pagos el Propietario o el Administrador **con rol clínico en la sede**; Recepción cobra, pero no anula.
+
+**Pregunta pendiente para el plan (de T-027, 2026-11-04):** qué pasa con el saldo de una visita cerrada como «Cancelada» o «Se retiró» que tiene cargos activos: si se le sigue debiendo al paciente (pestaña Saldos) o el estado de cuenta queda «Anulado». Se pregunta al dueño antes de programar T-028.
 
 **Objetivo:** Recepción registra pagos manuales sin duplicarlos nunca, las anulaciones dejan rastro y el saldo que queda se cobra después desde el perfil.
 

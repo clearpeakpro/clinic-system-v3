@@ -1,9 +1,11 @@
 import type { EncounterDetail, EncounterProvider, RegularVisitAction } from '@clinic/shared';
-import { AsyncView, Button, EmptyState, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
+import { AsyncView, Button, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft, ClipboardList, FileText, History, HeartPulse, ReceiptText, RefreshCw, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { BillingSection } from '../components/billing/billing-section.tsx';
+import { CompleteVisitDialog } from '../components/billing/complete-visit-dialog.tsx';
 import { ActionBar, type BarCommand } from '../components/encounters/action-bar.tsx';
 import { AssignProviderDialog } from '../components/encounters/assign-provider-dialog.tsx';
 import { CoverageCard, CoverageDialog } from '../components/encounters/coverage-card.tsx';
@@ -16,6 +18,7 @@ import { DeclaredReasonCard } from '../components/kiosk/declared-reason.tsx';
 import { AllergyBanner } from '../components/nursing/allergy-banner.tsx';
 import { NursingSection } from '../components/nursing/nursing-section.tsx';
 import { api, type ApiError } from '../lib/api.ts';
+import { pendingBalance } from '../lib/billing.ts';
 import { encounterMessage, isOpenOrders, isVersionConflict, movedText, VERSION_CONFLICT_TEXT } from '../lib/encounters.ts';
 import { useActiveLocation } from '../lib/session.ts';
 
@@ -33,6 +36,8 @@ import { useActiveLocation } from '../lib/session.ts';
 // diálogo «Órdenes abiertas» (S-CLI-08) cuando el servidor bloquea el paso.
 // Desde T-021: «Motivo declarado por el paciente» si la visita vino del kiosco.
 // Desde T-025: la sección Órdenes (S-CLI-17) y «Ir a órdenes» en S-CLI-08.
+// Desde T-027: la sección Facturación (S-CLI-23 / S-CAJ-16) y, al completar
+// con saldo, la confirmación de S-CAJ-05 (igual que en Caja).
 //  - Los cuatro roles clínicos la abren (patients.access); la API calcula qué
 //    puede hacer cada uno y revalida cada operación.
 //  - Toda acción lleva la versión leída: ante un 409 se avisa y se relee.
@@ -52,6 +57,8 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
   const [tab, setTab] = useState<TabKey>('resumen');
   const [busy, setBusy] = useState<null | 'action' | 'provider'>(null);
   const [dialog, setDialog] = useState<null | 'provider' | 'coverage' | 'open-orders'>(null);
+  /** S-CAJ-05: el saldo que devolvió el servidor al completar (nulo: sin diálogo). */
+  const [balance, setBalance] = useState<number | null>(null);
   const encounter = useQuery<EncounterDetail, ApiError>({
     queryKey: ['encounter', encounterId],
     queryFn: () => api.encounter(encounterId),
@@ -83,7 +90,9 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
       if (saved) snackbar({ message: success(saved.status) });
     } catch (error) {
       // S-CLI-08: con órdenes abiertas, diálogo en lugar del aviso.
-      if (isOpenOrders(error)) setDialog('open-orders');
+      const pending = pendingBalance(error);
+      if (pending !== null) setBalance(pending);
+      else if (isOpenOrders(error)) setDialog('open-orders');
       else snackbar({ message: isVersionConflict(error) ? VERSION_CONFLICT_TEXT : encounterMessage(error) });
     } finally {
       setBusy(null);
@@ -91,15 +100,22 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
     }
   };
 
-  const onCommand = async (e: EncounterDetail, command: BarCommand) => {
+  const onCommand = async (e: EncounterDetail, command: BarCommand, acknowledgeBalance = false) => {
     await run(
       'action',
-      () => {
+      async () => {
         switch (command.kind) {
-          case 'transition':
+          case 'transition': {
             // «Iniciar consulta» tiene su endpoint: se autoasigna si la visita no tiene proveedor (T-023).
             if (command.action === 'start_consult') return api.startConsult(e.id, { expectedVersion: e.version });
-            return api.encounterTransition(e.id, { action: command.action as RegularVisitAction, expectedVersion: e.version });
+            const saved = await api.encounterTransition(e.id, {
+              action: command.action as RegularVisitAction,
+              expectedVersion: e.version,
+              ...(acknowledgeBalance ? { acknowledgeBalance: true } : {}),
+            });
+            setBalance(null);
+            return saved;
+          }
           case 'close':
             return api.closeEncounter(e.id, { outcome: command.outcome, reason: command.reason, expectedVersion: e.version });
           case 'force':
@@ -214,8 +230,8 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
                     </SectionCard>
                   </div>
                   <div className="desk:col-start-3 desk:row-start-2">
-                    <SectionCard id="billing" icon={<ReceiptText className="size-6" />} title="Facturación" subtitle="Cargos y saldo">
-                      <EmptyState icon={ReceiptText} title="Estado de cuenta pendiente." description="Los cargos de las órdenes ya se registran; el estado de cuenta llega con la tarea de Caja (T-027)." />
+                    <SectionCard id="billing" icon={<ReceiptText className="size-6" />} title="Facturación" subtitle="Totales y saldo">
+                      <BillingSection encounterId={d.id} sede={sede} />
                     </SectionCard>
                   </div>
                 </div>
@@ -227,6 +243,7 @@ export function EncounterPage({ sede, encounterId, section }: { sede: string; en
               <AssignProviderDialog current={d.provider?.membershipId ?? null} onClose={() => { setDialog(null); }} onPick={(p) => void assign(d, p)} />
             ) : null}
             <OpenOrdersDialog open={dialog === 'open-orders'} onClose={() => { setDialog(null); }} onGoToOrders={goToOrders} />
+            <CompleteVisitDialog balanceCents={balance} onClose={() => { setBalance(null); }} onConfirm={() => onCommand(d, { kind: 'transition', action: 'complete' }, true)} />
             {dialog === 'coverage' ? (
               <CoverageDialog coverage={d.coverage} membership={d.availableMembership} onClose={() => { setDialog(null); }} onSave={(input, version) => saveCoverage(d, input, version)} />
             ) : null}

@@ -118,6 +118,8 @@ export const DEMO_CATALOG = {
   consultations: [
     { code: 'CONS-INICIAL', name: 'Consulta médica inicial', sortOrder: 10 },
     { code: 'CONS-SEGUIMIENTO', name: 'Consulta de seguimiento o enfermedad', sortOrder: 20 },
+    // T-027: una segunda consulta del mismo cupo de seguimiento («Cupo compartido»).
+    { code: 'CONS-ENFERMEDAD', name: 'Consulta por enfermedad aguda', sortOrder: 30 },
   ],
   procedures: [
     { code: 'INJ-B12', name: 'Inyección de vitamina B12', kind: 'injection', membershipCategory: 'treatment', sortOrder: 10 },
@@ -140,6 +142,7 @@ export const DEMO_CATALOG = {
     norte: {
       'CONS-INICIAL': { general: 6000 },
       'CONS-SEGUIMIENTO': { general: 4500, NOR2: 5000 },
+      'CONS-ENFERMEDAD': { general: 5000 },
       'INJ-B12': { general: 2000, NOR2: 2200 },
       'PROC-LAVOT': { general: 3000 },
       'LAB-STREP': { general: 2800, NOR2: 3000 },
@@ -150,6 +153,7 @@ export const DEMO_CATALOG = {
     sur: {
       'CONS-INICIAL': { general: 5500 },
       'CONS-SEGUIMIENTO': { general: 4000 },
+      'CONS-ENFERMEDAD': { general: 4500 },
       'INJ-B12': { general: 1800 },
       'PROC-LAVOT': { general: 2800 },
       'LAB-STREP': { general: 2500 },
@@ -248,7 +252,7 @@ const DEMO_INCLUDED: readonly {
   { nameEs: 'Consulta médica inicial', nameEn: 'Initial medical visit', quantity: 1, quotaMode: 'shared', consultations: ['CONS-INICIAL'], labTests: [], followUp: false },
   { nameEs: 'Chequeo general', nameEn: 'General checkup', quantity: 1, quotaMode: 'package', consultations: [], labTests: ['LAB-A1C', 'LAB-TSH'], followUp: false },
   { nameEs: 'Prueba de PSA', nameEn: 'PSA test', quantity: 1, quotaMode: 'shared', consultations: [], labTests: ['LAB-PSA'], followUp: false },
-  { nameEs: 'Consultas de seguimiento o enfermedad', nameEn: 'Follow-up or sick visits', quantity: 3, quotaMode: 'shared', consultations: ['CONS-SEGUIMIENTO'], labTests: [], followUp: true },
+  { nameEs: 'Consultas de seguimiento o enfermedad', nameEn: 'Follow-up or sick visits', quantity: 3, quotaMode: 'shared', consultations: ['CONS-SEGUIMIENTO', 'CONS-ENFERMEDAD'], labTests: [], followUp: true },
 ];
 
 /** Planes, cuotas y beneficios de una organización (idempotente: un plan que ya existe no se toca). */

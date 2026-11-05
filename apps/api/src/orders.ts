@@ -15,6 +15,7 @@ import {
   orders,
   patients,
   procedures,
+  touchStatement,
   user as userTable,
   type FieldCipher,
   type TenantDb,
@@ -513,6 +514,10 @@ export class OrderService {
               source: 'order',
               orderId,
               orderItemId: itemId,
+              procedureId: input.type === 'lab' ? null : line.itemId,
+              labTestId: input.type === 'lab' ? line.itemId : null,
+              itemCode: line.code,
+              itemName: line.name,
               unitPriceCents,
               quantity: line.quantity,
               amountCents,
@@ -544,6 +549,8 @@ export class OrderService {
           created.push(orderId);
         }
         await this.#applyBenefits(tx, actor, current, now, meta);
+        // T-027: cambió el estado de cuenta.
+        await touchStatement(tx, { organizationId: ctx.organizationId, locationId: ctx.locationId, encounterId }, now);
         await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'billing.changed', ids: { encounter: encounterId } });
         return { status: 201, resourceIds: created };
       },
@@ -613,6 +620,7 @@ export class OrderService {
         });
         // Cancelar libera el incluido: los beneficios de la visita se recalculan.
         await this.#applyBenefits(tx, actor, current, now, meta);
+        await touchStatement(tx, { organizationId: ctx.organizationId, locationId: ctx.locationId, encounterId: current.id }, now);
         await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'order.changed', ids: { order: order.id, encounter: current.id }, status: 'CANCELLED' });
         await notifyRealtime(tx, { t: 'event', org: ctx.organizationId, loc: ctx.locationId, name: 'billing.changed', ids: { encounter: current.id } });
         await this.#afterResolved(tx, actor, current, me, now, meta);

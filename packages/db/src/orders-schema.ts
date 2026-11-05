@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { check, date, foreignKey, index, integer, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
-import { labProviders, labTests, procedures } from './catalog-schema.ts';
+import { consultations, labProviders, labTests, procedures } from './catalog-schema.ts';
 import { encounters } from './encounters-schema.ts';
 import { memberships } from './identity-schema.ts';
 import { membershipBenefits } from './membership-plans-schema.ts';
@@ -18,16 +18,19 @@ import { appSchema, locations, organizations } from './schema.ts';
 //  - order_items: las líneas (un ítem en Procedimiento e Inyección; una o
 //    varias pruebas en Laboratorio), con una copia del código y el nombre.
 //    Append-only.
-//  - charges: la parte mínima de facturación (T-027 la amplía): un cargo por
-//    línea, de origen «Orden», al precio vigente de la sede el día de la
-//    orden, que calcula el servidor. Centavos (CLAUDE.md, regla 4). Nada se
+//  - charges: un cargo por línea, de origen «Orden» o «Caja» (T-027: un
+//    servicio del catálogo agregado en Caja, sin orden; ADR 0041), al precio
+//    vigente de la sede ese día, que calcula el servidor. Cada cargo guarda
+//    su servicio del catálogo (consulta, procedimiento o prueba) con una
+//    copia del código y el nombre. Centavos (CLAUDE.md, regla 4). Nada se
 //    borra en finanzas (regla 5): se anula con motivo cifrado, y clinic_app
 //    solo puede cambiar las columnas de la anulación (GRANT por columnas).
 // Los estados son los de @clinic/shared (orders.ts); una prueba los compara.
 
 export const ORDER_TYPE_VALUES = ['procedure', 'injection', 'lab'] as const;
 export const ORDER_STATUS_VALUES = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
-export const CHARGE_SOURCE_VALUES = ['order'] as const;
+/** Origen del cargo: «Orden» (T-025) o «Caja» (T-027, S-CAJ-08: un servicio del catálogo, ADR 0041). */
+export const CHARGE_SOURCE_VALUES = ['order', 'cashier'] as const;
 export const CHARGE_STATUS_VALUES = ['active', 'voided'] as const;
 
 /** Código de la orden por sede: `NOR1-O-000045` (ADR 0019). */
@@ -169,8 +172,16 @@ export const charges = appSchema.table(
     locationId: uuid('location_id').notNull(),
     encounterId: uuid('encounter_id').notNull(),
     source: text('source').notNull().default('order'),
-    orderId: uuid('order_id').notNull(),
-    orderItemId: uuid('order_item_id').notNull(),
+    /** La orden y su línea: solo en los cargos de origen «Orden». */
+    orderId: uuid('order_id'),
+    orderItemId: uuid('order_item_id'),
+    /** El servicio del catálogo (exactamente uno). Las consultas solo llegan desde Caja (ADR 0041). */
+    consultationId: uuid('consultation_id'),
+    procedureId: uuid('procedure_id'),
+    labTestId: uuid('lab_test_id'),
+    /** Copia del catálogo al crear el cargo: los cargos históricos muestran ítems ya inactivos o renombrados. */
+    itemCode: text('item_code').notNull(),
+    itemName: text('item_name').notNull(),
     /** Centavos de USD (regla 4). */
     unitPriceCents: integer('unit_price_cents').notNull(),
     quantity: integer('quantity').notNull(),
@@ -209,6 +220,9 @@ export const charges = appSchema.table(
     foreignKey({ name: 'charges_encounter_fk', columns: [t.organizationId, t.encounterId], foreignColumns: [encounters.organizationId, encounters.id] }),
     foreignKey({ name: 'charges_order_fk', columns: [t.organizationId, t.orderId], foreignColumns: [orders.organizationId, orders.id] }),
     foreignKey({ name: 'charges_order_item_fk', columns: [t.organizationId, t.orderItemId], foreignColumns: [orderItems.organizationId, orderItems.id] }),
+    foreignKey({ name: 'charges_consultation_fk', columns: [t.organizationId, t.consultationId], foreignColumns: [consultations.organizationId, consultations.id] }),
+    foreignKey({ name: 'charges_procedure_fk', columns: [t.organizationId, t.procedureId], foreignColumns: [procedures.organizationId, procedures.id] }),
+    foreignKey({ name: 'charges_lab_test_fk', columns: [t.organizationId, t.labTestId], foreignColumns: [labTests.organizationId, labTests.id] }),
     foreignKey({
       name: 'charges_created_by_fk',
       columns: [t.organizationId, t.createdByMembershipId],
@@ -251,6 +265,10 @@ export const charges = appSchema.table(
     check('charges_discount_bp_check', sql`(${t.discountBenefitId} is null) = (${t.membershipDiscountBp} is null) and ${t.membershipDiscountBp} between 1 and 10000`),
     check('charges_membership_discount_check', sql`${t.membershipDiscountCents} between 0 and ${t.amountCents}`),
     check('charges_source_check', sql`${t.source} in (${inList(CHARGE_SOURCE_VALUES)})`),
+    // «Orden» ⇔ orden y línea; «Caja», sin orden.
+    check('charges_source_refs_check', sql`(${t.source} = 'order') = (${t.orderId} is not null and ${t.orderItemId} is not null) and (${t.orderId} is null) = (${t.orderItemId} is null)`),
+    check('charges_one_item_check', sql`num_nonnulls(${t.consultationId}, ${t.procedureId}, ${t.labTestId}) = 1`),
+    check('charges_consultation_source_check', sql`${t.consultationId} is null or ${t.source} = 'cashier'`),
     check('charges_status_check', sql`${t.status} in (${inList(CHARGE_STATUS_VALUES)})`),
     check('charges_unit_price_check', sql`${t.unitPriceCents} >= 0`),
     check('charges_quantity_range', sql`${t.quantity} between 1 and 1000`),

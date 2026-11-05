@@ -15,6 +15,7 @@ import {
   notifyRealtime,
   orders,
   patients,
+  touchStatement,
   user as userTable,
   type FieldCipher,
   type TenantDb,
@@ -71,7 +72,8 @@ import type { Clock } from './clock.ts';
 import type { IdempotencyService } from './idempotency.ts';
 import { allergyNotice, latestHistory } from './nursing.ts';
 import { kioskContent, notifyKioskCheckin } from './kiosk-arrivals.ts';
-import { recalculateVisitBenefits } from './membership-benefits.ts';
+import { prepareStatement, statementTotals } from './billing-statement.ts';
+import { recalculateVisitBenefits, type BenefitChange } from './membership-benefits.ts';
 import { coverageMembership } from './patient-memberships.ts';
 import { rolesAt, type Principal } from './principal.ts';
 import { HttpError, requireContext, type RequestMeta } from './services.ts';
@@ -593,9 +595,19 @@ export class EncounterService {
     return this.change(actor, encounterId, async (tx, current, me, now) => {
       this.#requireVersion(current, input.expectedVersion);
       if (!isOpenVisitStatus(current.status)) throw new HttpError(409, 'encounter_closed');
-      // T-025: «Listo para caja» e «Iniciar pago» se bloquean con órdenes abiertas (S-CLI-08).
+      // T-025: «Listo para caja» e «Iniciar caja» se bloquean con órdenes abiertas (S-CLI-08).
       const result = visitTransition(current.status, input.action, { route: current.route, roles: actor.roles, hasOpenOrders: await hasOpenOrders(tx, current.id) });
       if (!result.ok) throw this.#transitionError(result.reason);
+      if (input.action === 'complete') {
+        // T-027 (S-CAJ-05): antes de cerrar, los beneficios de membresía se
+        // recalculan por última vez (al completarse quedan fijos). Con saldo,
+        // hace falta la confirmación de quien completa: el saldo queda en la
+        // cuenta del paciente (ADR 0004).
+        const { changes } = await prepareStatement(tx, current, now);
+        await this.#auditBenefits(tx, actor, current, changes, meta);
+        const totals = await statementTotals(tx, current.id);
+        if (totals.balanceCents > 0 && input.acknowledgeBalance !== true) throw new HttpError(409, 'balance_pending', { balanceCents: totals.balanceCents });
+      }
       await this.move(tx, actor, current, me, now, meta, { action: input.action, to: result.to, forced: false, reason: null, audit: 'encounter.transitioned' });
     });
   }
@@ -781,19 +793,11 @@ export class EncounterService {
           updatedAt: this.#clock.now(),
         })
         .where(eq(coverages.id, row.id));
-      // Con o sin membresía, los beneficios de los cargos de la visita se recalculan.
-      for (const change of await recalculateVisitBenefits(tx, current.id, this.#clock.now())) {
-        await this.#audit.inTx(tx, current.organizationId, {
-          action: 'charge.membership_benefits',
-          actorType: 'user',
-          actorId: actor.userId,
-          locationId: current.locationId,
-          entityType: 'charge',
-          entityId: change.chargeId,
-          ...meta,
-          metadata: { encounterCode: current.code, previousDiscountCents: change.previousDiscountCents, discountCents: change.discountCents, includedQuantity: change.includedQuantity },
-        });
-      }
+      // Con o sin membresía, los beneficios de los cargos de la visita se
+      // recalculan, y el estado de cuenta cambia (el reparto con seguro, ADR 0035).
+      await this.#auditBenefits(tx, actor, current, await recalculateVisitBenefits(tx, current.id, this.#clock.now()), meta);
+      await touchStatement(tx, { organizationId: current.organizationId, locationId: current.locationId, encounterId: current.id }, this.#clock.now());
+      await notifyRealtime(tx, { t: 'event', org: current.organizationId, loc: current.locationId, name: 'billing.changed', ids: { encounter: current.id } });
       await this.#audit.inTx(tx, current.organizationId, {
         action: 'encounter.coverage_updated',
         ...this.#auditBase(actor, current, meta),
@@ -976,6 +980,22 @@ export class EncounterService {
       ids: { encounter: current.id },
       status,
     });
+  }
+
+  /** Auditoría de cada cargo cuyo beneficio de membresía cambió (T-026b), a nombre de quien lo provocó. */
+  async #auditBenefits(tx: Tx, actor: Principal, current: LockedEncounter, changes: BenefitChange[], meta: RequestMeta): Promise<void> {
+    for (const change of changes) {
+      await this.#audit.inTx(tx, current.organizationId, {
+        action: 'charge.membership_benefits',
+        actorType: 'user',
+        actorId: actor.userId,
+        locationId: current.locationId,
+        entityType: 'charge',
+        entityId: change.chargeId,
+        ...meta,
+        metadata: { encounterCode: current.code, previousDiscountCents: change.previousDiscountCents, discountCents: change.discountCents, includedQuantity: change.includedQuantity },
+      });
+    }
   }
 
   #auditBase(actor: Principal, current: LockedEncounter, meta: RequestMeta) {

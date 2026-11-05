@@ -6,7 +6,6 @@ import {
   locations,
   membershipBenefitItems,
   membershipBenefits,
-  orderItems,
   patientMembershipMembers,
   patientMemberships,
   procedures,
@@ -41,6 +40,8 @@ import { and, asc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 //    se calcula: dos visitas a la vez no usan el mismo incluido.
 //  - Cada cargo que cambia sube su versión y deja su auditoría con el antes y
 //    el después (importes, no datos clínicos).
+//  - T-027: los cargos de Caja (sin orden, también consultas) reciben los
+//    mismos beneficios: el servicio se lee del propio cargo.
 
 type ChargeRow = typeof charges.$inferSelect;
 
@@ -89,12 +90,13 @@ export async function recalculateVisitBenefits(tx: Tx, encounterId: string, now:
     .innerJoin(locations, eq(locations.id, encounters.locationId))
     .where(eq(encounters.id, encounterId));
   if (!visit || !isOpenVisitStatus(visit.status as VisitStatus)) return [];
-  const active = await tx
-    .select({ charge: charges, procedureId: orderItems.procedureId, labTestId: orderItems.labTestId })
-    .from(charges)
-    .innerJoin(orderItems, eq(orderItems.id, charges.orderItemId))
-    .where(and(eq(charges.encounterId, encounterId), eq(charges.status, 'active')))
-    .orderBy(asc(charges.createdAt), asc(charges.id));
+  const active = (
+    await tx
+      .select({ charge: charges })
+      .from(charges)
+      .where(and(eq(charges.encounterId, encounterId), eq(charges.status, 'active')))
+      .orderBy(asc(charges.createdAt), asc(charges.id))
+  ).map((r) => r.charge);
   if (active.length === 0) return [];
 
   const [coverage] = await tx.select({ type: coverages.type, patientMembershipId: coverages.patientMembershipId }).from(coverages).where(eq(coverages.encounterId, encounterId));
@@ -114,7 +116,7 @@ export async function recalculateVisitBenefits(tx: Tx, encounterId: string, now:
   }
 
   const changes: BenefitChange[] = [];
-  for (const { charge } of active) {
+  for (const charge of active) {
     const r = results.get(charge.id);
     const next = r
       ? {
@@ -174,8 +176,15 @@ async function planRules(tx: Tx, planId: string): Promise<BenefitRules> {
   };
 }
 
-/** Cada cargo como línea del cálculo, con la categoría de su servicio. */
-async function benefitLines(tx: Tx, rows: { charge: ChargeRow; procedureId: string | null; labTestId: string | null }[]): Promise<BenefitLine[]> {
+/** El servicio del catálogo de un cargo. */
+function chargeItem(charge: Pick<ChargeRow, 'consultationId' | 'procedureId' | 'labTestId'>): { kind: BenefitLineKind; id: string } {
+  if (charge.consultationId) return { kind: 'consultation', id: charge.consultationId };
+  if (charge.labTestId) return { kind: 'lab_test', id: charge.labTestId };
+  return { kind: 'procedure', id: charge.procedureId ?? '' };
+}
+
+/** Cada cargo como línea del cálculo, con la categoría de su servicio (una consulta es siempre «Consulta», ADR 0041). */
+async function benefitLines(tx: Tx, rows: ChargeRow[]): Promise<BenefitLine[]> {
   const procedureIds = rows.flatMap((r) => (r.procedureId ? [r.procedureId] : []));
   const labIds = rows.flatMap((r) => (r.labTestId ? [r.labTestId] : []));
   const procedureCategories = new Map(
@@ -184,15 +193,20 @@ async function benefitLines(tx: Tx, rows: { charge: ChargeRow; procedureId: stri
   const labCategories = new Map(
     (labIds.length > 0 ? await tx.select({ id: labTests.id, category: labTests.membershipCategory }).from(labTests).where(inArray(labTests.id, labIds)) : []).map((l) => [l.id, l.category]),
   );
-  return rows.map(({ charge, procedureId, labTestId }) => ({
-    chargeId: charge.id,
-    kind: labTestId ? ('lab_test' as const) : ('procedure' as const),
-    itemId: labTestId ?? procedureId ?? '',
-    category: ((labTestId ? labCategories.get(labTestId) : procedureId ? procedureCategories.get(procedureId) : null) ?? null) as MembershipCategory | null,
-    unitPriceCents: charge.unitPriceCents,
-    quantity: charge.quantity,
-    date: charge.priceDate,
-  }));
+  return rows.map((charge) => {
+    const item = chargeItem(charge);
+    const category =
+      item.kind === 'consultation' ? 'consultation' : ((item.kind === 'lab_test' ? labCategories.get(item.id) : procedureCategories.get(item.id)) ?? null);
+    return {
+      chargeId: charge.id,
+      kind: item.kind,
+      itemId: item.id,
+      category: category as MembershipCategory | null,
+      unitPriceCents: charge.unitPriceCents,
+      quantity: charge.quantity,
+      date: charge.priceDate,
+    };
+  });
 }
 
 /**
@@ -205,13 +219,13 @@ async function usedElsewhere(tx: Tx, membershipId: string, patientId: string, en
     .select({
       benefitId: charges.includedBenefitId,
       year: charges.benefitYearStart,
-      procedureId: orderItems.procedureId,
-      labTestId: orderItems.labTestId,
+      consultationId: charges.consultationId,
+      procedureId: charges.procedureId,
+      labTestId: charges.labTestId,
       used: sql<number>`coalesce(sum(${charges.membershipIncludedQuantity}), 0)::int`,
     })
     .from(charges)
     .innerJoin(encounters, eq(encounters.id, charges.encounterId))
-    .innerJoin(orderItems, eq(orderItems.id, charges.orderItemId))
     .where(
       and(
         eq(charges.patientMembershipId, membershipId),
@@ -221,13 +235,14 @@ async function usedElsewhere(tx: Tx, membershipId: string, patientId: string, en
         sql`${charges.includedBenefitId} is not null`,
       ),
     )
-    .groupBy(charges.includedBenefitId, charges.benefitYearStart, orderItems.procedureId, orderItems.labTestId);
+    .groupBy(charges.includedBenefitId, charges.benefitYearStart, charges.consultationId, charges.procedureId, charges.labTestId);
   const used = new Map<string, number>();
   const add = (key: string, n: number) => used.set(key, (used.get(key) ?? 0) + n);
   for (const r of rows) {
     const base = `${r.benefitId ?? ''}|${r.year ?? ''}|`;
     add(base, r.used);
-    add(base + (r.labTestId ? `lab_test:${r.labTestId}` : `procedure:${r.procedureId ?? ''}`), r.used);
+    const item = chargeItem(r);
+    add(`${base}${item.kind}:${item.id}`, r.used);
   }
   return used;
 }

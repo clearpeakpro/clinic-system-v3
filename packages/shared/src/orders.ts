@@ -36,7 +36,7 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CANCELLED: 'Cancelada',
 };
 
-/** Pendiente o En curso: bloquea «Listo para pago» e «Iniciar pago» (S-CLI-08). */
+/** Pendiente o En curso: bloquea «Listo para caja» e «Iniciar caja» (S-CLI-08). */
 export const OPEN_ORDER_STATUSES: readonly OrderStatus[] = ['PENDING', 'IN_PROGRESS'];
 
 export function isOpenOrderStatus(status: OrderStatus): boolean {

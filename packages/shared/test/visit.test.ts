@@ -100,7 +100,7 @@ describe('máquina de estados de la visita', () => {
     expect(visitTransition(null, 'check_in', { route: 'STANDARD', roles: ['propietario', 'enfermeria'] })).toEqual({ ok: false, reason: 'forbidden' });
   });
 
-  it('las órdenes abiertas bloquean «Listo para pago» e «Iniciar pago», no el resto', () => {
+  it('las órdenes abiertas bloquean «Listo para caja» e «Iniciar caja», no el resto', () => {
     const ctx = { route: 'STANDARD' as const, roles: ['recepcion', 'enfermeria', 'proveedor'] as Role[], hasOpenOrders: true };
     expect(visitTransition('WITH_PROVIDER', 'ready_for_checkout', ctx)).toEqual({ ok: false, reason: 'open_orders' });
     expect(visitTransition('PROCEDURE_PENDING', 'ready_for_checkout', ctx)).toEqual({ ok: false, reason: 'open_orders' });

@@ -11,6 +11,8 @@ import { AdminUsersPage } from './pages/admin-users.tsx';
 import { AppointmentsPage } from './pages/appointments.tsx';
 import { AppointmentArrivalPage, WalkInArrivalPage } from './pages/arrival.tsx';
 import { BootPage } from './pages/boot.tsx';
+import { CheckoutPage } from './pages/checkout.tsx';
+import { CheckoutQueuePage } from './pages/checkout-queue.tsx';
 import { DestinationPage } from './pages/destination.tsx';
 import { EncounterPage, type EncounterSection } from './pages/encounter.tsx';
 import { LoginPage, type LoginReason } from './pages/login.tsx';
@@ -310,6 +312,33 @@ const appOrdersQueueRoute = createRoute({
   },
 });
 
+// S-CAJ-01 Caja y S-CAJ-03 Caja de la visita (T-027): Recepción (checkout.access y patients.access).
+const hasCheckout = (permissions: readonly string[]) => permissions.includes('checkout.access') && permissions.includes('patients.access');
+
+const appCheckoutQueueRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'caja',
+  component: function CheckoutQueue() {
+    const me = useMe();
+    const { sede } = appCheckoutQueueRoute.useParams();
+    // Sin acceso, en silencio al Panel (manual, S-CAJ-01).
+    if (me.data && !hasCheckout(me.data.permissions)) return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+    return <CheckoutQueuePage sede={sede} />;
+  },
+});
+
+const appCheckoutRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'caja/$id',
+  component: function Checkout() {
+    const me = useMe();
+    const { sede, id } = appCheckoutRoute.useParams();
+    if (me.data && !hasCheckout(me.data.permissions)) return <Navigate to="/app/$sede/$destino" params={{ sede, destino: 'panel' }} replace />;
+    if (!UUID_RE.test(id)) return <NotFoundPage />;
+    return <CheckoutPage key={id} sede={sede} encounterId={id} />;
+  },
+});
+
 const appDestinationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$destino',
@@ -419,6 +448,8 @@ const routeTree = rootRoute.addChildren([
     appNursingQueueRoute,
     appProviderQueueRoute,
     appOrdersQueueRoute,
+    appCheckoutQueueRoute,
+    appCheckoutRoute,
     appAppointmentsRoute,
     appWalkInRoute,
     appKioskArrivalRoute,

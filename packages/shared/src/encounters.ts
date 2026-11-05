@@ -227,7 +227,15 @@ export const REGULAR_VISIT_ACTIONS = [
 export type RegularVisitAction = (typeof REGULAR_VISIT_ACTIONS)[number];
 
 /** Acción regular de la barra (S-CLI-07). */
-export const encounterTransitionSchema = z.object({ action: z.enum(REGULAR_VISIT_ACTIONS), expectedVersion: expectedVersionSchema });
+export const encounterTransitionSchema = z.object({
+  action: z.enum(REGULAR_VISIT_ACTIONS),
+  expectedVersion: expectedVersionSchema,
+  /**
+   * «Completar visita» con saldo (S-CAJ-05, T-027): la confirmación de quien
+   * completa. Sin ella, el servidor responde 409 `balance_pending` con el saldo.
+   */
+  acknowledgeBalance: z.boolean().optional(),
+});
 export type EncounterTransitionInput = z.input<typeof encounterTransitionSchema>;
 
 /** «Iniciar consulta» (T-023): con la versión leída; la autoasignación la decide el servidor (consultStart). */

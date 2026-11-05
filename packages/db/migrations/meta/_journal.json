@@ -302,6 +302,20 @@
       "when": 1793810369441,
       "tag": "0042_patient_memberships_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793839432127,
+      "tag": "0043_billing_statements",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793839445884,
+      "tag": "0044_billing_statements_rls",
+      "breakpoints": true
     }
   ]
 }

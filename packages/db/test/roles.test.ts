@@ -59,6 +59,8 @@ const TABLES = [
   'patient_membership_members',
   'patient_membership_events',
   'membership_fees',
+  // T-027
+  'billing_statements',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {
