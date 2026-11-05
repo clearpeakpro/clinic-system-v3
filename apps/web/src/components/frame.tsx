@@ -82,7 +82,14 @@ export function Frame({ area, sede }: { area: 'clinic' | 'admin'; sede?: string 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header me={me.data} locations={all} active={active} />
         <DegradedBanner />
-        <main className="min-h-0 flex-1 overflow-y-auto p-4 pb-24 tab:p-6 desk:p-8">
+        {/*
+          Una sola barra de desplazamiento: la de <main>. «relative» lo hace el
+          bloque contenedor de lo que va con position: absolute dentro (los
+          textos «sr-only» de los chips, por ejemplo). Sin él, esos elementos
+          escapaban del recorte de <main>, alargaban el documento y aparecían
+          la segunda barra y una franja vacía abajo que tapaba el final.
+        */}
+        <main className="relative min-h-0 flex-1 overflow-y-auto p-4 pb-24 tab:p-6 desk:p-8">
           <Outlet />
         </main>
       </div>
