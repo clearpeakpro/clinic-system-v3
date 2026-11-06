@@ -397,6 +397,8 @@ describe('Administración › Usuarios', () => {
       'nursing.send_exception',
       'patients.deactivate',
       'patients.edit_birth_date',
+      // Ver y reimprimir recibos (T-029): también solo junto a patients.access.
+      'receipts.print',
       'visits.force_state',
     ]);
     expect(me.permissions).not.toContain('patients.access');
