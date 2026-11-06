@@ -61,3 +61,13 @@ export async function nextMembershipCode(tx: Tx, organizationId: string, locatio
 export async function nextOrderCode(tx: Tx, organizationId: string, location: { id: string; code: string }): Promise<string> {
   return `${location.code}-O-${padded(await nextValue(tx, organizationId, `order:${location.id}`))}`;
 }
+
+/**
+ * Siguiente código de recibo de una sede en un año: `NOR1-R-2026-000045`
+ * (T-029; ADR 0019 y 0037). Contador propio por sede y año
+ * (`receipt:<id de la sede>:<año>`): el 1 de enero de la sede empieza en
+ * 000001. Sin huecos: si la transacción se deshace, el número no se gasta.
+ */
+export async function nextReceiptCode(tx: Tx, organizationId: string, location: { id: string; code: string }, year: number): Promise<string> {
+  return `${location.code}-R-${String(year)}-${padded(await nextValue(tx, organizationId, `receipt:${location.id}:${String(year)}`))}`;
+}

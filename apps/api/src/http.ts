@@ -19,6 +19,10 @@ import {
   addChargeSchema,
   payMembershipFeeSchema,
   recordPaymentSchema,
+  generateFeeReceiptSchema,
+  generateVisitReceiptSchema,
+  printReceiptSchema,
+  receiptLanguageSchema,
   voidSchema,
   assignOrderSchema,
   cancelOrderSchema,
@@ -98,6 +102,7 @@ import { AppointmentService } from './appointments.ts';
 import { BillingService } from './billing.ts';
 import { EncounterService } from './encounters.ts';
 import { PaymentService } from './payments.ts';
+import { ReceiptService } from './receipts.ts';
 import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
 import { NursingService } from './nursing.ts';
@@ -1345,6 +1350,60 @@ export class PaymentsController {
   }
 }
 
+/**
+ * Recibos (T-029; S-CAJ-14, 15 y 24; ADR 0037). Generar: receipts.generate
+ * (Recepción), con Idempotency-Key. Ver, imprimir y reimprimir:
+ * receipts.print con un rol clínico en la sede (patients.access). Imprimir
+ * audita antes de devolver el texto; el servicio valida el cuerpo.
+ */
+@Controller()
+export class ReceiptsController {
+  readonly #receipts: ReceiptService;
+  constructor(@Inject(ReceiptService) receipts: ReceiptService) {
+    this.#receipts = receipts;
+  }
+
+  @Get('encounters/:id/receipts')
+  @RequirePermission('patients.access', 'receipts.print')
+  visitPanel(@Req() request: FastifyRequest, @Param('id') encounterId: string) {
+    return this.#receipts.visitPanel(principalOf(request), id(encounterId));
+  }
+
+  @Post('encounters/:id/receipts')
+  @RequirePermission('patients.access', 'receipts.generate')
+  generateForVisit(@Req() request: FastifyRequest, @Param('id') encounterId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(generateVisitReceiptSchema, body);
+    return this.#receipts.generateForVisit(principalOf(request), id(encounterId), body, key, metaOf(request));
+  }
+
+  @Get('membership-fees/:id/receipts')
+  @RequirePermission('patients.access', 'receipts.print')
+  feePanel(@Req() request: FastifyRequest, @Param('id') feeId: string) {
+    return this.#receipts.feePanel(principalOf(request), id(feeId));
+  }
+
+  @Post('membership-fees/:id/receipts')
+  @RequirePermission('patients.access', 'receipts.generate')
+  generateForFee(@Req() request: FastifyRequest, @Param('id') feeId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    parse(generateFeeReceiptSchema, body);
+    return this.#receipts.generateForFee(principalOf(request), id(feeId), body, key, metaOf(request));
+  }
+
+  @Get('receipts/:id')
+  @RequirePermission('patients.access', 'receipts.print')
+  view(@Req() request: FastifyRequest, @Param('id') receiptId: string, @Query('lang') lang: unknown) {
+    return this.#receipts.view(principalOf(request), id(receiptId), parse(receiptLanguageSchema, lang ?? 'es'), metaOf(request));
+  }
+
+  @Post('receipts/:id/print')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'receipts.print')
+  print(@Req() request: FastifyRequest, @Param('id') receiptId: string, @Body() body: unknown) {
+    parse(printReceiptSchema, body);
+    return this.#receipts.print(principalOf(request), id(receiptId), body, metaOf(request));
+  }
+}
+
 /** S-CLI-02 Cola de proveedor (T-023): el rol Proveedor (provider_queue.access) con patients.access. Lectura auditada. */
 @Controller('provider')
 export class ProviderController {
@@ -1505,6 +1564,7 @@ export interface ApiProviders {
   orders: OrderService;
   billing: BillingService;
   payments: PaymentService;
+  receipts: ReceiptService;
   kiosk: KioskService;
   kioskAdmin: KioskAdminService;
   kioskArrivals: KioskArrivalService;
@@ -1542,6 +1602,7 @@ export function createApiModule(providers: ApiProviders) {
       OrdersController,
       BillingController,
       PaymentsController,
+      ReceiptsController,
       LocationKiosksController,
       KioskController,
       KioskArrivalsController,
@@ -1567,6 +1628,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: OrderService, useValue: providers.orders },
       { provide: BillingService, useValue: providers.billing },
       { provide: PaymentService, useValue: providers.payments },
+      { provide: ReceiptService, useValue: providers.receipts },
       { provide: KioskService, useValue: providers.kiosk },
       { provide: KioskAdminService, useValue: providers.kioskAdmin },
       { provide: KioskArrivalService, useValue: providers.kioskArrivals },

@@ -33,15 +33,17 @@ import {
   useSnackbar,
 } from '@clinic/ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Ban, BadgeCheck, CalendarClock, IdCard, Search, ShieldCheck, UserMinus, UserPlus, Users, Wallet, X } from 'lucide-react';
+import { Ban, BadgeCheck, CalendarClock, IdCard, ReceiptText, Search, ShieldCheck, UserMinus, UserPlus, Users, Wallet, X } from 'lucide-react';
 import { useRef, useState, type ComponentType, type ReactNode, type SubmitEvent } from 'react';
 import { api, type ApiError } from '../../lib/api.ts';
 import { newIdempotencyKey } from '../../lib/appointments.ts';
 import { billingMessage, maskedReference, VOID_CANCELS_MEMBERSHIP_TEXT, VOID_PAYMENT_RECEIPTS_TEXT } from '../../lib/billing.ts';
 import { formatDay } from '../../lib/catalog.ts';
 import { firstDueText, MEMBERSHIP_STATUS_TONES, membershipMessage, membershipStatusDetail, membershipStatusLabel } from '../../lib/memberships.ts';
+import { useMe } from '../../lib/session.ts';
 import { useUnsavedChanges } from '../../lib/unsaved.ts';
 import { PayFeeDialog } from '../billing/pay-fee-dialog.tsx';
+import { ReceiptsCard } from '../billing/receipts-card.tsx';
 import { VoidDialog } from '../billing/void-dialog.tsx';
 
 // S-PAC-22 Tarjeta «Membresía» del perfil y S-PAC-23 «Inscribir en un plan»
@@ -57,6 +59,9 @@ import { VoidDialog } from '../billing/void-dialog.tsx';
 //    pago» (Propietario o Administrador con un rol clínico, ADR 0033). Si
 //    anular cancelaría la membresía, el diálogo lo avisa antes (decisión del
 //    2026-11-05).
+//  - T-029: «Recibos» en cada cuota pagada (o anulada): generar el recibo de
+//    la cuota (Recepción) y verlo, imprimirlo o reimprimirlo (también el
+//    Propietario o el Administrador con un rol clínico).
 //  - «Identidad verificada» es obligatoria: Recepción mira el documento; el
 //    sistema no guarda números de ID ni datos de tarjeta.
 //  - Afiliados (plan Familiar): pacientes ya registrados, buscados como en
@@ -80,6 +85,9 @@ export function PatientMembershipCardView({ patientId, timeZone, card: Card }: {
   const [dialog, setDialog] = useState<null | 'enroll' | 'add' | 'cancel' | { remove: { patientId: string; name: string } }>(null);
   const [paying, setPaying] = useState<MembershipFeeView | null>(null);
   const [voiding, setVoiding] = useState<MembershipFeeView | null>(null);
+  const [receiptsFor, setReceiptsFor] = useState<MembershipFeeView | null>(null);
+  const permissions = useMe().data?.permissions ?? [];
+  const canReceipts = permissions.includes('receipts.print') && permissions.includes('patients.access');
   const reload = async (message?: string) => {
     setDialog(null);
     await queryClient.invalidateQueries({ queryKey: ['patient-membership'] });
@@ -111,6 +119,7 @@ export function PatientMembershipCardView({ patientId, timeZone, card: Card }: {
                 onRemove={(p) => { setDialog({ remove: p }); }}
                 onPayFee={setPaying}
                 onVoidFeePayment={setVoiding}
+                onReceipts={canReceipts ? setReceiptsFor : null}
               />
             ) : (
               <EmptyState icon={BadgeCheck} title="Sin membresía." description="Este paciente no está inscrito en ningún plan." />
@@ -154,6 +163,24 @@ export function PatientMembershipCardView({ patientId, timeZone, card: Card }: {
             }
           }}
         />
+      ) : null}
+      {receiptsFor ? (
+        <Dialog
+          open
+          wide
+          sheetOnPhone
+          onOpenChange={(open) => { if (!open) setReceiptsFor(null); }}
+          icon={<ReceiptText className="size-7" />}
+          title={`Recibos · ${MEMBERSHIP_FEE_KIND_LABELS[receiptsFor.kind]}`}
+          description={`Vence ${formatDay(receiptsFor.dueDate)}`}
+          footer={
+            <Button variant="text" onClick={() => { setReceiptsFor(null); }}>
+              Cerrar
+            </Button>
+          }
+        >
+          <ReceiptsCard target={{ kind: 'fee', id: receiptsFor.id }} timeZone={timeZone} bare />
+        </Dialog>
       ) : null}
       {dialog === 'add' && m ? <AddAffiliateDialog membership={m} onClose={() => { setDialog(null); }} onSaved={() => void reload('Afiliado añadido.')} /> : null}
       {m && dialog === 'cancel' ? (
@@ -214,6 +241,7 @@ function MembershipBody({
   onRemove,
   onPayFee,
   onVoidFeePayment,
+  onReceipts,
 }: {
   membership: PatientMembershipView;
   timeZone: string;
@@ -222,6 +250,8 @@ function MembershipBody({
   onRemove: (person: { patientId: string; name: string }) => void;
   onPayFee: (fee: MembershipFeeView) => void;
   onVoidFeePayment: (fee: MembershipFeeView) => void;
+  /** T-029: los recibos de la cuota; nulo si quien mira no los ve. */
+  onReceipts: ((fee: MembershipFeeView) => void) | null;
 }) {
   const detail = membershipStatusDetail(m);
   return (
@@ -306,6 +336,11 @@ function MembershipBody({
                 {f.status === 'pending' && m.abilities.payFee ? (
                   <Button variant="tonal" onClick={() => { onPayFee(f); }}>
                     <Wallet aria-hidden className="size-5" /> Cobrar
+                  </Button>
+                ) : null}
+                {onReceipts && f.status !== 'pending' ? (
+                  <Button variant="text" aria-label={`Recibos de la cuota: ${MEMBERSHIP_FEE_KIND_LABELS[f.kind]}`} title="Recibos" onClick={() => { onReceipts(f); }}>
+                    <ReceiptText aria-hidden className="size-5" /> Recibos
                   </Button>
                 ) : null}
                 {f.payment && m.abilities.voidFeePayment ? (

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { AddChargeDialog } from '../components/billing/add-charge-dialog.tsx';
 import { CompleteVisitDialog } from '../components/billing/complete-visit-dialog.tsx';
 import { PaymentsCard } from '../components/billing/payments-card.tsx';
+import { ReceiptsCard } from '../components/billing/receipts-card.tsx';
 import { StatementCard } from '../components/billing/statement-card.tsx';
 import { VoidDialog } from '../components/billing/void-dialog.tsx';
 import { OpenOrdersDialog } from '../components/encounters/open-orders-dialog.tsx';
@@ -21,7 +22,7 @@ import { useActiveLocation } from '../lib/session.ts';
 //  - Recepción (checkout.access). De Stitch: «Atrás», el nombre del paciente
 //    con «Caja · {código}», el chip de estado y «Completar visita» arriba, y el
 //    estado de cuenta, y a la derecha la tarjeta «Pagos» (T-028, S-CAJ-11 y
-//    12). La tarjeta «Recibos» llega con T-029.
+//    12) y, debajo, la tarjeta «Recibos» (T-029, S-CAJ-14 y 15).
 //  - T-028: la abre también quien anula (Propietario o Administrador con un
 //    rol clínico, ADR 0033), que ve el estado de cuenta completo y «Anular»
 //    pero solo cobra si además tiene Recepción. Se cobra también con la
@@ -57,6 +58,8 @@ export function CheckoutPage({ sede, encounterId }: { sede: string; encounterId:
     await queryClient.invalidateQueries({ queryKey: ['statement', encounterId] });
     void queryClient.invalidateQueries({ queryKey: ['checkout-queue'] });
     void queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] });
+    // T-029: «Vincular al último pago» sigue al último pago.
+    void queryClient.invalidateQueries({ queryKey: ['receipts', 'visit', encounterId] });
   };
 
   const move = async (s: BillingStatement, action: 'start_checkout' | 'complete', acknowledgeBalance = false) => {
@@ -141,7 +144,10 @@ export function CheckoutPage({ sede, encounterId }: { sede: string; encounterId:
             </div>
             <div className="grid items-start gap-space-lg desk:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <StatementCard statement={d} onAddCharge={() => { setDialog('charge'); }} onVoidCharge={setVoidingCharge} />
-              <PaymentsCard statement={d} timeZone={active?.timezone ?? 'UTC'} onChanged={reload} />
+              <div className="flex min-w-0 flex-col gap-space-lg">
+                <PaymentsCard statement={d} timeZone={active?.timezone ?? 'UTC'} onChanged={reload} />
+                <ReceiptsCard target={{ kind: 'visit', id: d.encounter.id }} timeZone={active?.timezone ?? 'UTC'} />
+              </div>
             </div>
             {voidingCharge ? (
               <VoidDialog

@@ -82,6 +82,12 @@ export const PERMISSIONS = [
   // Enfermería no ve la pestaña.
   'billing.void',
   'balances.view',
+  // Recibos (T-029; S-CAJ-14, 15 y 24; ADR 0037). Generar: Recepción.
+  // Ver, imprimir y reimprimir: Recepción, y el Propietario y el
+  // Administrador solo junto a patients.access (un rol clínico en la sede),
+  // como anular (ADR 0033): ven y reimprimen los recibos, pero no los generan.
+  'receipts.generate',
+  'receipts.print',
   'nursing_queue.access',
   'provider_queue.access',
   'orders_queue.access',
@@ -116,6 +122,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'visits.force_state',
     'nursing.send_exception',
     'billing.void',
+    'receipts.print',
   ],
   administrador: [
     'members.invite',
@@ -129,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'visits.force_state',
     'nursing.send_exception',
     'billing.void',
+    'receipts.print',
   ],
   recepcion: [
     'panel.view',
@@ -142,6 +150,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'memberships.manage',
     'checkout.access',
     'balances.view',
+    'receipts.generate',
+    'receipts.print',
     'reports.location',
   ],
   enfermeria: [
