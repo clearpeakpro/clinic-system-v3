@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-012: Pacientes (S-PAC-01 a 04) con datos ficticios de la semilla.
 // La búsqueda de la cabecera (campo con la lupa integrada, panel de
@@ -19,10 +20,12 @@ const axe = async (page: Page) =>
 const expectAccessible = (page: Page) => expect.poll(() => axe(page), { timeout: 10_000 }).toEqual([]);
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
 }
 
 const results = (page: Page) => page.getByRole('table', { name: 'Resultados de la búsqueda de pacientes' });

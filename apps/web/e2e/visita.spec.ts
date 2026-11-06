@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { generate } from 'otplib';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-018: pantalla de la visita y su circuito (S-CLI-04 a 12, S-CLI-24, S-PAC-08).
 // Con los usuarios ficticios de NOR1:
@@ -38,10 +39,12 @@ async function newPage(browser: Browser, options: { live?: boolean } = {}): Prom
 }
 
 async function signIn(page: Page, email: string, password = E2E.password) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email, password))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
 }
 
 const wizardButton = (page: Page, name: string) => page.locator('main').getByRole('button', { name, exact: true });

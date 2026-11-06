@@ -11,6 +11,16 @@ En la CI van en dos trabajos que corren a la vez: `e2e` (`pnpm --filter @clinic/
 
 Los guiones comparten sus ayudantes (`demo-helpers.ts`: ventanas, inicio y cierre de sesión, MFA).
 
+## Inicio de sesión y esperas
+
+- **Sesión guardada** (`sesion.ts`): las pruebas que no prueban el inicio de sesión entran con `signInSaved()`. La primera vez la sesión se abre por la API y se guarda en memoria; después se reutiliza. Las cookies van al contexto y se abre «/», que lleva a la persona a su destino.
+  - Solo sirve para el personal de la semilla con una sola sede y sin MFA (Recepción, Enfermería y Proveedor). Las demás personas siguen entrando por el formulario.
+  - `flows.spec.ts`, `profile.spec.ts`, `users.spec.ts` y las demos siguen entrando por el formulario: son las que prueban el inicio de sesión.
+  - Si la sesión guardada ya no vale (alguien cerró sesión, por ejemplo), se abre otra. En una ventana ya usada se abre siempre una nueva.
+  - En local ahorra unos 0.9 s por inicio de sesión: 0.57 s frente a 1.43 s con el formulario.
+- **Códigos de verificación:** el servidor acepta el código del periodo de 30 s anterior, el del actual y el del siguiente (Better Auth). Cuando hace falta un código distinto del último, se usa el del periodo siguiente (`generate({ secret, epoch })`) en lugar de esperar a que cambie el periodo.
+- **Nada de esperas fijas:** se espera a que ocurra lo que se comprueba (`expect.poll`, `toBeVisible`…), no un tiempo.
+
 ## Base de datos desechable
 
 Cada configuración levanta su propio Postgres 16 con Testcontainers (`global-setup.ts`, y `global-setup-demo.ts` para las demos):

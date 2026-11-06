@@ -4,6 +4,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import pg from 'pg';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-021: llegadas del kiosco en Recepción (S-REC-28 → S-PAC-03 → S-REC-20 a 27).
 //  - Una tableta de NOR1 (preparada aquí como clinic_app, con un código de un
@@ -52,10 +53,12 @@ async function newPage(browser: Browser, viewport = { width: 1280, height: 900 }
 }
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
   await expect(page).toHaveURL(/\/app\/NOR1\/panel$/);
 }
 

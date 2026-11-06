@@ -43,7 +43,6 @@ test('Recepción inicia sesión y ve el marco con su menú', async ({ page }) =>
 });
 
 test('Administrador sin MFA queda obligado a inscribirse', async ({ page }) => {
-  // Incluye esperar hasta 30 s a un código TOTP nuevo.
   test.setTimeout(120_000);
   await signIn(page, 'admin.norte@example.test');
   await expect(page.getByRole('heading', { name: 'Configurar la verificación en dos pasos' })).toBeVisible();
@@ -80,11 +79,11 @@ test('Administrador sin MFA queda obligado a inscribirse', async ({ page }) => {
   await expect(page.getByText(/El código se actualiza en \d+s/)).toBeVisible();
   const field = page.getByLabel('Código de verificación');
   await expect(field).toHaveAttribute('autocomplete', 'one-time-code');
-  // Un periodo de 30 s nuevo: el código de la inscripción no se repite.
-  const period = Math.floor(Date.now() / 30_000);
-  await expect.poll(() => Math.floor(Date.now() / 30_000), { timeout: 31_000 }).toBeGreaterThan(period);
+  // Un código distinto del de la inscripción: el del periodo de 30 s
+  // siguiente, que el servidor acepta (Better Auth admite un periodo de
+  // margen a cada lado). Así no hay que esperar a que cambie el periodo.
   await field.focus();
-  await page.keyboard.insertText(await generate({ secret }));
+  await page.keyboard.insertText(await generate({ secret, epoch: Math.floor(Date.now() / 1000) + 30 }));
   await expect(page).toHaveURL(/\/admin\/usuarios$/);
 });
 

@@ -5,9 +5,11 @@ import {
   enqueueMail,
   enqueueNotification,
   idempotencyKeys,
+  JOB_SCHEMA,
   notifications,
   outbox,
   parseRealtimeMessage,
+  QUEUES,
   REALTIME_CHANNEL,
   type TenantDb,
 } from '@clinic/db';
@@ -132,9 +134,19 @@ describe('worker', () => {
       await expect.poll(() => mailer.sent.some((m) => m.messageId === id), { timeout: 20_000 }).toBe(true);
       // El correo sale antes de que se confirme la transacción que marca el evento.
       await expect.poll(async () => (await rowOf(id))?.status, { timeout: 5_000 }).toBe('sent');
-      // Un barrido después no vuelve a enviarlo.
+      // Un barrido después no vuelve a enviarlo. En lugar de esperar un tiempo
+      // fijo, se espera a que no quede ningún trabajo de entrega de este evento
+      // por hacer (el barrido ya lo habría encolado): si lo reenviara, aquí ya
+      // estaría el segundo correo.
       await worker.sweep();
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const pendingJobs = async () =>
+        (
+          await superuser.query<{ n: number }>(
+            `select count(*)::int as n from ${JOB_SCHEMA}.job where name = $1 and data->>'id' = $2 and state in ('created', 'retry', 'active')`,
+            [QUEUES.outboxDeliver, id],
+          )
+        ).rows[0]?.n;
+      await expect.poll(pendingJobs, { timeout: 20_000 }).toBe(0);
       expect(mailer.sent.filter((m) => m.messageId === id)).toHaveLength(1);
     } finally {
       await worker.stop();

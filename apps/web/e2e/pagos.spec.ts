@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { generate } from 'otplib';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-028: pagos, anulaciones y saldos (S-CAJ-10 a 13, S-CAJ-17 / S-PAC-10).
 //  - Recepción de NOR1, con una paciente nueva: la inscribe en el plan
@@ -31,10 +32,12 @@ async function newPage(browser: Browser): Promise<Page> {
 }
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
   await expect(page).toHaveURL(/\/app\/NOR1\/panel$/);
 }
 

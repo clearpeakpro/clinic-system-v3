@@ -1,0 +1,54 @@
+name: Chromium de Playwright
+description: >-
+  Instala Chromium y sus dependencias del sistema para Playwright, con caché del
+  navegador y de los paquetes de Ubuntu que descarga, y con límite de tiempo y
+  reintento. Un día con el espejo de paquetes de Ubuntu lento, la instalación
+  tardó 11 minutos (de normal, menos de medio): con la caché, esos paquetes ya
+  no se descargan.
+
+runs:
+  using: composite
+  steps:
+    - name: Versión de Playwright
+      id: version
+      shell: bash
+      run: echo "version=$(pnpm --filter @clinic/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+    - name: Caché del navegador y de sus paquetes
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/.cache/playwright-apt
+        key: playwright-chromium-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}
+
+    - name: Instalar Chromium (con límite de tiempo y reintento)
+      shell: bash
+      run: |
+        mkdir -p ~/.cache/playwright-apt
+        # Los paquetes guardados van a la caché de apt: no se vuelven a descargar.
+        if compgen -G "$HOME/.cache/playwright-apt/*.deb" > /dev/null; then
+          sudo cp "$HOME"/.cache/playwright-apt/*.deb /var/cache/apt/archives/
+        fi
+        for attempt in 1 2 3; do
+          if timeout 240 pnpm --filter @clinic/web exec playwright install --with-deps chromium; then
+            break
+          fi
+          if [ "$attempt" = 3 ]; then
+            echo "::error::No se pudo instalar Chromium en 3 intentos"
+            exit 1
+          fi
+          echo "::warning::La instalación de Chromium no terminó (intento $attempt); se reintenta"
+          # Un intento cortado puede dejar apt corriendo o a medias.
+          sudo pkill -x apt-get || true
+          sudo pkill -x dpkg || true
+          sleep 2
+          sudo dpkg --configure -a || true
+        done
+        # Se guardan los paquetes descargados para la próxima vez (la caché se
+        # sube al final del trabajo solo si no existía).
+        if [ "${{ steps.cache.outputs.cache-hit }}" != "true" ]; then
+          cp /var/cache/apt/archives/*.deb ~/.cache/playwright-apt/ 2>/dev/null || true
+          du -sh ~/.cache/ms-playwright ~/.cache/playwright-apt || true
+        fi

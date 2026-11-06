@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { generate } from 'otplib';
 import { E2E } from './global-setup.ts';
+import { signInSaved } from './sesion.ts';
 
 // T-013: perfil y edición del paciente (S-PAC-05, 06 a 08, 10, 11 y 12) con
 // datos ficticios de la semilla. Recepción Norte abre el perfil en dos
@@ -33,10 +34,12 @@ async function newPage(browser: Browser) {
 }
 
 async function signIn(page: Page, email: string) {
-  await page.goto('/login');
-  await page.getByLabel('Correo electrónico').fill(email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  if (!(await signInSaved(page, email))) {
+    await page.goto('/login');
+    await page.getByLabel('Correo electrónico').fill(email);
+    await page.getByLabel('Contraseña', { exact: true }).fill(E2E.password);
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+  }
 }
 
 /** Inscribe el MFA en S-GEN-07 y sigue hasta el final de S-GEN-08 (como en users.spec.ts). */
