@@ -63,6 +63,9 @@ const TABLES = [
   'billing_statements',
   // T-028
   'payments',
+  // T-029
+  'receipts',
+  'receipt_prints',
 ];
 
 describe('clinic_app no puede saltarse RLS', () => {

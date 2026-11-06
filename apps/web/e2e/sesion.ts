@@ -19,6 +19,16 @@ import { E2E } from './global-setup.ts';
 // alguien acaba de cerrar sesión en ella), primero se va a /login, como hacía
 // el formulario, y se abre una sesión nueva: un cierre de sesión que todavía
 // estuviera en camino no puede llevarse la guardada.
+//
+// Una sesión guardada se reutiliza solo durante sus primeros 5 minutos
+// (MAX_REUSE_MS). Las ventanas de las pruebas anteriores siguen abiertas
+// hasta el final de la ejecución y, a los 15 minutos sin interacción, la web
+// cierra su sesión por inactividad (S-GEN-20), como debe. Si esa sesión
+// fuera la guardada, dejaría fuera a la prueba que la estuviera usando (pasó
+// en la CI del PR #42 con visita.spec.ts). Toda ventana que usa una sesión se
+// abrió después de crearla, así que no la cierra antes de 15 minutos desde
+// su creación; reutilizándola solo 5 minutos, la prueba que la usa tiene
+// otros 10 de margen (las más largas duran alrededor de 1 minuto).
 
 const SAVED = new Set([
   'recepcion.norte@example.test',
@@ -31,7 +41,9 @@ const SAVED = new Set([
 
 const WEB_ORIGIN = `http://127.0.0.1:${String(E2E.webPort)}`;
 
-const saved = new Map<string, Cookie[]>();
+const MAX_REUSE_MS = 5 * 60_000;
+
+const saved = new Map<string, { cookies: Cookie[]; at: number }>();
 
 async function sessionEmail(page: Page): Promise<string | null> {
   const response = await page.request.get('/api/auth/get-session');
@@ -49,7 +61,8 @@ export async function signInSaved(page: Page, email: string, password = E2E.pass
   const context = page.context();
   const used = page.url() !== 'about:blank';
   if (used) await page.goto('/login');
-  const cookies = used ? undefined : saved.get(email);
+  const entry = saved.get(email);
+  const cookies = !used && entry && Date.now() - entry.at < MAX_REUSE_MS ? entry.cookies : undefined;
   let valid = false;
   if (cookies) {
     await context.addCookies(cookies);
@@ -67,7 +80,7 @@ export async function signInSaved(page: Page, email: string, password = E2E.pass
     expect(response.status(), `inicio de sesión de ${email}`).toBe(200);
     const body = (await response.json()) as { twoFactorRedirect?: boolean };
     expect(body.twoFactorRedirect, `${email} no debe tener MFA`).toBeFalsy();
-    saved.set(email, await context.cookies());
+    saved.set(email, { cookies: await context.cookies(), at: Date.now() });
   }
   await page.goto('/');
   return true;

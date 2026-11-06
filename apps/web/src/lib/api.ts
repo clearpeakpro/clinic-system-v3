@@ -94,6 +94,12 @@ import type {
   NotificationKind,
   Permission,
   Role,
+  GenerateVisitReceiptInput,
+  PrintReceiptInput,
+  ReceiptDocument,
+  ReceiptGenerated,
+  ReceiptLanguage,
+  ReceiptsPanel,
 } from '@clinic/shared';
 
 // Cliente de la API (mismo origen: /api). Las cookies de sesión son httpOnly:
@@ -443,6 +449,14 @@ export const api = {
   payMembershipFee: (feeId: string, input: PayMembershipFeeInput, idempotencyKey: string) =>
     request<PaymentRecorded>('POST', `/api/membership-fees/${feeId}/payments`, input, { 'idempotency-key': idempotencyKey }),
   patientBalances: (patientId: string) => request<PatientBalances>('GET', `/api/patients/${patientId}/balances`),
+  // T-029: recibos (S-CAJ-14, 15 y 24). El texto lo arma el servidor; imprimir lo devuelve después de auditar.
+  visitReceipts: (encounterId: string) => request<ReceiptsPanel>('GET', `/api/encounters/${encounterId}/receipts`),
+  generateVisitReceipt: (encounterId: string, input: GenerateVisitReceiptInput, idempotencyKey: string) =>
+    request<ReceiptGenerated>('POST', `/api/encounters/${encounterId}/receipts`, input, { 'idempotency-key': idempotencyKey }),
+  feeReceipts: (feeId: string) => request<ReceiptsPanel>('GET', `/api/membership-fees/${feeId}/receipts`),
+  generateFeeReceipt: (feeId: string, idempotencyKey: string) => request<ReceiptGenerated>('POST', `/api/membership-fees/${feeId}/receipts`, {}, { 'idempotency-key': idempotencyKey }),
+  receipt: (receiptId: string, language: ReceiptLanguage) => request<ReceiptDocument>('GET', `/api/receipts/${receiptId}?lang=${language}`),
+  printReceipt: (receiptId: string, input: PrintReceiptInput) => request<ReceiptDocument>('POST', `/api/receipts/${receiptId}/print`, input),
   checkoutQueue: (search: string) => request<CheckoutQueue>('GET', `/api/checkout/queue${search.trim() ? `?q=${encodeURIComponent(search.trim())}` : ''}`),
   // T-026: cola de órdenes (S-CLI-03), asignar, iniciar y completar (S-CLI-19, 20 y 22).
   orderQueue: (tab: OrderQueueTab, mine: boolean) => request<OrderQueue>('GET', `/api/orders/queue?tab=${tab}${mine ? '&mine=1' : ''}`),

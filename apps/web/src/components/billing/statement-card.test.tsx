@@ -129,6 +129,7 @@ describe('revisión: ningún archivo de Caja hace cuentas con importes', () => {
   const files = [
     ...readdirSync(here).filter((f) => f.endsWith('.tsx') && !f.endsWith('.test.tsx')).map((f) => join(here, f)),
     join(here, '../../lib/billing.ts'),
+    join(here, '../../lib/receipts.ts'),
     join(here, '../../pages/checkout.tsx'),
     join(here, '../../pages/checkout-queue.tsx'),
     join(here, '../patients/patient-balances.tsx'),

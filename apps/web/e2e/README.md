@@ -17,6 +17,7 @@ Los guiones comparten sus ayudantes (`demo-helpers.ts`: ventanas, inicio y cierr
   - Solo sirve para el personal de la semilla con una sola sede y sin MFA (Recepción, Enfermería y Proveedor). Las demás personas siguen entrando por el formulario.
   - `flows.spec.ts`, `profile.spec.ts`, `users.spec.ts` y las demos siguen entrando por el formulario: son las que prueban el inicio de sesión.
   - Si la sesión guardada ya no vale (alguien cerró sesión, por ejemplo), se abre otra. En una ventana ya usada se abre siempre una nueva.
+  - Una sesión guardada se reutiliza solo durante sus primeros 5 minutos. Las ventanas de pruebas anteriores siguen abiertas y, a los 15 minutos sin interacción, la web cierra su sesión por inactividad. Así ninguna puede cerrar la sesión que está usando otra prueba.
   - En local ahorra unos 0.9 s por inicio de sesión: 0.57 s frente a 1.43 s con el formulario.
 - **Códigos de verificación:** el servidor acepta el código del periodo de 30 s anterior, el del actual y el del siguiente (Better Auth). Cuando hace falta un código distinto del último, se usa el del periodo siguiente (`generate({ secret, epoch })`) en lugar de esperar a que cambie el periodo.
 - **Nada de esperas fijas:** se espera a que ocurra lo que se comprueba (`expect.poll`, `toBeVisible`…), no un tiempo.

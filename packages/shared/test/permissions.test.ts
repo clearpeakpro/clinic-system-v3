@@ -79,6 +79,8 @@ describe('permisos', () => {
         'nursing.send_exception',
         'patients.deactivate',
         'patients.edit_birth_date',
+        // Ver y reimprimir recibos (T-029): también solo con un rol clínico.
+        'receipts.print',
         'visits.force_state',
       ]);
       expect(permissionsFor([role]).has('patients.access'), role).toBe(false);
@@ -92,7 +94,7 @@ describe('permisos', () => {
 
   it('destinos del menú según el manual', () => {
     expect([...permissionsFor(['recepcion'])].sort()).toEqual(
-      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'balances.view', 'checkout.access', 'memberships.manage', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'reports.location', 'visits.manage'],
+      ['appointments.access', 'appointments.check_in', 'appointments.manage', 'balances.view', 'checkout.access', 'memberships.manage', 'panel.view', 'patients.access', 'patients.create', 'patients.edit', 'receipts.generate', 'receipts.print', 'reports.location', 'visits.manage'],
     );
     expect([...permissionsFor(['enfermeria'])].sort()).toEqual(
       ['nursing.assessment', 'nursing.view', 'nursing.vitals', 'nursing_queue.access', 'orders.execute', 'orders_queue.access', 'panel.view', 'patients.access'],

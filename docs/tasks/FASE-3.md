@@ -790,6 +790,16 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 
 **Decisiones (resueltas el 2026-11-01):** P-21 ([ADR 0037](../decisions/0037-recibo-80mm-es-en.md)). Recibo de **rollo de 80 mm** para la impresora de tickets de la clínica: lo arma el servidor y se imprime con el diálogo del navegador, **sin PDF**. En **español o inglés**, a elección al verlo o imprimirlo.
 
+**Decisiones al planificarla (2026-11-05, [ADR 0037](../decisions/0037-recibo-80mm-es-en.md)):**
+- **Encabezado:** clínica, código y nombre de la sede, y su dirección y su teléfono si los tiene. Sin EIN ni nota legal por ahora.
+- **Paciente:** nombre completo y código, sin fecha de nacimiento ni teléfono.
+- **Membresía:** «Membresía −$X» (o «Incluido en la membresía») en cada línea, «Descuento de membresía» en los totales y el nombre del plan.
+- **Seguro:** «A cargo del seguro» aparte, con el tipo y el nombre de la aseguradora; sin número de miembro.
+- **Totales:** «Saldo» o «Crédito a favor», nunca un saldo negativo. Con la visita «Cancelada» no se genera recibo.
+- **Cuotas de membresía:** también llevan recibo, con la misma serie.
+- **Quién:** genera Recepción; el Propietario y el Administrador con otro rol clínico ven y reimprimen, pero no generan.
+- **Idioma:** español por defecto, con «Español» / «English» visibles en la hoja y en el diálogo de imprimir.
+
 **Objetivo:** Recepción genera el recibo de la visita, lo ve y lo imprime, y cada impresión queda auditada antes de salir.
 
 **Pantallas:** S-CAJ-14, S-CAJ-15, S-CAJ-24.
@@ -809,6 +819,28 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - sin auditoría no hay impresión;
 - reimprimir muestra la instantánea original, en el idioma elegido;
 - E2E `recibos.spec.ts`.
+
+**Cómo quedó (2026-11-05):** detallado en el [ADR 0037](../decisions/0037-recibo-80mm-es-en.md), «Cómo quedó implementada».
+- **Base de datos:** migraciones `0047` y `0048`.
+  - `receipts`: la instantánea cifrada, con el código por sede y año, sin huecos (`nextReceiptCode()`).
+  - `receipt_prints`: cada impresión.
+  - Las dos solo con `SELECT` e `INSERT` y RLS forzada.
+- **Compartido:** la instantánea (`receiptSnapshotSchema`), `renderReceipt()` en 42 columnas en español e inglés, y los permisos `receipts.generate` y `receipts.print`.
+- **API:** `apps/api/src/receipts.ts`, con el reloj inyectable.
+  - Generar (de la visita o de la cuota) con `Idempotency-Key`.
+  - Ver, con la lectura auditada.
+  - Imprimir: el límite de 30 por minuto y la auditoría, y solo después el texto.
+- **Web:**
+  - tarjeta «Recibos» en la Caja y en las cuotas de la tarjeta «Membresía»;
+  - confirmación al generar, con «Vincular al último pago»;
+  - hoja del recibo con su idioma;
+  - impresión de 80 mm en un iframe temporal.
+- **Pruebas:**
+  - `apps/api/test/receipts.test.ts`: sin huecos, el cambio de año, sin auditoría no hay impresión, la instantánea original y el límite;
+  - `packages/db/test/receipts.test.ts`;
+  - `packages/shared/test/receipts.test.ts`;
+  - `receipts-card.test.tsx`;
+  - E2E `recibos.spec.ts`.
 
 ## T-030 — Fusionar pacientes (P-16)
 

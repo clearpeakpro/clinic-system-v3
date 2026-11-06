@@ -73,6 +73,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
         invalidate(['checkout-queue']);
         // T-028: la pestaña Saldos de los perfiles abiertos.
         invalidate(['patient-balances']);
+        // T-029: la tarjeta «Recibos» de esa visita (un recibo nuevo o el último pago).
+        invalidate(['receipts', 'visit', encounterId]);
       }, delay);
       return;
     }
@@ -110,6 +112,8 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
         invalidate(['encounter', encounterId]);
         invalidate(['nursing', encounterId]);
         invalidate(['statement', encounterId]);
+        // T-029: cerrar la visita como «Cancelada» bloquea «Generar recibo».
+        invalidate(['receipts', 'visit', encounterId]);
       }
     }, delay);
   };
