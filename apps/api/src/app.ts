@@ -35,6 +35,7 @@ import { DEFAULT_KIOSK_LIMITS, KioskAdminService, KioskService, type KioskLimits
 import { PanelService } from './panel.ts';
 import { IdempotencyService } from './idempotency.ts';
 import { PatientService } from './patients.ts';
+import { PatientMergeService } from './patient-merge.ts';
 import { ProfileService } from './profile.ts';
 import { RealtimeGateway } from './realtime.ts';
 import { ContextService } from './services.ts';
@@ -72,6 +73,7 @@ export async function createApp({ config, logs, clock = systemClock }: AppDeps) 
     membershipPlans: new MembershipPlanService(tenantDb, audit),
     patientMemberships: new PatientMembershipService(pool, tenantDb, audit, fieldCipher, idempotency, clock),
     patients: new PatientService(tenantDb, audit, fieldCipher),
+    patientMerge: new PatientMergeService(tenantDb, audit, fieldCipher, idempotency, clock),
     appointments: new AppointmentService(pool, tenantDb, audit, fieldCipher),
     appointmentCommands: new AppointmentCommands(pool, tenantDb, audit, fieldCipher, idempotency, config.outboxKey),
     encounters,

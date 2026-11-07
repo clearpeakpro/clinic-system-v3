@@ -81,16 +81,14 @@ export class PatientService {
     const query = parsed.query;
     const conditions: SQL[] = [sql`${patients.mergedInto} is null`];
     // Por código se encuentra siempre, también inactivo; lo demás, solo activos
-    // salvo con «Incluir inactivos» (T-013).
-    if (query.code) {
-      conditions.push(eq(patients.code, query.code));
-    } else {
+    // salvo con «Incluir inactivos» (T-013). El código de un fusionado lleva
+    // al principal (T-030, ADR 0032): se resuelve dentro de la transacción.
+    if (!query.code) {
       if (!input.includeInactive) conditions.push(eq(patients.status, 'active'));
       if (query.birthDate) conditions.push(eq(patients.birthDate, query.birthDate));
       if (query.phone) conditions.push(sql`(${patients.phone} = ${query.phone} or ${patients.phone} = ${`1${query.phone}`})`);
       for (const word of query.words) conditions.push(sql`${fullName} like '%' || app.search_text(${word}) || '%'`);
     }
-    const where = and(...conditions);
     const criteria: string[] = [];
     if (query.code) criteria.push('code');
     if (query.birthDate) criteria.push('birthDate');
@@ -100,6 +98,8 @@ export class PatientService {
     const relevance = query.words.length > 0 ? sql`ext.word_similarity(app.search_text(${query.words.join(' ')}), ${fullName}) desc,` : sql``;
 
     return this.#tenantDb.withTenant(ctx.organizationId, async (tx) => {
+      if (query.code) conditions.push(eq(patients.id, (await this.#principalOfCode(tx, query.code)) ?? sql`null`));
+      const where = and(...conditions);
       const today = await this.#today(tx, ctx.locationId);
       const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(patients).where(where);
       const rows = await tx
@@ -161,6 +161,7 @@ export class PatientService {
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
         today: await this.#today(tx, ctx.locationId),
+        mergedInto: row.mergedInto ? await this.#mergedInto(tx, row.mergedInto) : null,
       };
     });
   }
@@ -420,6 +421,21 @@ export class PatientService {
     });
   }
 
+  /**
+   * El paciente de ese código o, si está fusionado, su principal (T-030). La
+   * fusión deja cada merged_into apuntando a un principal sin fusionar, pero
+   * se sigue la cadena por si acaso, con un límite.
+   */
+  async #principalOfCode(tx: Tx, code: string): Promise<string | null> {
+    const [row] = await tx.select({ id: patients.id, mergedInto: patients.mergedInto }).from(patients).where(eq(patients.code, code));
+    let current = row ?? null;
+    for (let hops = 0; current?.mergedInto && hops < 10; hops += 1) {
+      const [next] = await tx.select({ id: patients.id, mergedInto: patients.mergedInto }).from(patients).where(eq(patients.id, current.mergedInto));
+      current = next ?? null;
+    }
+    return current && !current.mergedInto ? current.id : null;
+  }
+
   /** Otros pacientes con el mismo teléfono (hasta 3, para el aviso); en la edición, sin contar al propio. */
   async #phoneMatches(tx: Tx, phone: string, exceptId?: string): Promise<DuplicateCandidate[]> {
     return tx
@@ -439,6 +455,12 @@ export class PatientService {
       .where(and(eq(patients.birthDate, input.birthDate), sql`${patients.mergedInto} is null`, sql`${similarity} >= ${DUPLICATE_SIMILARITY}`))
       .orderBy(sql`${similarity} desc`, patients.code)
       .limit(MAX_CANDIDATES);
+  }
+
+  /** S-PAC-05 «Abrir registro principal» (T-030): el id y el código del principal, sin nombres. */
+  async #mergedInto(tx: Tx, principalId: string): Promise<{ id: string; code: string } | null> {
+    const [principal] = await tx.select({ id: patients.id, code: patients.code }).from(patients).where(eq(patients.id, principalId));
+    return principal ?? null;
   }
 
   /** Los detalles del referido en claro, o nulo. */

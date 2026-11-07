@@ -25,6 +25,7 @@ import { KioskPage } from './pages/kiosk.tsx';
 import { KioskArrivalPage } from './pages/kiosk-arrival.tsx';
 import { PanelPage } from './pages/panel.tsx';
 import { PatientPage } from './pages/patient.tsx';
+import { PatientMergePage } from './pages/patient-merge.tsx';
 import { PatientsPage } from './pages/patients.tsx';
 import { ProfilePage } from './pages/profile.tsx';
 import { ResetPasswordPage } from './pages/reset-password.tsx';
@@ -144,6 +145,20 @@ const appPatientRoute = createRoute({
     const { sede, id } = appPatientRoute.useParams();
     if (me.data && !me.data.permissions.includes('patients.access')) return <NotFoundPage />;
     return <PatientPage key={id} sede={sede} patientId={id} />;
+  },
+});
+
+// T-030: /app/<SEDE>/pacientes/<id>/fusionar (S-PAC-13): el Propietario o el
+// Administrador con un rol clínico en la sede (patients.access y patients.merge).
+const appPatientMergeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'pacientes/$id/fusionar',
+  component: function PatientMerge() {
+    const me = useMe();
+    const { sede, id } = appPatientMergeRoute.useParams();
+    const permissions = me.data?.permissions ?? [];
+    if (me.data && !(permissions.includes('patients.access') && permissions.includes('patients.merge'))) return <NotFoundPage />;
+    return <PatientMergePage key={id} sede={sede} patientId={id} />;
   },
 });
 
@@ -446,6 +461,7 @@ const routeTree = rootRoute.addChildren([
     appProfileRoute,
     appPatientsRoute,
     appPatientRoute,
+    appPatientMergeRoute,
     appPanelRoute,
     appNursingQueueRoute,
     appProviderQueueRoute,

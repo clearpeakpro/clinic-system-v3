@@ -41,6 +41,13 @@ describe('agenda en vivo', () => {
     expect(invalidate).toHaveBeenCalledTimes(12);
   });
 
+  it('patient.changed (T-030) relee ese perfil y las listas de los perfiles abiertos, al momento', () => {
+    const invalidate = vi.fn<(queryKey: readonly unknown[]) => void>();
+    const onEvent = createEventBatcher(invalidate);
+    onEvent({ name: 'patient.changed', ids: { patient: ID_A, mergedInto: ID_B } });
+    expect(invalidate.mock.calls.map((c) => c[0])).toEqual([['patient', ID_A], ['patient-appointments'], ['patient-encounters'], ['patient-balances'], ['patient-membership']]);
+  });
+
   it('kiosk.checkin (T-021) relee solo la bandeja del kiosco, una vez por ráfaga', () => {
     const invalidate = vi.fn<(queryKey: readonly unknown[]) => void>();
     const onEvent = createEventBatcher(invalidate);

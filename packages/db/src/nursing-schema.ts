@@ -15,12 +15,16 @@ import { appSchema, locations, organizations } from './schema.ts';
 //  - patient_histories: historia del paciente (ADR 0036), una fila por
 //    versión, append-only. Texto libre cifrado (FieldCipher). Alergias con un
 //    estado explícito (ADR 0040): no registradas, sin alergias conocidas o
-//    registradas (con texto).
+//    registradas (con texto). `source`: «assessment» (Enfermería, en una
+//    visita) o «merge» (la versión combinada al fusionar pacientes, T-030,
+//    ADR 0032), que es la única sin visita.
 //  - encounter_assessments: síntomas y notas de enfermería de la visita,
 //    cifrados, con versión.
 
 /** Estado de las alergias del paciente (ADR 0040). */
 export const ALLERGY_STATUS_VALUES = ['not_recorded', 'none_known', 'recorded'] as const;
+/** Origen de una versión de la historia del paciente (T-030). */
+export const PATIENT_HISTORY_SOURCE_VALUES = ['assessment', 'merge'] as const;
 
 const createdBy = (name: string) => uuid(name);
 
@@ -99,8 +103,9 @@ export const patientHistories = appSchema.table(
     surgeriesEnc: text('surgeries_enc'),
     lifestyleEnc: text('lifestyle_enc'),
     reproductiveHistoryEnc: text('reproductive_history_enc'),
-    /** Visita y sede donde se registró esta versión. */
-    encounterId: uuid('encounter_id').notNull(),
+    /** Visita y sede donde se registró esta versión (sin visita solo la de una fusión). */
+    encounterId: uuid('encounter_id'),
+    source: text('source').notNull().default('assessment'),
     locationId: uuid('location_id').notNull(),
     recordedByMembershipId: createdBy('recorded_by_membership_id').notNull(),
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
@@ -120,6 +125,8 @@ export const patientHistories = appSchema.table(
     // Con «registradas» hay texto; sin alergias conocidas o sin registrar, no.
     check('patient_histories_allergies_check', sql`(${t.allergyStatus} = 'recorded') = (${t.allergiesEnc} is not null)`),
     check('patient_histories_version_check', sql`${t.version} >= 1`),
+    check('patient_histories_source_check', sql`${t.source} in (${sql.raw(PATIENT_HISTORY_SOURCE_VALUES.map((v) => `'${v}'`).join(', '))})`),
+    check('patient_histories_encounter_check', sql`(${t.source} = 'merge') = (${t.encounterId} is null)`),
   ],
 );
 

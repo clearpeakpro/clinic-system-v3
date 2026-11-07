@@ -30,6 +30,9 @@ export const PERMISSIONS = [
   // patients.access, es decir, un rol clínico en la sede (ADR 0027).
   'patients.edit_birth_date',
   'patients.deactivate',
+  // Fusionar pacientes (T-030; S-PAC-13 y 14; ADR 0032): Propietario y
+  // Administrador, solo junto a patients.access (un rol clínico en la sede).
+  'patients.merge',
   'appointments.access',
   // S-REC-09 a 17 (T-015): crear, editar, reprogramar, confirmar, cancelar y
   // marcar no presentado. Recepción, en cualquier cita de la sede; Proveedor,
@@ -107,7 +110,7 @@ export const ORG_WIDE_ROLES: readonly Role[] = ['propietario', 'administrador'];
 // clínico implícito (docs/architecture.md, «Permisos»). Para ver la parte
 // clínica necesitan además un rol clínico en la sede. Por eso, a diferencia del
 // manual, su menú es solo «Administración». Sus permisos de pacientes (fecha
-// de nacimiento e inactivar, ADR 0009) y el de forzar el estado de una visita
+// de nacimiento e inactivar, ADR 0009; fusionar, ADR 0032) y el de forzar el estado de una visita
 // (ADR 0033) solo sirven junto a patients.access.
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   propietario: [
@@ -119,6 +122,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'admin.access',
     'patients.edit_birth_date',
     'patients.deactivate',
+    'patients.merge',
     'visits.force_state',
     'nursing.send_exception',
     'billing.void',
@@ -133,6 +137,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'admin.access',
     'patients.edit_birth_date',
     'patients.deactivate',
+    'patients.merge',
     'visits.force_state',
     'nursing.send_exception',
     'billing.void',

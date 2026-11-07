@@ -223,6 +223,8 @@ export interface PatientProfile extends PatientSummary {
   updatedAt: string;
   /** Hoy en la sede activa, para la edad. */
   today: string;
+  /** T-030: «Fusionado», con el registro principal (sin nombres). Nulo si no está fusionado. */
+  mergedInto: { id: string; code: string } | null;
 }
 
 /** Solo se agendan citas a pacientes activos (T-013; lo aplica T-015). */

@@ -46,6 +46,7 @@ import {
   patientStatusChangeSchema,
   phoneSharedBackSchema,
   searchPatientsSchema,
+  mergePatientsSchema,
   updatePatientSchema,
   deactivateCatalogItemSchema,
   updateMembershipBenefitSchema,
@@ -103,6 +104,7 @@ import { BillingService } from './billing.ts';
 import { EncounterService } from './encounters.ts';
 import { PaymentService } from './payments.ts';
 import { ReceiptService } from './receipts.ts';
+import { PatientMergeService } from './patient-merge.ts';
 import { KioskArrivalService } from './kiosk-arrivals.ts';
 import { KIOSK_COOKIE, KioskAdminService, kioskCookie, KioskService, kioskTokenOf } from './kiosk.ts';
 import { NursingService } from './nursing.ts';
@@ -765,6 +767,32 @@ export class PatientsController {
   @RequirePermission('patients.create')
   async openExisting(@Req() request: FastifyRequest, @Param('id') patientId: string) {
     await this.#patients.openExisting(principalOf(request), id(patientId), metaOf(request));
+  }
+}
+
+/**
+ * Fusionar pacientes (T-030; S-PAC-13 y 14; ADR 0032): patients.access (un
+ * rol clínico en la sede) y patients.merge (Propietario o Administrador).
+ * `:id` es el duplicado; la fusión lleva Idempotency-Key.
+ */
+@Controller('patients')
+export class PatientMergeController {
+  readonly #merge: PatientMergeService;
+  constructor(@Inject(PatientMergeService) merge: PatientMergeService) {
+    this.#merge = merge;
+  }
+
+  @Get(':id/merge-preview')
+  @RequirePermission('patients.access', 'patients.merge')
+  preview(@Req() request: FastifyRequest, @Param('id') patientId: string, @Query('with') other: unknown) {
+    return this.#merge.preview(principalOf(request), id(patientId), id(typeof other === 'string' ? other : ''), metaOf(request));
+  }
+
+  @Post(':id/merge')
+  @HttpCode(200)
+  @RequirePermission('patients.access', 'patients.merge')
+  merge(@Req() request: FastifyRequest, @Param('id') patientId: string, @Body() body: unknown, @IdempotencyKey() key: string) {
+    return this.#merge.merge(principalOf(request), id(patientId), parse(mergePatientsSchema, body), key, metaOf(request));
   }
 }
 
@@ -1555,6 +1583,7 @@ export interface ApiProviders {
   membershipPlans: MembershipPlanService;
   patientMemberships: PatientMembershipService;
   patients: PatientService;
+  patientMerge: PatientMergeService;
   appointments: AppointmentService;
   appointmentCommands: AppointmentCommands;
   encounters: EncounterService;
@@ -1589,6 +1618,7 @@ export function createApiModule(providers: ApiProviders) {
       AdminMembershipPlansController,
       CatalogController,
       PatientsController,
+      PatientMergeController,
       AppointmentsController,
       PatientAppointmentsController,
       ArrivalsController,
@@ -1619,6 +1649,7 @@ export function createApiModule(providers: ApiProviders) {
       { provide: MembershipPlanService, useValue: providers.membershipPlans },
       { provide: PatientMembershipService, useValue: providers.patientMemberships },
       { provide: PatientService, useValue: providers.patients },
+      { provide: PatientMergeService, useValue: providers.patientMerge },
       { provide: AppointmentService, useValue: providers.appointments },
       { provide: AppointmentCommands, useValue: providers.appointmentCommands },
       { provide: EncounterService, useValue: providers.encounters },

@@ -872,6 +872,14 @@ Todo sigue aislado entre «Clínica Demo Norte» y «Clínica Demo Sur», con pr
 - la auditoría tiene los conteos y ningún nombre;
 - E2E `fusionar.spec.ts`.
 
+**Precisiones del 2026-11-07:** el dueño aprobó las ocho reglas que el ADR 0032 no cubría (membresías, historia y alergias, recibos y saldos, kiosco, otros bloqueos, datos personales, «Incluir fusionados» y el evento en vivo). En v3 hay un solo código por paciente, así que no se trasladan códigos. Ver el [ADR 0032](../decisions/0032-fusionar-pacientes.md#precisiones-del-2026-11-07-plan-de-t-030).
+
+**Cómo quedó (2026-11-07):** detallado en el [ADR 0032](../decisions/0032-fusionar-pacientes.md#cómo-quedó-implementada-t-030-2026-11-07), «Cómo quedó implementada».
+- **Base de datos:** migraciones `0049` (historia combinada sin visita) y `0050` (`app.merge_patient_rows()`, para pagos, recibos y membresías).
+- **API:** vista previa con los bloqueos y la fusión en una transacción, con `Idempotency-Key`, las dos versiones, la auditoría `patient.merge` con conteos y sin nombres, y el evento `patient.changed`.
+- **Web:** S-PAC-13 y 14, y en S-PAC-05 «Fusionar con…», «Fusionado» y «Abrir registro principal».
+- **Pruebas:** `apps/api/test/patient-merge.test.ts` (con la prueba de las tablas que apuntan a `patients`), `packages/db/test/patient-merge.test.ts`, `packages/shared/test/patient-merge.test.ts` y la E2E `fusionar.spec.ts`.
+
 ## T-031 — Reporte diario de la sede
 
 **Decisiones (resueltas el 2026-11-01):** P-22 ([ADR 0038](../decisions/0038-reporte-diario-antes-piloto.md)). Antes del piloto entra **solo la pestaña «Diario» de la sede**, con impresión auditada. El «Rango», el CSV (P-03), los reportes de la compañía, «Saldo pendiente» y «Bono» siguen en la fase 5.

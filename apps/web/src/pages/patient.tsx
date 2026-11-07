@@ -1,7 +1,7 @@
 import { ageLabel, ageOn, canSchedule, formatPhone, shortAppointmentCode, type PatientAppointments, type PatientEncounters, type PatientProfile } from '@clinic/shared';
-import { AsyncView, Button, CodeText, DateTimeText, SemanticChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
+import { AsyncView, Button, CodeText, DateTimeText, SemanticChip, StatusChip, Tabs, useSnackbar, type TabItem } from '@clinic/ui';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowLeft,
   Cake,
@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Contact,
   History,
+  Merge,
   Megaphone,
   NotebookPen,
   Pencil,
@@ -20,7 +21,7 @@ import {
   SquareCheckBig,
   Wallet,
 } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   canOpenEditor,
   EditPatientDialog,
@@ -47,12 +48,17 @@ import { useActiveLocation, useMe } from '../lib/session.ts';
 // Contacto y Admisión» con «Actualizar datos». No se construye lo que el
 // sistema no tiene (foto, triaje, alerta médica, saldo y factura, contacto
 // de emergencia, seguro, idioma, farmacia, EHR, contadores de las pestañas)
-// ni «Fusionar con…» (S-PAC-13) ni Documentos. «Nueva cita» (T-015) abre
+// ni Documentos. «Nueva cita» (T-015) abre
 // S-REC-10 con el paciente ya elegido, para la sede activa. Cada apertura se audita en el servidor (patient.read) y no se guarda
 // en caché. La pestaña no va en la URL: al volver, el perfil abre en Resumen.
 // T-014: la pestaña Citas (S-PAC-07) y la «Próxima cita» del Resumen, en solo
 // lectura; sin acceso a Citas (Enfermería, ADR 0027) no se muestran.
 // T-026b: la tarjeta «Membresía» (S-PAC-22) y «Inscribir en un plan» (S-PAC-23).
+// T-030 (ADR 0032): «Fusionar con…» (S-PAC-13) para el Propietario o el
+// Administrador con un rol clínico; un registro fusionado muestra el chip
+// «Fusionado», el aviso con «Abrir registro principal» y no ofrece «Editar»,
+// «Nueva cita» ni «Fusionar con…». Si se fusiona mientras está abierto
+// (patient.changed), sale una vez el mismo aviso en un snackbar.
 
 type TabKey = 'resumen' | 'citas' | 'visitas' | 'saldos';
 
@@ -110,6 +116,23 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
     gcTime: 0,
     retry: (failures: number, error: ApiError) => error.status >= 500 && failures < 2,
   });
+  const canMerge = permissions.includes('patients.merge');
+  const navigate = useNavigate();
+  const merged = patient.data?.mergedInto ?? null;
+  // El aviso en vivo, una sola vez: solo si se fusionó con el perfil ya abierto.
+  const wasMerged = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!patient.data) return;
+    const now = patient.data.mergedInto !== null;
+    if (wasMerged.current === false && now && patient.data.mergedInto) {
+      const principalId = patient.data.mergedInto.id;
+      snackbar({
+        message: 'Este registro fue fusionado con otro paciente.',
+        action: { label: 'Abrir registro principal', onClick: () => void navigate({ to: '/app/$sede/pacientes/$id', params: { sede, id: principalId } }) },
+      });
+    }
+    wasMerged.current = now;
+  }, [patient.data, navigate, sede, snackbar]);
   const reload = async (message?: string) => {
     await patient.refetch();
     setDialog(null);
@@ -126,8 +149,15 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
         >
           <ArrowLeft aria-hidden className="size-5" /> Volver a Pacientes
         </Link>
-        {patient.data ? (
+        {patient.data && !merged ? (
           <div className="flex flex-wrap items-center justify-end gap-space-sm">
+            {canMerge && patient.data.status === 'active' ? (
+              <Button variant="outline" asChild>
+                <Link to="/app/$sede/pacientes/$id/fusionar" params={{ sede, id: patientId }}>
+                  <Merge aria-hidden className="size-5" /> Fusionar con…
+                </Link>
+              </Button>
+            ) : null}
             {canOpenEditor(scope) ? (
               <Button variant="tonal" onClick={() => { setDialog('edit'); }}>
                 <Pencil aria-hidden className="size-5" /> Editar
@@ -144,6 +174,18 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
       <AsyncView source={patient} loading="skeleton">
         {(p) => (
           <>
+            {p.mergedInto ? (
+              <div role="status" className="flex flex-wrap items-center justify-between gap-space-sm rounded-lg bg-status-waiting-container p-space-md text-on-surface">
+                <p className="flex items-center gap-space-xs text-body-lg-medium">
+                  <Merge aria-hidden className="size-5 text-status-waiting" /> Este registro fue fusionado con otro paciente.
+                </p>
+                <Button asChild>
+                  <Link to="/app/$sede/pacientes/$id" params={{ sede, id: p.mergedInto.id }}>
+                    Abrir registro principal
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
             <ProfileHeader patient={p} />
             <Tabs label="Secciones del perfil" items={tabs} value={tab} onValueChange={setTab}>
               {tab === 'resumen' ? (
@@ -152,7 +194,7 @@ export function PatientPage({ sede, patientId }: { sede: string; patientId: stri
                   timeZone={timeZone}
                   encounters={encounters}
                   {...(canAppointments ? { appointments } : {})}
-                  {...(canOpenEditor(scope) ? { onEdit: () => { setDialog('edit'); } } : {})}
+                  {...(canOpenEditor(scope) && !p.mergedInto ? { onEdit: () => { setDialog('edit'); } } : {})}
                 />
               ) : tab === 'citas' && canAppointments ? (
                 <PatientAppointmentsTab query={appointments} sede={sede} timeZone={timeZone} />
@@ -218,7 +260,11 @@ function ProfileHeader({ patient: p }: { patient: PatientProfile }) {
             {p.firstName} {p.lastName}
           </h1>
           <CodeText code={p.code} />
-          <SemanticChip tone={p.status === 'active' ? 'success' : 'neutral'} label={p.status === 'active' ? 'Activo' : 'Inactivo'} />
+          {p.mergedInto ? (
+            <StatusChip tone="waiting" icon={Merge} label="Fusionado" />
+          ) : (
+            <SemanticChip tone={p.status === 'active' ? 'success' : 'neutral'} label={p.status === 'active' ? 'Activo' : 'Inactivo'} />
+          )}
         </div>
         <p className="flex flex-wrap items-center gap-x-space-md gap-y-space-xs text-body-lg text-on-surface-variant">
           <span className="flex items-center gap-space-xs">
