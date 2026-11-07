@@ -397,6 +397,8 @@ describe('Administración › Usuarios', () => {
       'nursing.send_exception',
       'patients.deactivate',
       'patients.edit_birth_date',
+      // Fusionar pacientes (T-030): solo junto a patients.access.
+      'patients.merge',
       // Ver y reimprimir recibos (T-029): también solo junto a patients.access.
       'receipts.print',
       'visits.force_state',

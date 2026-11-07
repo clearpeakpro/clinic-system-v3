@@ -18,3 +18,4 @@ export * from './membership-plans.ts';
 export * from './patient-memberships.ts';
 export * from './billing.ts';
 export * from './receipts.ts';
+export * from './patient-merge.ts';

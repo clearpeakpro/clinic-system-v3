@@ -85,6 +85,9 @@ import type {
   CreatePatientInput,
   OwnClinicalRolesInput,
   PatientProfile,
+  MergePatientsInput,
+  MergePreview,
+  MergeResult,
   PatientSearchResult,
   PhoneSharedBackInput,
   UpdatePatientInput,
@@ -372,6 +375,10 @@ export const api = {
     request<PatientSearchResult>('POST', '/api/patients/search', { q, offset, includeInactive }),
   createPatient: (input: CreatePatientInput) => request<CreatedPatient>('POST', '/api/patients', input),
   patient: (id: string) => request<PatientProfile>('GET', `/api/patients/${id}`),
+  // Fusionar pacientes (T-030; S-PAC-13 y 14): `id` es el duplicado. La fusión lleva Idempotency-Key.
+  mergePreview: (id: string, otherId: string) => request<MergePreview>('GET', `/api/patients/${id}/merge-preview?with=${otherId}`),
+  mergePatients: (duplicateId: string, input: MergePatientsInput, idempotencyKey: string) =>
+    request<MergeResult>('POST', `/api/patients/${duplicateId}/merge`, input, { 'idempotency-key': idempotencyKey }),
   updatePatient: (id: string, input: UpdatePatientInput) => request<{ version: number }>('POST', `/api/patients/${id}`, input),
   deactivatePatient: (id: string, reason: string, expectedVersion: number) =>
     request<null>('POST', `/api/patients/${id}/deactivate`, { reason, expectedVersion }),

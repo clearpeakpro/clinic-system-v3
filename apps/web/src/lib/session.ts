@@ -78,6 +78,18 @@ export function createEventBatcher(invalidate: (queryKey: readonly unknown[]) =>
       }, delay);
       return;
     }
+    // T-030: un paciente se fusionó (solo ids). El perfil del duplicado muestra
+    // «Fusionado» y su aviso; el del principal relee citas, visitas, saldos y membresía.
+    if (event.name === 'patient.changed') {
+      const patientId = event.ids.patient;
+      if (!patientId) return;
+      invalidate(['patient', patientId]);
+      invalidate(['patient-appointments']);
+      invalidate(['patient-encounters']);
+      invalidate(['patient-balances']);
+      invalidate(['patient-membership']);
+      return;
+    }
     if (event.name !== 'appointment.changed' && event.name !== 'encounter.changed') return;
     const first = pending === null;
     pending ??= { appointments: new Set(), encounters: new Set() };
